@@ -53,6 +53,12 @@ public final class CloudScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, width, height, BACKGROUND);
+        boolean nanoVgComposite = com.cloudcore.client.render.NanoVgSpike.composite(
+                graphics, 8, height - 72, 64);
+        if (Boolean.getBoolean("cloudcore.nanovg.spike")) {
+            int controlX = nanoVgComposite ? 80 : 8;
+            graphics.fill(controlX, height - 72, controlX + 64, height - 8, 0xFFFF0000);
+        }
         if (width != cachedWidth || height != cachedHeight) {
             cachedList = DocumentRenderListBuilder.build(document, width, height);
             cachedWidth = width;

@@ -115,7 +115,8 @@ docs/
 - [ ] 协议前向兼容：未知 surface/bind/render id 保留原始值并回 UI_READY(state=4)
 - [x] M0 NanoVG 初始化 + FBO 绘制 + readback（Windows x64，`cloudcore.nanovg.spike`）
 - [x] NanoVG 类与 Windows/Linux/macOS 原生库并入客户端 jar
-- [ ] M0 渲染：FBO 屏幕合成/预乘 alpha/Linux/macOS 运行验证
+- [ ] M0 渲染：FBO 纹理注册成功但 `GuiGraphics.blit` 画面不可见，需排查 UV/TextureSetup/GL 状态
+- [ ] M0 渲染：预乘 alpha/Linux/macOS 运行验证
 
 剩余的是实现前的验证项和待决问题，不是文档缺口。
 

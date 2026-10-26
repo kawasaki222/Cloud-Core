@@ -177,10 +177,12 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   并记录 `UI_CLOSE ui=cloudcore_demo reason=0`；服务端日志显示对应 S2C 帧。
 - **DIAGNOSTIC 链路已核实**：`/cloudcore diagnostic` 下发 `CC-PROBE-001`，客户端文件日志写入
   `ERROR [cloudcore] [CC-PROBE-001] scope=probe trace=...`。
-- **U28/U29 部分核实（Windows x64）**：`NanoVgSpike` 加载 `lwjgl-nanovg:3.3.3`，创建 GL3
-  context 与 64×64 FBO，绘制红色矩形并 `glReadPixels` 得到 `(255,0,0,255)`；FBO texture=719。
-  客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）；尚未把该 FBO
-  通过 `AbstractTexture`/`GuiGraphics.blit` 合成到屏幕，也尚未在 Linux/macOS 运行。
+- **U28 已核实（Windows x64）/ U29 部分核实**：`NanoVgSpike` 加载 `lwjgl-nanovg:3.3.3`，
+  创建 GL3 context 与 64×64 FBO，绘制红色矩形并 `glReadPixels` 得到 `(255,0,0,255)`；
+  客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
+  仍未能把该 FBO 通过 `AbstractTexture`/`GuiGraphics.blit` 在测试画面中显示：
+  注册成功、无异常，但红块不可见；需要继续排查 UV/TextureSetup/GL 状态。
+  Linux/macOS 尚未运行。
 - `GuiGraphics#blit` 的 RenderPipeline 重载已静态核对；FBO 屏幕合成仍需实现。
 - **U20 已核实**：Fabric API 0.141.3 能在 officialMojangMappings 下编译并启动。
 - **U10 已核实并规避**：Fabric `canSend()` 只反映服务端声明的通道；Paper 不保证声明，
