@@ -344,6 +344,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   与自动缩放 5（2884×1336 全屏）下都能正确命中购买按钮：缩放 5 点击后
   `EVENT ... element=goods[0].line.buy`、`state={balance=180.0}`，余额条从满格缩到 60%
   （`scale5-buy2.png`）——命中测试与渲染共用同一套布局，不依赖缩放值。
+- **每玩家编译页已修正**：文档按玩家状态展开，元素 id 与动作表因此是“哪个玩家”的，
+  编译页缓存改为按 `UUID → uiId` 存（`onPlayerQuit` 时清理）。此前全局按 uiId 存，
+  两个玩家看同一张含 `repeat` 的页面时，后刷新的一方会覆盖另一方的动作表，
+  按玩家区分的重复项点击会落到 `UNKNOWN_ELEMENT`。修正后商店购买链路复测
+  `state={balance=60.0}`（180→60）正常。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。

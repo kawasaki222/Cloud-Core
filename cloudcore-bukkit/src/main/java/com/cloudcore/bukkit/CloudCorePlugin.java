@@ -73,8 +73,12 @@ public final class CloudCorePlugin extends JavaPlugin
     private final SecureRandom random = new SecureRandom();
     private java.nio.file.Path pagesRoot;
     private com.cloudcore.bukkit.PageWatcher pageWatcher;
-    private final Map<String, com.cloudcore.api.page.PageLoader.CompiledPage> compiledPages =
-            new ConcurrentHashMap<>();
+    /**
+     * Compiled pages per player: the document is expanded against that player's state, so the
+     * element ids and action table belong to one player and must not be shared.
+     */
+    private final Map<UUID, Map<String, com.cloudcore.api.page.PageLoader.CompiledPage>>
+            compiledPages = new ConcurrentHashMap<>();
     private final com.cloudcore.server.surface.EventRateLimiter eventLimiter =
             new com.cloudcore.server.surface.EventRateLimiter();
     /** Addon actions registered through {@link com.cloudcore.bukkit.api.CloudCoreApi}. */
@@ -231,7 +235,8 @@ public final class CloudCorePlugin extends JavaPlugin
                     + exception.getMessage());
             return;
         }
-        com.cloudcore.api.page.PageLoader.CompiledPage page = compiledPages.get(event.uiId());
+        com.cloudcore.api.page.PageLoader.CompiledPage page = compiledPage(player.getUniqueId(),
+                event.uiId());
         java.util.List<com.cloudcore.api.page.PageLoader.PageAction> actions =
                 page == null ? null : page.actions().get(event.actionId());
         if (actions == null) {
@@ -470,6 +475,19 @@ public final class CloudCorePlugin extends JavaPlugin
                 getConfig().getBoolean("placeholders.enabled", true));
     }
 
+    private com.cloudcore.api.page.PageLoader.CompiledPage compiledPage(java.util.UUID player,
+            String uiId) {
+        Map<String, com.cloudcore.api.page.PageLoader.CompiledPage> pages =
+                compiledPages.get(player);
+        return pages == null ? null : pages.get(uiId);
+    }
+
+    private void putCompiledPage(java.util.UUID player,
+            com.cloudcore.api.page.PageLoader.CompiledPage page) {
+        compiledPages.computeIfAbsent(player, ignored -> new ConcurrentHashMap<>())
+                .put(page.document().id(), page);
+    }
+
     /** Recompiles the page with the current state and sends it as a document update. */
     private void refreshPage(Player player, Session session,
             com.cloudcore.api.page.PageLoader.CompiledPage previous) {
@@ -492,7 +510,7 @@ public final class CloudCorePlugin extends JavaPlugin
             getLogger().warning("Refresh of '" + name + "' failed: " + exception.getMessage());
             return;
         }
-        compiledPages.put(uiId, compiled);
+        putCompiledPage(player.getUniqueId(), compiled);
         int revision = session.pageRevisions.merge(uiId, 1, Integer::sum);
         String json = com.cloudcore.api.document.UiDocumentJson.write(
                 expandPlaceholders(player, compiled.document()));
@@ -1431,7 +1449,7 @@ public final class CloudCorePlugin extends JavaPlugin
             return;
         }
         UiDocument document = compiled.document();
-        compiledPages.put(document.id(), compiled);
+        putCompiledPage(player.getUniqueId(), compiled);
         session.pageNames.put(document.id(), name);
         sendCompiledPage(player, session, name, compiled);
     }
@@ -1528,10 +1546,10 @@ public final class CloudCorePlugin extends JavaPlugin
                 continue;
             }
             String uiId = compiled.document().id();
-            compiledPages.put(uiId, compiled);
             for (Player player : getServer().getOnlinePlayers()) {
                 Session session = sessions.get(player.getUniqueId());
                 if (session != null && name.equals(session.pageNames.get(uiId))) {
+                    // refreshPage recompiles with this player's state and stores that copy.
                     refreshPage(player, session, compiled);
                     refreshed++;
                 }
@@ -1896,6 +1914,7 @@ public final class CloudCorePlugin extends JavaPlugin
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         eventLimiter.forget(event.getPlayer().getUniqueId());
+        compiledPages.remove(event.getPlayer().getUniqueId());
         Session removed = sessions.remove(event.getPlayer().getUniqueId());
         if (removed != null) {
             removed.assembler.clear();
@@ -2064,7 +2083,7 @@ public final class CloudCorePlugin extends JavaPlugin
             Session session = sessions.computeIfAbsent(player.getUniqueId(),
                     ignored -> new Session());
             // The action table must be reachable from the event handler by uiId.
-            compiledPages.put(page.document().id(), page);
+            putCompiledPage(player.getUniqueId(), page);
             sendCompiledPage(player, session, page.document().id(), page);
             return com.cloudcore.bukkit.api.OpenResult.OPENED;
         }
