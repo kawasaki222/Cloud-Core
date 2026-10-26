@@ -655,7 +655,8 @@ tokens:
 
 ### 6.3 字体
 
-字体在页面或主题的 `fonts:` 中声明。默认由 NanoVG 加载 TTF/OTF。
+字体在页面或主题的 `fonts:` 中声明。TTF/OTF 由 NanoVG 加载（`nanovg_ttf`），
+只在 NanoVG 后端启用时生效；默认原生后端下未声明字体的文本走原版 `Font`。
 
 ```yaml
 fonts:

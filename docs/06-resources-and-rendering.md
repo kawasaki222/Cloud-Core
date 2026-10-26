@@ -1,8 +1,13 @@
 # 06 — 资源与渲染
 
+> **当前实现状态**：渲染栈是设计目标；实际默认后端仍是原生 `NativeBackend`，
+> NanoVG 后端通过客户端运行属性 `-PcloudcoreNanoVg`（`cloudcore.nanovg`）启用。
+> 默认化（设备分辨率 FBO 的清晰文字、U31 状态隔离、整帧回退）列在 `TODO_HANDOFF.md`。
+> URL 贴图目前只有客户端直连；服务端代理（`TEXTURE_REQUEST`/`TEXTURE_PUT`）尚未实现。
+
 ## 0. 渲染栈
 
-默认使用 **NanoVG 离屏渲染 + 原生合成**：
+设计目标为 **NanoVG 离屏渲染 + 原生合成**：
 
 ```
 文档 / 布局 / 输入
@@ -10,12 +15,12 @@
         ▼
    RenderList
         │
-        ├─ NanoVgBackend（默认）
+        ├─ NanoVgBackend（opt-in，默认化待完成）
         │    ├─ NVGContext + FontRegistry
         │    ├─ background FBO ──► FboCompositor
         │    └─ foreground FBO ──► FboCompositor
         │
-        └─ NativeBackend（回退）
+        └─ NativeBackend（当前默认）
              └─ GuiGraphics
 ```
 
