@@ -61,10 +61,11 @@ public final class SurfaceRegistry {
         registry.register(new TooltipSurfaceAdapter());
         registry.register(new BossBarSurfaceAdapter());
         registry.register(new ContainerSurfaceAdapter());
+        registry.register(new PlayerInventoryAdapter());
         for (SurfaceType type : SurfaceType.values()) {
             if (type != SurfaceType.CUSTOM_SCREEN && type != SurfaceType.HUD
                     && type != SurfaceType.TOOLTIP && type != SurfaceType.BOSS_BAR
-                    && type != SurfaceType.CONTAINER) {
+                    && type != SurfaceType.CONTAINER && type != SurfaceType.PLAYER_INVENTORY) {
                 registry.register(new UnsupportedSurfaceAdapter(type));
             }
         }

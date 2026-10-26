@@ -78,12 +78,14 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 ### 1.10 玩家背包
 
 - `net.minecraft.client.gui.screens.inventory.InventoryScreen`。
-- 1.21.8 Javadoc 显示 `InventoryScreen extends AbstractRecipeBookScreen<InventoryMenu>`；
-  1.21.11 需确认。
+- 1.21.11 已用 javap 确认：`InventoryScreen extends AbstractRecipeBookScreen<InventoryMenu>`，
+  构造函数为 `InventoryScreen(Player)`，内部使用 `player.inventoryMenu`。
 - `InventoryMenu` 槽位：0 合成输出，1–4 合成输入，5–8 护甲，9–35 主物品栏，36–44 快捷栏，
   45 副手。
 - `AbstractContainerScreen` 提供 `renderBg`、`renderLabels`、`renderTooltip(GuiGraphics,int,int)`，
   字段 `leftPos`/`topPos`、`imageWidth`/`imageHeight`、`menu`、`font`。
+  1.21.11 的 `GuiGraphics#pose` 返回 `org.joml.Matrix3x2fStack`（`pushMatrix`/`popMatrix`），
+  不是 `PoseStack`。
 
 ### 1.11 文本与提示
 
@@ -187,6 +189,13 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **Container 面板已核实**：`/cloudcore demo-container` 先发 UI_OPEN/文档，再打开 27 格箱子；
   `Minecraft#setScreen` 的 `@ModifyVariable` 替换为 `CloudContainerScreen`，自定义背景下仍显示
   3 行容器槽位与玩家背包槽位。点击语义仍由原版 menu 处理，尚未做自动化交互测试。
+- **PlayerInventory 面板已核实**：`/cloudcore demo-inventory` 下发持久皮肤后按 `E`，
+  `Minecraft#setScreen` 的 `@ModifyVariable` 把原版 `InventoryScreen` 换成
+  `CloudInventoryScreen`（`AbstractContainerScreen<InventoryMenu>`，复用 `player.inventoryMenu`）。
+  截图确认 176×166 皮肤面板、文档底色、槽框、护甲/副手空槽图标与文档文字同时显示；
+  关闭再打开仍是皮肤（`PERSISTENT`），`/cloudcore close` 后再按 `E` 回到原版带配方书的背包。
+  配方书与玩家模型在皮肤里不绘制（v1 `hide`）。截图：
+  `inventory-print6.png`、`inventory-reopen.png`、`inventory-closed.png`。
 - **本地贴图已核实**：`LocalTextureRegistry` 从
   `resourcepacks/CloudCore/test/red.png` 读取 PNG、注册 `DynamicTexture`，demo 页面实际显示绿色图片；
   路径逃逸/缺失分别记录 `CC-ASSET-001/002`。

@@ -131,6 +131,7 @@ debug: false
 /cloudcore demo-hud [player]            发送持久 HUD 文档，验证 HudElementRegistry 绘制
 /cloudcore demo-tooltip [player]        发送 Tooltip 皮肤文档，验证原生文本+自定义背景
 /cloudcore demo-container [player]      发送容器文档并打开测试箱子，验证容器换皮
+/cloudcore demo-inventory [player]      发送背包皮肤文档，按 E 打开背包验证
 /cloudcore probe [player]               打开测试箱子，验证 InventoryOpenEvent 时序（需配置）
 /cloudcore boss [player]                发送带哨兵的测试 BossBar，验证客户端匹配
 /cloudcore close [player]               关闭最近发送的测试 UI，验证服务端主动关闭

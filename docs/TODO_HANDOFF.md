@@ -26,7 +26,8 @@
   `HELLO`/`HELLO_ACK`、`/cloudcore ping`（RTT 9ms）、`UI_OPEN`/`UI_DEFINITION`/`UI_READY`、
   Escape 关闭后的 `UI_CLOSED`，以及 demo 页面 panel/label/button 的实际显示。
 - 同一 tick 内回 `HELLO_ACK` 会丢失；服务端延迟 1 tick 后稳定，已写入协议实现说明。
-- 未验证：NanoVG/FBO、U13 的 `@WrapOperation`、U28–U31、跨平台运行。
+- 六类面板的最小闭环已完成：自定义页面、容器、玩家背包、HUD、Tooltip、Boss 血条。
+- 未验证：NanoVG/FBO 屏幕合成、U28–U31 的跨平台部分、容器点击策略。
 
 - 客户端与服务端统一使用 **Mojang 映射**，不使用 Yarn。
 - 六类面板：HUD、箱子界面、玩家背包界面、ItemTooltip、自定义页面、Boss 血条。
@@ -118,7 +119,9 @@ docs/
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
 - [ ] M2 完整渲染：NanoVG/FBO、裁剪/滚动、混入
 - [x] HUD / Tooltip / BossBar / Container 面板最小闭环
-- [ ] PlayerInventory 适配器与容器点击策略完整验证
+- [x] PlayerInventory 面板：持久皮肤、`CloudInventoryScreen`、`UI_CLOSE` 还原原版（真机截图验证）
+- [ ] 容器/背包点击策略的自动化交互验证（managed/readonly/passthrough）
+- [ ] 玩家背包配方书（v1 隐藏；v2 再补 `skinned`/`custom`）与玩家模型/状态效果选项
 - [x] 协议前向兼容：未知 `surfaceId` 保留原始值并回 `UI_READY(state=4)`
 - [ ] 协议前向兼容：未知 `BindMode` / `RenderMode`（仍拒绝）
 - [x] M0 NanoVG 初始化 + FBO 绘制 + readback（Windows x64，`cloudcore.nanovg.spike`）
@@ -140,7 +143,8 @@ docs/
 3. **M2 实际渲染**：
    - 补齐 `inline:`/`pack:` 图片、GIF、`item_icon`、text shaping、裁剪、scroll 和真实布局容器。
    - 接入 `NanoVgBackend`/`FboCompositor`；失败时整帧回退 `NativeBackend`。
-   - 增加四个混入和客户端日志/诊断。
+   - 容器与玩家背包的点击策略（`managed`/`readonly`/`passthrough`）自动化交互测试。
+   - 玩家背包 v2：配方书四档、玩家模型与状态效果。
 4. 之后按 `08-roadmap.md` 的 M3–M10 推进。
 
 ## 环境搭建

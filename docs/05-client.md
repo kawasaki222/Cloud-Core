@@ -213,25 +213,32 @@ public final class CloudContainerScreen extends AbstractContainerScreen<Abstract
 
 ```java
 public final class CloudInventoryScreen extends AbstractContainerScreen<InventoryMenu> {
-    CloudInventoryScreen(InventoryScreen original) {
-        super(original.getMenu(), Minecraft.getInstance().player.getInventory(),
-              original.getTitle());
+    CloudInventoryScreen(Player player, UiDocument document) {
+        super(player.inventoryMenu, player.getInventory(), Component.empty());
+        this.imageWidth = document.width();   // 皮肤画布 = 文档尺寸
+        this.imageHeight = document.height();
+    }
+
+    @Override
+    protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
+        // 文档自带文字；原版容器标题隐藏
     }
 }
 ```
 
 要点：
 
-- `InventoryScreen` 在 1.21.11 中继承 `AbstractRecipeBookScreen<InventoryMenu>`。
-  `recipe_book` 四档：`hide` 直接继承 `AbstractContainerScreen<InventoryMenu>`；`vanilla` 保留原版；
-  `skinned`（v1 默认）继承 `AbstractRecipeBookScreen`，保留原版列表/搜索/标签页/滚动，只替换
-  `RecipeBookComponent` 的外框、按钮、标签、滚动条和字体；`custom`（v2）由 Cloud 重画列表，
-  点击通过原版 `PlaceRecipe` 放置，REI/EMI 接管时让位。
-- `skinned` 需要复制原界面的配方书状态；抓不到状态时回退 `vanilla` 并写日志。
-- 玩家模型、状态效果图标按 `show_player_model`、`show_effects` 决定是否绘制，仍由原版渲染。
+- `InventoryScreen` 在 1.21.11 中继承 `AbstractRecipeBookScreen<InventoryMenu>`（已用 javap 确认）。
+  v1 皮肤直接继承 `AbstractContainerScreen<InventoryMenu>`，复用 `player.inventoryMenu`
+  （容器 0），因此点击仍发送原版槽位包；配方书不注册，即 `recipe_book: hide`。
+- `recipe_book` 其余三档（`vanilla`/`skinned`/`custom`）留在 v2：需要 `AbstractRecipeBookScreen`
+  或复制其组件状态。
+- 玩家模型、状态效果图标在 v1 不绘制；`show_player_model`/`show_effects` 尚未解析。
 - 槽位来自 `InventoryMenu`：合成输出 0、合成输入 1–4、护甲 5–8、主物品栏 9–35、快捷栏 36–44、
-  副手 45。文档中的 `inventory_grid` 按这些范围映射。
-- 服务端不发送打开报文；客户端本地按 `E` 打开时应用持久皮肤。
+  副手 45。`renderBg` 按 `menu.slots` 的 `slot.x/y` 画槽框，文档元素画在槽框之上。
+- 服务端不发送打开报文；客户端本地按 `E` 打开时应用持久皮肤（`UI_OPEN` + `UI_DEFINITION` 先到）。
+- 皮肤绑定状态在 `PlayerInventorySession`：`PERSISTENT` 持续到 `UI_CLOSE`，其他绑定只用一次；
+  规则有单元测试 `PlayerInventorySessionTest`。
 - 创造模式物品栏 `CreativeModeInventoryScreen` 不在 v1 范围。
 
 ## 9. HUD

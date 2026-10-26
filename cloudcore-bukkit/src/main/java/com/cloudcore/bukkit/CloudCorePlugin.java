@@ -254,6 +254,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 sendTooltipOpen(target);
             } else if (args[0].equalsIgnoreCase("demo-container")) {
                 sendDemoContainer(target);
+            } else if (args[0].equalsIgnoreCase("demo-inventory")) {
+                sendDemoInventory(target);
             } else {
                 sendDemoOpen(target, args[0].equalsIgnoreCase("demo-big"));
             }
@@ -307,11 +309,16 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core container demo sent."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("demo-inventory")) {
+            sendDemoInventory(player);
+            sender.sendMessage(Component.text("Cloud Core inventory demo sent."));
+            return true;
+        }
         if (args.length != 1 || !args[0].equalsIgnoreCase("ping")) {
             sender.sendMessage(Component.text(
                     "Usage: /" + label
                             + " <ping|demo|demo-big|demo-hud|demo-tooltip|demo-container"
-                            + "|probe|boss|close|diagnostic>"));
+                            + "|demo-inventory|probe|boss|close|diagnostic>"));
             return true;
         }
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
@@ -330,7 +337,44 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("diagnostic")
                 || action.equalsIgnoreCase("demo-hud")
                 || action.equalsIgnoreCase("demo-tooltip")
-                || action.equalsIgnoreCase("demo-container");
+                || action.equalsIgnoreCase("demo-container")
+                || action.equalsIgnoreCase("demo-inventory");
+    }
+
+    private void sendDemoInventory(Player player) {
+        String uiId = "cloudcore_demo_inventory";
+        int token = random.nextInt();
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        session.lastUiId = uiId;
+        UiOpen open = new UiOpen(uiId, 1, SurfaceType.PLAYER_INVENTORY, BindMode.PERSISTENT,
+                token, RenderMode.SCREEN, 0, "default");
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
+                UiCodec.encodeOpen(open, Limits.S2C)));
+        String json = """
+                {
+                  "schema": 1,
+                  "id": "cloudcore_demo_inventory",
+                  "surface": "player_inventory",
+                  "title": { "runs": [ { "text": "Cloud Core Inventory" } ] },
+                  "size": [176, 166],
+                  "elements": [
+                    { "id": "inventory_bg", "type": "panel", "x": 0, "y": 0,
+                      "width": "fill", "height": "fill",
+                      "style": { "background": "#E0203040" } },
+                    { "id": "inventory_hint", "type": "label", "x": 60, "y": 6,
+                      "text": "Cloud Core", "color": "#FFFFFFFF" }
+                  ]
+                }
+                """;
+        UiDefinition definition = new UiDefinition(uiId, 1, 0,
+                json.getBytes(StandardCharsets.UTF_8));
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (player.isOnline()) {
+                sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
+                        UiCodec.encodeDefinition(definition, Limits.S2C)));
+            }
+        }, 1L);
+        getLogger().info("Sent player inventory UI_OPEN/UI_DEFINITION to " + player.getName());
     }
 
     private void sendDemoContainer(Player player) {

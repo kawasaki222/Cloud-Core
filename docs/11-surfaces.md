@@ -49,6 +49,11 @@
 
 - **绑定**：持久；服务端在握手完成、reload、权限变化时推送。
 - **客户端**：`Minecraft#setScreen` 看到 `InventoryScreen` 时替换为 `CloudInventoryScreen`。
+  已实现最小皮肤：`CloudInventoryScreen` 直接继承 `AbstractContainerScreen<InventoryMenu>`，
+  复用 `player.inventoryMenu`（容器 0），画布坐标即文档坐标；绘制自绘面板底色、每个槽位的槽框，
+  再叠加文档元素。配方书、玩家模型、状态效果在 v1 不绘制（见下方 `recipe_book`）。
+  皮肤在 `BindMode.PERSISTENT` 下持续生效到 `UI_CLOSE`，非持久绑定只作用于下一次打开。
+  `UI_CLOSE` 后下一次按 `E` 回到原版背包；已打开的界面保持到玩家关闭。
 - **槽位**：来自 `InventoryMenu`，按组映射：
   - 合成输出 0（只读）
   - 合成输入 1–4
@@ -57,13 +62,15 @@
   - 快捷栏 36–44
   - 副手 45
 - **配方书**：`recipe_book` 四档：
-  - `hide`：隐藏；
+  - `hide`（v1 实际实现）：隐藏；皮肤界面不注册配方书组件，`E` 打开的背包没有配方书；
   - `vanilla`：原版完整行为；
-  - `skinned`（v1 默认）：保留原版列表/搜索/标签页/滚动，NanoVG 替换外框、按钮、标签、滚动条、
+  - `skinned`（v2 目标默认）：保留原版列表/搜索/标签页/滚动，NanoVG 替换外框、按钮、标签、滚动条、
     字体；
   - `custom`（v2）：Cloud 画列表和分类，点击通过原版 `PlaceRecipe` 放置；REI/EMI 接管时让位。
-- **玩家模型与效果**：由 `surface_options.player_inventory` 控制，仍由原版渲染。
-- **绘制**：NanoVG 画背景/装饰，原版画物品、玩家模型、状态效果。
+- **玩家模型与效果**：v1 不绘制（文档 `surface_options` 的 `show_player_model`/`show_effects`
+  尚未解析）；后续版本按选项决定。
+- **绘制**：自绘面板与槽框 + 文档元素（RenderList）；物品、数量、冷却、附魔光效仍由原版绘制，
+  空槽图标由原版 `Slot#getNoItemIcon` 提供。
 - **创造模式**：`CreativeModeInventoryScreen` 不在 v1 范围。
 - **失败**：皮肤文档无效时完全使用原版背包，不部分应用。
 
