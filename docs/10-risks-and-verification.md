@@ -318,6 +318,12 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   （客户端日志 `Keyboard focus ... element=...`），焦点框为深色外圈 + `#FF4FA3E8` 内圈
   （`focus-tab3.png`、放大图 `focus-crop.png`）；按 `Enter` 触发 `EVENT ui=example
   element=rows[0].row`。文本输入框获得焦点时 `Tab` 仍走原版控件链。
+- **会话状态持久化已核实**：示例页点 3 次 `+1`、把滑块拖到 75% 后，5 秒内
+  `state/<uuid>.json` 写入 `{"version":1,"pages":{"example":{"volume":0.75,"clicks":3.0}}}`；
+  杀客户端重进同一用户名（离线 UUID 相同）后日志 `Loaded page state for CloudTester pages=1`，
+  页面显示“点击次数：3”“音量：0.75”（`persist-after3.png`）。
+  过程中修掉了“加入事件早于会话创建导致状态无处可放”的缺陷（现在加入时同步建会话）。
+  `FilePlayerStateStoreTest` 覆盖往返、类型归一、覆盖写、损坏 JSON、更高版本、超大文件与截断。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
@@ -402,7 +408,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，188 个测试 / 39 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，196 个测试 / 40 个测试类，0 失败）。
 
 仍未验证：
 

@@ -257,6 +257,8 @@ pages:
   watch: true               # 页面文件变化后自动重载（400ms 合并）并推送更新
 placeholders:
   enabled: true             # 安装了 PlaceholderAPI 时展开页面文本里的 %占位符%
+state:
+  persist: true             # 会话状态按玩家持久化（异步写、原子替换）
 actions:
   commands:
     enabled: false          # command 动作总开关
@@ -273,6 +275,17 @@ actions:
 加载 YAML，经 `PageLoader` 组合与展开后下发 `UI_OPEN` + `UI_DEFINITION`。当前只接受
 `surface: custom_screen`；容器/HUD/Tooltip/Boss 仍走各自的演示与后续策略实现。
 插件首次启动会把示例页写到 `pages/example.yml`。
+
+### 6.6 会话状态持久化
+
+- `state.persist: true`（默认）时，每个玩家的页面状态保存到
+  `plugins/CloudCore/state/<uuid>.json`：`{"version":1,"pages":{"<页面名>":{"键":值}}}`。
+- 值只保存文档用到的类型：数字、布尔、字符串（其他类型按字符串保存，超长截断到 4096）；
+  每个文件最多 64 页、每页 256 个键，读取时超过 1 MiB 或版本更高会拒绝并写警告日志。
+- 写入在 worker 线程：`set_state` 只把会话标脏，后台任务每 5 秒（以及退出、插件禁用时）
+  把脏会话原子写盘（先写 `.json.tmp` 再 `ATOMIC_MOVE`），主线程从不等磁盘。
+- 玩家加入时异步读取并合并到会话：页面里已有的值不会被覆盖；读取失败只写警告，页面按文档默认值打开。
+- `PlayerStateStore` 是接口，SQLite/MySQL 实现接在同一位置（计划中）；当前默认是文件实现。
 
 ## 7. 面板提供器
 

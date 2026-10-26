@@ -13,6 +13,11 @@ placeholders:
   # 关闭后 %token% 原样显示。只解析 text/placeholder 与标题，不碰颜色、尺寸和贴图引用。
   enabled: true
 
+state:
+  # 会话状态按玩家持久化到 plugins/CloudCore/state/<uuid>.json（异步写、原子替换），
+  # 玩家重进后页面沿用上次的值。关闭后状态只存在于本次在线期间。
+  persist: true
+
 actions:
   commands:
     # 关闭时，页面里的 command 动作一律拒绝（返回 EVENT_RESULT=REJECTED）

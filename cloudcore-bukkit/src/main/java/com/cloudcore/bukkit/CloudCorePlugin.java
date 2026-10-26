@@ -85,6 +85,7 @@ public final class CloudCorePlugin extends JavaPlugin
     private final Map<String, com.cloudcore.bukkit.api.PageProvider> pageProviders =
             new ConcurrentHashMap<>();
     private final Placeholders placeholders = new Placeholders(this, placeholderResolvers);
+    private com.cloudcore.server.state.PlayerStateStore stateStore;
     private static final Set<String> BUILT_IN_ACTIONS = Set.of(
             "message", "close_ui", "close", "set_state", "if", "delay", "command",
             "open_page", "sound");
@@ -105,6 +106,7 @@ public final class CloudCorePlugin extends JavaPlugin
         saveDefaultConfig();
         preparePagesDirectory();
         startPageWatcher();
+        startStatePersistence();
         getLogger().info("Cloud Core transport online on " + CHANNEL
                 + " (protocol " + ProtocolVersion.MAJOR + "." + ProtocolVersion.MINOR + ")");
     }
@@ -152,6 +154,9 @@ public final class CloudCorePlugin extends JavaPlugin
 
     @Override
     public void onDisable() {
+        if (stateStore != null) {
+            flushDirtyState();
+        }
         getServer().getServicesManager().unregisterAll(this);
         actionHandlers.clear();
         placeholderResolvers.clear();
@@ -358,6 +363,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 // Recompiling and pushing an identical document would redraw the screen for
                 // nothing; repeat events (hover, scroll at the ends) depend on this guard.
                 if (!java.util.Objects.equals(previous, sessionState.get(String.valueOf(key)))) {
+                    session.stateDirty = true;
                     refreshPage(player, session, page);
                 }
             }
@@ -1790,6 +1796,88 @@ public final class CloudCorePlugin extends JavaPlugin
         getLogger().info("Sent asset demo UI_OPEN/UI_DEFINITION to " + player.getName());
     }
 
+    /**
+     * Page state is saved to {@code plugins/CloudCore/state/<uuid>.json} on a worker every
+     * five seconds (and on quit) so balances and toggles survive a relog. Saving never runs
+     * on the main thread; a failed save keeps the session dirty for the next pass.
+     */
+    private void startStatePersistence() {
+        if (!getConfig().getBoolean("state.persist", true)) {
+            getLogger().info("Page state persistence disabled (state.persist: false)");
+            return;
+        }
+        stateStore = new com.cloudcore.server.state.FilePlayerStateStore(
+                getDataFolder().toPath().resolve("state"));
+        getServer().getScheduler().runTaskTimerAsynchronously(this, this::flushDirtyState,
+                100L, 100L);
+        getLogger().info("Page state persistence enabled under " + getDataFolder()
+                .toPath().resolve("state"));
+    }
+
+    /** @return true when the state was written; a failure leaves the session dirty */
+    private boolean saveState(java.util.UUID player, Session session) {
+        if (stateStore == null) {
+            return true;
+        }
+        Map<String, Map<String, Object>> snapshot = new java.util.LinkedHashMap<>();
+        session.pageState.forEach((page, values) ->
+                snapshot.put(page, new java.util.LinkedHashMap<>(values)));
+        try {
+            stateStore.save(player, snapshot);
+            session.stateDirty = false;
+            return true;
+        } catch (java.io.IOException exception) {
+            getLogger().log(Level.WARNING, "Could not save page state for " + player, exception);
+            return false;
+        }
+    }
+
+    private void flushDirtyState() {
+        if (stateStore == null) {
+            return;
+        }
+        for (Map.Entry<java.util.UUID, Session> entry : sessions.entrySet()) {
+            if (entry.getValue().stateDirty) {
+                saveState(entry.getKey(), entry.getValue());
+            }
+        }
+    }
+
+    /** Loads persisted page state once the player joins. */
+    @EventHandler
+    public void onPlayerJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+        if (stateStore == null) {
+            return;
+        }
+        java.util.UUID uuid = event.getPlayer().getUniqueId();
+        String name = event.getPlayer().getName();
+        // The session is normally created lazily on HELLO; create it now so the loaded state
+        // has somewhere to go and later opens see it.
+        sessions.computeIfAbsent(uuid, ignored -> new Session());
+        getServer().getScheduler().runTaskAsynchronously(this, () -> {
+            Map<String, Map<String, Object>> stored;
+            try {
+                stored = stateStore.load(uuid);
+            } catch (java.io.IOException exception) {
+                getLogger().log(Level.WARNING, "Could not load page state for " + name, exception);
+                return;
+            }
+            if (stored.isEmpty()) {
+                return;
+            }
+            getServer().getScheduler().runTask(this, () -> {
+                Session session = sessions.get(uuid);
+                if (session == null) {
+                    return;
+                }
+                stored.forEach((page, values) -> session.pageState.compute(page,
+                        (key, existing) -> existing == null || existing.isEmpty()
+                                ? new ConcurrentHashMap<>(values) : existing));
+                getLogger().info("Loaded page state for " + name + " pages=" + stored.size());
+            });
+        });
+    }
+
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         eventLimiter.forget(event.getPlayer().getUniqueId());
@@ -1798,6 +1886,12 @@ public final class CloudCorePlugin extends JavaPlugin
             removed.assembler.clear();
             if (removed.bossBar != null) {
                 removed.bossBar.removeAll();
+            }
+            if (removed.stateDirty && stateStore != null) {
+                // Save off-thread: the session is already detached, so a copy is enough.
+                java.util.UUID uuid = event.getPlayer().getUniqueId();
+                getServer().getScheduler().runTaskAsynchronously(this,
+                        () -> saveState(uuid, removed));
             }
         }
     }
@@ -2060,5 +2154,7 @@ public final class CloudCorePlugin extends JavaPlugin
         /** uiId -> page name, so a set_state action can recompile the right page. */
         private final Map<String, String> pageNames = new ConcurrentHashMap<>();
         private final Map<String, Integer> pageRevisions = new ConcurrentHashMap<>();
+        /** Set by set_state; the persistence task writes the state and clears it. */
+        private volatile boolean stateDirty;
     }
 }

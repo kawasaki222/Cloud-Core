@@ -14,7 +14,7 @@
   `set_state` 重编译后推送更高 revision。
 - 客户端：六类面板 + RenderList（文字/富文本/图片/九宫格/背景贴图/裁剪/滚动/悬停/物品图标/GIF/URL 贴图）；
   NanoVG 后端与 FBO 合成（opt-in）；客户端日志与诊断码。
-- 构建：`./gradlew build` 通过，188 个测试 / 39 个类，0 失败。
+- 构建：`./gradlew build` 通过，196 个测试 / 40 个类，0 失败。
 
 ## 已有内容
 
@@ -90,6 +90,8 @@ docs/
 - [x] 动作引擎子集：表达式求值、`if`/`then`/`else`、`delay`（真机验证 if/表达式）
 - [x] 动作 `open_page`（关闭当前页并打开目标页）与 `sound`（音效/音量/音高）（真机验证）
 - [x] 键盘导航：`Tab`/方向键循环焦点、`Enter`/`Space` 触发 `click`、两色焦点框（真机验证）
+- [x] 会话状态持久化：`PlayerStateStore` 接口 + `state/<uuid>.json`、异步 flush、加入时加载（真机验证）
+- [ ] 持久化剩余：SQLite（默认）/MySQL 实现、连接池、迁移与容量上限
 - [x] `EVENT_RESULT` 下发（OK/UNKNOWN_ELEMENT/REJECTED，固定枚举名）
 - [x] `command` 动作 + 配置闸门（默认拒绝，按首个词 allowlist；单测）
 - [ ] M3 剩余：依赖图增量编译/内容哈希去重、条件、表达式
