@@ -127,6 +127,7 @@ debug: false
 ```
 /cloudcore ping [player]                发送 PING 并报告 RTT（控制台可指定玩家）
 /cloudcore demo [player]                发送最小自绘演示页，验证传输与渲染链路
+/cloudcore demo-big [player]            发送 >24 KiB 文档，验证真机分片与重组
 /cloudcore reload                       重载主题、字体索引与页面（计划）
 /cloudcore open <player> <page>         为玩家打开页面（计划）
 /cloudcore close <player> [surface]     关闭某个面板或全部面板（计划）

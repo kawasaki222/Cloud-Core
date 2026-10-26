@@ -17,6 +17,7 @@ import com.cloudcore.protocol.Frame;
 import com.cloudcore.protocol.FrameCodec;
 import com.cloudcore.protocol.FrameFlags;
 import com.cloudcore.protocol.FragmentAssembler;
+import com.cloudcore.protocol.Fragmenter;
 import com.cloudcore.protocol.HandshakeCodec;
 import com.cloudcore.protocol.Hello;
 import com.cloudcore.protocol.HelloAck;
@@ -309,10 +310,13 @@ public final class CloudCoreClient implements ClientModInitializer {
 
     private static void sendFrame(Frame frame) {
         try {
-            byte[] data = FrameCodec.encode(frame, Limits.C2S);
-            // Paper does not necessarily advertise channels through minecraft:register, so
-            // canSend() is not a reliable gate for a plugin-message transport.
-            ClientPlayNetworking.send(new CloudFramePayload(data));
+            int fragmentId = Fragmenter.randomFragmentId(java.util.concurrent.ThreadLocalRandom.current());
+            for (Frame part : Fragmenter.fragment(frame, Limits.C2S, fragmentId)) {
+                byte[] data = FrameCodec.encode(part, Limits.C2S);
+                // Paper does not necessarily advertise channels through minecraft:register,
+                // so canSend() is not a reliable gate for a plugin-message transport.
+                ClientPlayNetworking.send(new CloudFramePayload(data));
+            }
         } catch (ProtocolException | IllegalStateException exception) {
             LOGGER.warn("Failed to send opcode 0x{}: {}",
                     Integer.toHexString(frame.opcode()), exception.getMessage());

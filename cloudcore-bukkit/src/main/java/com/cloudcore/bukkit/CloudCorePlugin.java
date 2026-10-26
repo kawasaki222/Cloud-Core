@@ -8,6 +8,7 @@ import com.cloudcore.protocol.Frame;
 import com.cloudcore.protocol.FrameCodec;
 import com.cloudcore.protocol.FrameFlags;
 import com.cloudcore.protocol.FragmentAssembler;
+import com.cloudcore.protocol.Fragmenter;
 import com.cloudcore.protocol.HandshakeCodec;
 import com.cloudcore.protocol.Hello;
 import com.cloudcore.protocol.HelloAck;
@@ -194,11 +195,16 @@ public final class CloudCorePlugin extends JavaPlugin
 
     private void sendFrame(Player player, Frame frame) {
         try {
-            byte[] data = FrameCodec.encode(frame, Limits.S2C);
-            player.sendPluginMessage(this, CHANNEL, data);
-            if (getConfig().getBoolean("debug", false)) {
-                getLogger().info("S2C opcode=0x" + Integer.toHexString(frame.opcode())
-                        + " bytes=" + data.length + " player=" + player.getUniqueId());
+            int fragmentId = Fragmenter.randomFragmentId(random);
+            for (Frame part : Fragmenter.fragment(frame, Limits.S2C, fragmentId)) {
+                byte[] data = FrameCodec.encode(part, Limits.S2C);
+                player.sendPluginMessage(this, CHANNEL, data);
+                if (getConfig().getBoolean("debug", false)) {
+                    getLogger().info("S2C opcode=0x" + Integer.toHexString(part.opcode())
+                            + " bytes=" + data.length + " fragment="
+                            + ((part.flags() & FrameFlags.FRAGMENT) != 0)
+                            + " player=" + player.getUniqueId());
+                }
             }
         } catch (ProtocolException exception) {
             getLogger().warning("Failed to encode opcode 0x" + Integer.toHexString(frame.opcode())
@@ -212,35 +218,36 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("No permission."));
             return true;
         }
-        if (args.length == 2 && (args[0].equalsIgnoreCase("ping")
-                || args[0].equalsIgnoreCase("demo"))) {
+        if (args.length == 2 && isDemoOrPing(args[0])) {
             Player target = getServer().getPlayerExact(args[1]);
             if (target == null) {
                 sender.sendMessage(Component.text("Player not found: " + args[1]));
                 return true;
             }
-            if (args[0].equalsIgnoreCase("demo")) {
-                sendDemoOpen(target);
-            } else {
+            boolean big = args[0].equalsIgnoreCase("demo-big");
+            if (args[0].equalsIgnoreCase("ping")) {
                 Session session = sessions.computeIfAbsent(target.getUniqueId(),
                         ignored -> new Session());
                 sendPing(target, session);
+            } else {
+                sendDemoOpen(target, big);
             }
             sender.sendMessage(Component.text("Cloud Core " + args[0] + " sent to "
                     + target.getName()));
             return true;
         }
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("Usage: /cloudcore <ping|demo> <player>"));
+            sender.sendMessage(Component.text("Usage: /cloudcore <ping|demo|demo-big> <player>"));
             return true;
         }
-        if (args.length == 1 && args[0].equalsIgnoreCase("demo")) {
-            sendDemoOpen(player);
+        if (args.length == 1 && (args[0].equalsIgnoreCase("demo")
+                || args[0].equalsIgnoreCase("demo-big"))) {
+            sendDemoOpen(player, args[0].equalsIgnoreCase("demo-big"));
             sender.sendMessage(Component.text("Cloud Core demo page sent."));
             return true;
         }
         if (args.length != 1 || !args[0].equalsIgnoreCase("ping")) {
-            sender.sendMessage(Component.text("Usage: /" + label + " <ping|demo>"));
+            sender.sendMessage(Component.text("Usage: /" + label + " <ping|demo|demo-big>"));
             return true;
         }
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
@@ -249,17 +256,25 @@ public final class CloudCorePlugin extends JavaPlugin
         return true;
     }
 
-    private void sendDemoOpen(Player player) {
+    private static boolean isDemoOrPing(String action) {
+        return action.equalsIgnoreCase("ping")
+                || action.equalsIgnoreCase("demo")
+                || action.equalsIgnoreCase("demo-big");
+    }
+
+    private void sendDemoOpen(Player player, boolean big) {
+        String uiId = big ? "cloudcore_demo_big" : "cloudcore_demo";
+        String padding = big ? ", \"debug_padding\": \"" + "x".repeat(32_000) + "\"" : "";
         int token = random.nextInt();
-        UiOpen open = new UiOpen("cloudcore_demo", 1, SurfaceType.CUSTOM_SCREEN,
-                BindMode.NONE, token, RenderMode.SCREEN, 0, "demo");
+        UiOpen open = new UiOpen(uiId, 1, SurfaceType.CUSTOM_SCREEN,
+                BindMode.NONE, token, RenderMode.SCREEN, 0, big ? "demo-big" : "demo");
         sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
                 UiCodec.encodeOpen(open, Limits.S2C)));
 
         String json = """
                 {
                   "schema": 1,
-                  "id": "cloudcore_demo",
+                  "id": "%s",
                   "surface": "custom_screen",
                   "title": { "runs": [ { "text": "Cloud Core Demo" } ] },
                   "theme": "dark",
@@ -267,7 +282,7 @@ public final class CloudCorePlugin extends JavaPlugin
                   "scale": 1.0,
                   "elements": [
                     { "id": "root", "type": "panel", "x": 0, "y": 0,
-                      "width": "fill", "height": "fill",
+                      "width": "fill", "height": "fill"%s,
                       "style": { "background": "#CC202830" } },
                     { "id": "title", "type": "label", "x": 16, "y": 18,
                       "text": "Cloud Core Demo", "color": "#FFFFFFFF" },
@@ -278,8 +293,8 @@ public final class CloudCorePlugin extends JavaPlugin
                       "style": { "background": "#FF3C6E9F" } }
                   ]
                 }
-                """;
-        UiDefinition definition = new UiDefinition("cloudcore_demo", 1, 0,
+                """.formatted(uiId, padding);
+        UiDefinition definition = new UiDefinition(uiId, 1, 0,
                 json.getBytes(StandardCharsets.UTF_8));
         getServer().getScheduler().runTaskLater(this, () -> {
             if (player.isOnline()) {
@@ -287,7 +302,8 @@ public final class CloudCorePlugin extends JavaPlugin
                         UiCodec.encodeDefinition(definition, Limits.S2C)));
             }
         }, 1L);
-        getLogger().info("Sent demo UI_OPEN/UI_DEFINITION to " + player.getName());
+        getLogger().info("Sent demo UI_OPEN/UI_DEFINITION to " + player.getName()
+                + " bytes=" + json.length());
     }
 
     @EventHandler

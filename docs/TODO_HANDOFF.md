@@ -95,7 +95,8 @@ docs/
 - [x] M1：分片与重组、握手、PING/PONG、UI_OPEN/UI_READY 编解码、黄金向量、随机帧测试
 - [x] M1 接线：Paper 与 Fabric 的 HELLO/PING/PONG/分片/UI_OPEN 处理
 - [x] M1 真实联调：Paper + Fabric 握手、`/cloudcore ping`（RTT 9ms）、UI 打开/关闭
-- [ ] M1 压力：100 万随机帧、真机大报文分片、断线清理
+- [x] M1 真机大报文：32,776 字节文档拆成 2 片并重组成功
+- [ ] M1 压力：100 万随机帧、断线清理
 - [x] M2 骨架：SurfaceRegistry/SurfaceAdapter/SurfaceProvider、UiDocument、RenderBackend、CloudScreen
 - [x] M2 文档链路：UI_DEFINITION 解码、校验、`CloudScreen` 打开
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
@@ -108,7 +109,7 @@ docs/
 
 1. **M1 压力与边界**：
    - 100 万随机帧压测（当前 10,000）。
-   - 真机发送接近 1 MiB 的分片文档，验证重组与超时。
+   - 接近 1 MiB 的真机分片与超时/乱序注入。
    - 断线/重连后确认分片组与 pending UI 会话被清理。
 2. **M0 的 spike**（各半天到一天）：
    - U2：`InventoryOpenEvent` 中的插件消息早于 `OpenScreen`，重复 100 次。
