@@ -268,6 +268,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 openDemoChest(target, ContainerClickPolicy.Interaction.READONLY);
             } else if (args[0].equalsIgnoreCase("demo-inventory")) {
                 sendDemoInventory(target);
+            } else if (args[0].equalsIgnoreCase("demo-assets")) {
+                sendDemoAssets(target);
             } else {
                 sendDemoOpen(target, args[0].equalsIgnoreCase("demo-big"));
             }
@@ -331,6 +333,11 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core inventory demo sent."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("demo-assets")) {
+            sendDemoAssets(player);
+            sender.sendMessage(Component.text("Cloud Core asset demo sent."));
+            return true;
+        }
         if (args.length != 1 || !args[0].equalsIgnoreCase("ping")) {
             sender.sendMessage(Component.text(
                     "Usage: /" + label
@@ -356,7 +363,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("demo-tooltip")
                 || action.equalsIgnoreCase("demo-container")
                 || action.equalsIgnoreCase("demo-readonly")
-                || action.equalsIgnoreCase("demo-inventory");
+                || action.equalsIgnoreCase("demo-inventory")
+                || action.equalsIgnoreCase("demo-assets");
     }
 
     private void sendDemoInventory(Player player) {        String uiId = "cloudcore_demo_inventory";
@@ -735,6 +743,62 @@ public final class CloudCorePlugin extends JavaPlugin
         }, 1L);
         getLogger().info("Sent demo UI_OPEN/UI_DEFINITION to " + player.getName()
                 + " bytes=" + json.length());
+    }
+
+    private void sendDemoAssets(Player player) {
+        String uiId = "cloudcore_demo_assets";
+        int token = random.nextInt();
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        session.lastUiId = uiId;
+        UiOpen open = new UiOpen(uiId, 1, SurfaceType.CUSTOM_SCREEN,
+                BindMode.NONE, token, RenderMode.SCREEN, 0, "demo-assets");
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
+                UiCodec.encodeOpen(open, Limits.S2C)));
+        String json = """
+                {
+                  "schema": 1,
+                  "id": "cloudcore_demo_assets",
+                  "surface": "custom_screen",
+                  "title": { "runs": [ { "text": "Cloud Core Assets" } ] },
+                  "size": [320, 180],
+                  "elements": [
+                    { "id": "root", "type": "panel", "x": 0, "y": 0,
+                      "width": "fill", "height": "fill",
+                      "style": { "background": "#CC202830" } },
+                    { "id": "title", "type": "label", "x": 16, "y": 14,
+                      "text": "item_icon / pack / builtin", "color": "#FFFFFFFF" },
+                    { "id": "diamond", "type": "item_icon", "x": 16, "y": 36,
+                      "width": 16, "height": 16,
+                      "item": { "id": "minecraft:diamond", "count": 5 },
+                      "show_count": true },
+                    { "id": "emerald", "type": "item_icon", "x": 48, "y": 30,
+                      "width": 32, "height": 32,
+                      "item": { "id": "minecraft:emerald", "count": 1 },
+                      "scale": 2.0 },
+                    { "id": "sword", "type": "item_icon", "x": 96, "y": 36,
+                      "width": 16, "height": 16,
+                      "item": { "id": "minecraft:netherite_sword", "count": 1 } },
+                    { "id": "pack_block", "type": "image", "x": 16, "y": 96,
+                      "width": 32, "height": 32,
+                      "texture": "pack:minecraft:block/diamond_block" },
+                    { "id": "builtin_error", "type": "image", "x": 64, "y": 96,
+                      "width": 32, "height": 32,
+                      "texture": "builtin:error" },
+                    { "id": "missing", "type": "image", "x": 112, "y": 96,
+                      "width": 32, "height": 32,
+                      "texture": "pack:cloudcore:missing/texture" }
+                  ]
+                }
+                """;
+        UiDefinition definition = new UiDefinition(uiId, 1, 0,
+                json.getBytes(StandardCharsets.UTF_8));
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (player.isOnline()) {
+                sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
+                        UiCodec.encodeDefinition(definition, Limits.S2C)));
+            }
+        }, 1L);
+        getLogger().info("Sent asset demo UI_OPEN/UI_DEFINITION to " + player.getName());
     }
 
     @EventHandler

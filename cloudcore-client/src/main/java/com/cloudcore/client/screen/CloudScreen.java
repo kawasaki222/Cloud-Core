@@ -10,12 +10,15 @@ import java.util.Objects;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Temporary minimal custom screen. It proves the lifecycle and input ownership before the
  * NanoVG render list lands; it deliberately does not pretend to draw document elements.
  */
 public final class CloudScreen extends Screen {
+    private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
     private static final int BACKGROUND = 0xB0000000;
     private static final int TITLE_COLOR = 0xFFFFFFFF;
 
@@ -63,6 +66,8 @@ public final class CloudScreen extends Screen {
             cachedList = DocumentRenderListBuilder.build(document, width, height);
             cachedWidth = width;
             cachedHeight = height;
+            LOGGER.debug("Built render list for ui={} commands={}", document.id(),
+                    cachedList.commands().size());
         }
         backend.beginFrame(new FrameContext(graphics, width, height,
                 minecraft.getWindow().getGuiScale(), partialTick));

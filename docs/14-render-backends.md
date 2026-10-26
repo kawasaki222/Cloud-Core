@@ -36,7 +36,9 @@ RenderList
 
 - NanoVG 画面板、静态文本、图片、九宫格、圆角、渐变、阴影、裁剪、变换。
 - FBO 按逻辑分辨率乘整数倍（1x/2x）分配，窗口/GUI 缩放变化时重建。
-- `FboCompositor` 把 FBO 颜色纹理包装成 `AbstractTexture`，用 `GuiGraphics.blit` 合成。
+- `FboCompositor` 把 FBO 颜色纹理包装成 `AbstractTexture`，用
+  `GuiGraphics#blit(RenderPipelines.GUI_TEXTURED, id, x, y, 0f, 0f, w, h, texW, texH)` 合成；
+  必须显式传入贴图像素尺寸，旧的规范化 UV 重载对 FBO/`DynamicTexture` 不显示（已实测，见 `10` §1.6）。
 - 预乘 alpha、混合函数、GL 状态恢复必须实测；合成失败回退原生。
 - 1.21.6+ 提取/绘制两阶段：NanoVG 在界面 `render` 的早期、合成入队之前完成 FBO，
   `GuiGraphics.blit` 只入队合成。

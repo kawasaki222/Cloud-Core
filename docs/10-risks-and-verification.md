@@ -52,6 +52,13 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 `GuiGraphics#blit` 在 1.21.11 需要 `RenderPipeline` 参数（例如 `RenderPipelines.GUI_TEXTURED`），
 并使用 `Identifier` 作为贴图键。
 
+- 正确调用：
+  `blit(RenderPipelines.GUI_TEXTURED, id, x, y, 0f, 0f, width, height, textureWidth, textureHeight)`，
+  其中 `textureWidth/Height` 是贴图像素尺寸（从 `AbstractTexture#getTexture().getWidth(0)` 取）。
+- 旧的 `blit(Identifier, int, int, int, int, float, float, float, float)` 在 1.21.11 对未进图集的
+  贴图（`DynamicTexture`、FBO 纹理）**不显示**：已实测本地 PNG 与 NanoVG FBO 都因此不可见，
+  换成上面的重载后同时恢复。`local:`、`pack:`、`builtin:` 图片与 NanoVG 合成都走这一条。
+
 ### 1.7 Paper 插件消息
 
 - `PluginMessageRecipient#sendPluginMessage(Plugin, String channel, byte[])`。
@@ -130,7 +137,7 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 | U26 | `EditBox` 的光标/选区颜色可被安全覆盖，且不影响 IME | 输入框换皮 | 编译 + IME 测试 | 只换外框，光标/选区保持原版 |
 | U27 | `renderItemDecorations(Font, ...)` 可用于自定义数量字体 | 物品显示 | 编译 + 视觉 | 数量字体保持原版 |
 | U28 | `lwjgl-nanovg` 版本与 1.21.11 自带 LWJGL 对齐，三平台原生库可加载 | NanoVG 默认 | Windows x64 已验证；Linux/macOS 待测 | 回退 `NativeBackend` |
-| U29 | FBO 颜色纹理可包装成 `AbstractTexture` 并通过 `GuiGraphics.blit` 合成 | 渲染链路 | NanoVG FBO 创建/绘制/readback 已验证；屏幕合成待做 | 自定义 `RenderPipeline` 合成 |
+| U29 | FBO 颜色纹理可包装成 `AbstractTexture` 并通过 `GuiGraphics.blit` 合成 | 渲染链路 | 2026-10-27 Windows x64 实测：`nvg` FBO 红色矩形经 `GUI_TEXTURED` blit 上屏 | 其余平台待测 |
 | U30 | NanoVG 预乘 alpha 与 MC GUI 混合函数匹配 | 半透明边缘 | 视觉对比 | shader 反预乘或调整混合 |
 | U31 | NanoVG FBO 渲染不会破坏 1.21.6 提取/绘制状态 | 渲染稳定性 | 运行 + 截图 | 在独立 pass/回退原生 |
 | U32 | TTF/OTF 从资源包加载、CJK 覆盖与 NanoVG 度量符合布局 | 字体/布局 | 字体样例 + 中文测试 | 内置字体/原版 `Font` |
@@ -201,15 +208,18 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   配方书与玩家模型在皮肤里不绘制（v1 `hide`）。截图：
   `inventory-print6.png`、`inventory-reopen.png`、`inventory-closed.png`。
 - **本地贴图已核实**：`LocalTextureRegistry` 从
-  `resourcepacks/CloudCore/test/red.png` 读取 PNG、注册 `DynamicTexture`，demo 页面实际显示绿色图片；
-  路径逃逸/缺失分别记录 `CC-ASSET-001/002`。
-- **U28 已核实（Windows x64）/ U29 部分核实**：`NanoVgSpike` 加载 `lwjgl-nanovg:3.3.3`，
+  `resourcepacks/CloudCore/test/red.png` 读取 PNG、注册 `DynamicTexture`，demo 页面实际显示图片；
+  路径逃逸/缺失分别记录 `CC-ASSET-001/002`。改用 `GUI_TEXTURED` + 显式贴图尺寸的 blit 后可见。
+- **贴图来源已核实**：`/cloudcore demo-assets` 同时显示
+  `item_icon`（钻石带数量、2 倍翡翠、下界合金剑）、`pack:minecraft:block/diamond_block`、
+  `builtin:error`（洋红/黑棋盘）；缺失的 `pack:cloudcore:missing/texture` 不绘制并写
+  `[CC-ASSET-006]`。截图：`assets-demo5.png`。
+- **U28/U29 已核实（Windows x64）**：`NanoVgSpike` 加载 `lwjgl-nanovg:3.3.3`，
   创建 GL3 context 与 64×64 FBO，绘制红色矩形并 `glReadPixels` 得到 `(255,0,0,255)`；
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
-  仍未能把该 FBO 通过 `AbstractTexture`/`GuiGraphics.blit` 在测试画面中显示：
-  注册成功、无异常，但红块不可见；需要继续排查 UV/TextureSetup/GL 状态。
-  Linux/macOS 尚未运行。
-- `GuiGraphics#blit` 的 RenderPipeline 重载已静态核对；FBO 屏幕合成仍需实现。
+  FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
+  （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+  Linux/macOS 尚未运行；`NanoVgBackend.available()` 仍未接入生产路径。
 - **U20 已核实**：Fabric API 0.141.3 能在 officialMojangMappings 下编译并启动。
 - **U10 已核实并规避**：Fabric `canSend()` 只反映服务端声明的通道；Paper 不保证声明，
   发送路径不再用 `canSend()` 作为门控。
@@ -224,8 +234,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 
 仍未验证：
 
-- NanoVG/FBO：初始化/FBO 绘制已在 Windows 验证；`NanoVgBackend.available()` 仍为 `false`，
-  `FboCompositor` 未实现，屏幕合成与生产打包未完成。
+- NanoVG/FBO：初始化、FBO 绘制、屏幕合成已在 Windows 验证；`NanoVgBackend.available()` 仍为
+  `false`，生产路径仍走 `NativeBackend`，预乘 alpha（U30）、Linux/macOS 未测。
 - U28–U31：Linux/macOS、FBO 屏幕合成、预乘 alpha、1.21.6 提取/绘制状态。
 - `inline:`/`pack:` 图片、GIF、item_icon、文本整形、裁剪/滚动、真实布局容器、其余五类面板的实际替换。
 - 当前 screen/scroll/tooltip/boss 混入只是诊断探针，尚未替换绘制或输入。

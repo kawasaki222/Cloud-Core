@@ -102,13 +102,28 @@ public final class DocumentRenderListBuilder {
             }
             case "image" -> {
                 Object texture = attribute(element, "texture");
-                if (texture instanceof String reference && reference.startsWith("local:")) {
-                    addImage(commands, reference.substring("local:".length()), x, y,
+                if (texture instanceof String reference && isSupportedTexture(reference)) {
+                    addImage(commands, reference, x, y,
                             width > 0 ? width : 64, height > 0 ? height : 64);
                 }
             }
-            case "item_icon", "inventory_grid", "spacer" -> {
-                // Native bridge work is not implemented yet.
+            case "item_icon" -> {
+                Object descriptor = attribute(element, "item");
+                String itemId = descriptor instanceof Map<?, ?> map && map.get("id") instanceof String id
+                        ? id
+                        : attribute(element, "item") instanceof String id ? id : null;
+                if (itemId != null) {
+                    int count = 1;
+                    if (descriptor instanceof Map<?, ?> map && map.get("count") instanceof Number value) {
+                        count = Math.max(1, value.intValue());
+                    }
+                    boolean showCount = attribute(element, "show_count") instanceof Boolean show && show;
+                    float scale = (float) number(attribute(element, "scale"), 1.0);
+                    addItem(commands, itemId, count, showCount, x, y, scale);
+                }
+            }
+            case "inventory_grid", "spacer" -> {
+                // Slots are drawn by the owning screen; the grid only publishes its geometry.
             }
             default -> {
                 // row/column/grid/scroll/overlay and future containers: recurse with the
@@ -139,6 +154,21 @@ public final class DocumentRenderListBuilder {
         if (width > 0 && height > 0 && commands.size() < MAX_COMMANDS) {
             commands.add(new RenderCommand.Image(texture, x, y, width, height));
         }
+    }
+
+    private static void addItem(List<RenderCommand> commands, String itemId, int count,
+            boolean showCount, int x, int y, float scale) {
+        if (commands.size() < MAX_COMMANDS) {
+            commands.add(new RenderCommand.ItemIcon(itemId, count, showCount, x, y,
+                    scale > 0.0f ? scale : 1.0f));
+        }
+    }
+
+    /** {@code inline:} needs TEXTURE_PUT and is rejected until that path exists. */
+    private static boolean isSupportedTexture(String reference) {
+        return reference.startsWith("local:")
+                || reference.startsWith("pack:")
+                || reference.startsWith("builtin:");
     }
 
     private static String text(UiElement element) {

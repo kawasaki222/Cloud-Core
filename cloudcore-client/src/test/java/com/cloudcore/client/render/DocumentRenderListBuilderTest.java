@@ -50,9 +50,45 @@ class DocumentRenderListBuilderTest {
         RenderCommand command = DocumentRenderListBuilder.build(document, 200, 100)
                 .commands().get(0);
         RenderCommand.Image resolved = (RenderCommand.Image) command;
-        assertEquals("test/logo.png", resolved.texture());
+        assertEquals("local:test/logo.png", resolved.texture());
         assertEquals(32, resolved.width());
         assertEquals(24, resolved.height());
+    }
+
+    @Test
+    void rejectsInlineAndUrlTexturesUntilSupported() {
+        UiElement inline = new UiElement("a", "image", 0, 0, "10", "10", true, true, 0,
+                Map.of(), List.of(), Map.of("texture", "inline:panel"));
+        UiElement url = new UiElement("b", "image", 20, 0, "10", "10", true, true, 0,
+                Map.of(), List.of(), Map.of("texture", "url:https://example.com/a.png"));
+        UiElement pack = new UiElement("c", "image", 40, 0, "10", "10", true, true, 0,
+                Map.of(), List.of(), Map.of("texture", "pack:cloudcore:ui/frame"));
+        UiDocument document = new UiDocument(1, "demo", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("Demo"), null, 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(inline, url, pack));
+
+        List<RenderCommand> commands = DocumentRenderListBuilder.build(document, 200, 100)
+                .commands();
+        assertEquals(1, commands.size());
+        assertEquals("pack:cloudcore:ui/frame", ((RenderCommand.Image) commands.get(0)).texture());
+    }
+
+    @Test
+    void buildsItemIconCommandFromDescriptor() {
+        UiElement icon = new UiElement("coin", "item_icon", 8, 40, "16", "16",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("item", Map.of("id", "minecraft:diamond", "count", 5),
+                        "show_count", true, "scale", 1.5));
+        UiDocument document = new UiDocument(1, "demo", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("Demo"), null, 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(icon));
+
+        RenderCommand.ItemIcon command = (RenderCommand.ItemIcon)
+                DocumentRenderListBuilder.build(document, 200, 100).commands().get(0);
+        assertEquals("minecraft:diamond", command.itemId());
+        assertEquals(5, command.count());
+        assertTrue(command.showCount());
+        assertEquals(1.5f, command.scale());
     }
 
     @Test

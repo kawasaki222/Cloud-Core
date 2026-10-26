@@ -111,7 +111,7 @@ docs/
 - [x] M2 骨架：SurfaceRegistry/SurfaceAdapter/SurfaceProvider、UiDocument、RenderBackend、CloudScreen
 - [x] M2 文档链路：UI_DEFINITION 解码、校验、`CloudScreen` 打开
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
-- [x] `image` 的 `local:` PNG 加载与绘制（真机截图验证）
+- [x] `image` 的 `local:`/`pack:`/`builtin:` 贴图，以及 `item_icon`（原生物品、数量、缩放）（真机截图验证）
 - [x] HUD 面板：Fabric `HudElementRegistry` + 持久文档 + UI_CLOSE 清除（真机截图验证）
 - [x] Tooltip 面板：自定义背景 + 原生文本/图片（真机截图验证）
 - [x] BossBar 面板：自定义条 + 进度/颜色 + 哨兵标题剥离（真机截图验证）
@@ -127,7 +127,7 @@ docs/
 - [ ] 协议前向兼容：未知 `BindMode` / `RenderMode`（仍拒绝）
 - [x] M0 NanoVG 初始化 + FBO 绘制 + readback（Windows x64，`cloudcore.nanovg.spike`）
 - [x] NanoVG 类与 Windows/Linux/macOS 原生库并入客户端 jar
-- [ ] M0 渲染：FBO 纹理注册成功但 `GuiGraphics.blit` 画面不可见，需排查 UV/TextureSetup/GL 状态
+- [x] M0 渲染：FBO 纹理经 `GUI_TEXTURED` blit（显式贴图尺寸）合成上屏（Windows x64，截图验证）
 - [ ] M0 渲染：预乘 alpha/Linux/macOS 运行验证
 
 剩余的是实现前的验证项和待决问题，不是文档缺口。
