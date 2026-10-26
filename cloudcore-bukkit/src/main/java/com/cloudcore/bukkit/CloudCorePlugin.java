@@ -1163,6 +1163,18 @@ public final class CloudCorePlugin extends JavaPlugin
                   "surface": "boss_bar",
                   "title": { "runs": [ { "text": "Cloud Core Boss" } ] },
                   "size": [320, 180],
+                  "surface_options": {
+                    "boss_bar": {
+                      "bar": {
+                        "width": 200,
+                        "height": 8,
+                        "border": "#FF000000",
+                        "background": "#FF1A2028",
+                        "fill": "local:test/red.png",
+                        "tint_from_event": false
+                      }
+                    }
+                  },
                   "elements": [
                     { "id": "boss_panel", "type": "panel", "x": 0, "y": 0,
                       "width": 320, "height": 180,
@@ -1183,6 +1195,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 BarColor.RED, BarStyle.SOLID);
         bar.addPlayer(player);
         bar.setVisible(true);
+        // Partial progress so the texture fill is visibly clipped at 55%.
+        bar.setProgress(0.55);
         if (session.bossBar != null) {
             session.bossBar.removeAll();
         }

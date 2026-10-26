@@ -293,6 +293,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   未安装扩展的 `%server_online%` 与不存在的 `%no_such_placeholder%` 原样显示
   （`papi-demo2.png`）。`DocumentTextTest` 覆盖文本/富文本/标题展开、颜色与贴图引用不被改写、
   未知令牌保留；`DocumentText` 只在发送与刷新时各执行一次。
+- **Boss 血条样式已核实**：`/cloudcore boss` 按 `surface_options.boss_bar.bar` 的
+  `width: 200`、`height: 8`、`background: #FF1A2028`、`border: #FF000000`、
+  `fill: local:test/red.png`（该测试 PNG 实为绿色）、`tint_from_event: false` 绘制：
+  界面显示 200×8 的深色条与贴图填充，标题仍由原版绘制（`boss-styled3.png`）；
+  演示条 200 tick 后由 `sendBoss` 的定时任务自行移除。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。

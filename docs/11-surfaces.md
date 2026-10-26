@@ -119,11 +119,12 @@
   `UI_OPEN(surface=BOSS_BAR, bindMode=PERSISTENT, surfaceKey=<hex token>)`。
   U13/U19 已在真实客户端验证：私有 `drawBar` 可注入，Paper 哨兵标题可被客户端观察。
 - **客户端**：`BossHealthOverlay#render` 遍历事件，匹配哨兵的血条用 Cloud 文档绘制，其余原版绘制。
-- **数据**：进度、颜色、样式来自 `BossEvent`；文档只负责外观。
-- **外观**：NanoVG 画背景、填充、覆盖层；九宫格、填充方向、文字字体/颜色/阴影/对齐来自
-  `surface_options.boss_bar.bar`；`tint_from_event` 决定是否用事件颜色给填充染色。标题默认原版绘制，
-  可配置走 NanoVG。当前最小适配器已用事件进度/颜色绘制自定义条，并通过 `@Redirect` 剥离哨兵标题；
-  九宫格与样式数据化待做。
+- **数据**：进度与颜色来自 `BossEvent`；文档只负责外观。
+- **外观**（已实现）：`surface_options.boss_bar.bar` 支持 `width`（默认 182）、`height`（默认 5）、
+  `border`（1px 外框颜色）、`background`（颜色，或贴图引用 + `nine_slice`）、`fill`
+  （贴图引用按进度裁剪，或颜色）、`tint_from_event`（默认 `true`；`false` 时用 `fill` 颜色或默认蓝）。
+  标题仍由原版绘制，`@Redirect` 剥离哨兵。
+- 计划：字体/阴影/对齐、堆叠数量与间距、按 `z` 排序的多条血条。
 - **堆叠**：顶部居中，间距与最大条数由 `surface_options.boss_bar` 控制。
 - **原版客户端**：不使用哨兵，看到普通标题。
 - **失败**：匹配失败时原版绘制；文档无效时原版绘制。
