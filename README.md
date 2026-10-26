@@ -9,7 +9,7 @@
 
 **M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集已完成并在真机联调。**
 
-- 构建：`./gradlew build` 通过（JDK 21，196 个测试 / 40 个测试类，0 失败）。
+- 构建：`./gradlew build` 通过（JDK 21，200 个测试 / 40 个测试类，0 失败）。
 - 协议：信封、DEFLATE、分片/重组、HELLO/HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED、
   `EVENT`/`EVENT_RESULT`、`TEXTURE_REF`、`DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
   真机验证：830 KB 文档拆成 27 片重组、断线/重连清理、1,000,000 随机帧解码。

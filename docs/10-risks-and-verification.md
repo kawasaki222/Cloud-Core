@@ -324,6 +324,13 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   页面显示“点击次数：3”“音量：0.75”（`persist-after3.png`）。
   过程中修掉了“加入事件早于会话创建导致状态无处可放”的缺陷（现在加入时同步建会话）。
   `FilePlayerStateStoreTest` 覆盖往返、类型归一、覆盖写、损坏 JSON、更高版本、超大文件与截断。
+- **模板表达式与容器命中已核实**：`/cloudcore page shop` 里每个商品行的按钮动作是
+  `"${state.balance - ${entry.price}}"`，点击铁剑后服务端 `state={balance=180.0}`、再点变成
+  `60.0`，第三次走 `else` 只发消息（余额条 `"${state.balance / 300}"` 同步从满格缩到 20%，
+  `shop6.png`、`shop7.png`）。期间发现并修复了“行/列/网格子元素只有渲染器排布、命中与焦点
+  仍按自身 x/y”的缺陷：新增 `ContainerCursor` 与 `Geometry`，渲染、命中、焦点/输入框共用同一套
+  布局，`ElementHitTesterTest` 覆盖行内间隙与网格单元。`PageLoaderTest` 覆盖属性表达式、
+  标签表达式与嵌套模板的由内向外解析。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
@@ -408,7 +415,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，196 个测试 / 40 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，200 个测试 / 40 个测试类，0 失败）。
 
 仍未验证：
 
