@@ -55,6 +55,46 @@ class UiDocumentValidatorTest {
         assertEquals(1, result.issues().size());
     }
 
+    @Test
+    void warnsAboutUnknownElementAttributesWithoutRejecting() {
+        UiElement progress = new UiElement("bar", "progress", 0, 0, "100", "8", true, true, 0,
+                Map.of(), List.of(), Map.of("direction", "sideways"));
+        UiElement slider = new UiElement("slide", "slider", 0, 20, "100", "6", true, true, 0,
+                Map.of(), List.of(), Map.of("value", 1.5));
+        UiElement field = new UiElement("input", "text_field", 0, 40, "100", "14", true, true, 0,
+                Map.of(), List.of(), Map.of("filter", "letters"));
+        UiElement button = new UiElement("btn", "button", 0, 60, "60", "18", true, true, 0,
+                Map.of(), List.of(), Map.of("icon", 42));
+
+        ValidationResult result = UiDocumentValidator.validate(document(
+                SurfaceType.CUSTOM_SCREEN, null, List.of(progress, slider, field, button)));
+
+        assertTrue(result.valid(), "attribute problems are warnings, not errors");
+        assertEquals(4, result.issues().size());
+        assertTrue(result.issues().stream().anyMatch(issue -> issue.code().equals("CC-DOC-022")));
+        assertTrue(result.issues().stream().anyMatch(issue -> issue.code().equals("CC-DOC-023")));
+        assertTrue(result.issues().stream().anyMatch(issue -> issue.code().equals("CC-DOC-024")));
+        assertTrue(result.issues().stream().anyMatch(issue -> issue.code().equals("CC-DOC-025")));
+    }
+
+    @Test
+    void acceptsKnownElementAttributesWithoutNoise() {
+        UiElement progress = new UiElement("bar", "progress", 0, 0, "100", "8", true, true, 0,
+                Map.of(), List.of(), Map.of("direction", "RIGHT"));
+        UiElement slider = new UiElement("slide", "slider", 0, 20, "100", "6", true, true, 0,
+                Map.of(), List.of(), Map.of("value", 0.5));
+        UiElement field = new UiElement("input", "text_field", 0, 40, "100", "14", true, true, 0,
+                Map.of(), List.of(), Map.of("filter", "regex:[A-Za-z]+"));
+        UiElement button = new UiElement("btn", "button", 0, 60, "60", "18", true, true, 0,
+                Map.of(), List.of(), Map.of("icon", Map.of("item", "minecraft:diamond")));
+
+        ValidationResult result = UiDocumentValidator.validate(document(
+                SurfaceType.CUSTOM_SCREEN, null, List.of(progress, slider, field, button)));
+
+        assertTrue(result.valid(), result.issues().toString());
+        assertTrue(result.issues().isEmpty(), result.issues().toString());
+    }
+
     private static UiDocument document(SurfaceType surface, ContainerSpec container,
             List<UiElement> elements) {
         return new UiDocument(

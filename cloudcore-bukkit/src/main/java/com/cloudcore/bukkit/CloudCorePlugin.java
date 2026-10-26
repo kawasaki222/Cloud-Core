@@ -1515,19 +1515,35 @@ public final class CloudCorePlugin extends JavaPlugin
             return;
         }
         int ok = 0;
+        int warnings = 0;
         for (String name : names) {
             java.nio.file.Path file = resolvePageFile(name);
+            com.cloudcore.api.page.PageLoader.CompiledPage compiled;
             try {
-                com.cloudcore.api.page.PageLoader.load(pagesRoot, file, Map.of());
-                ok++;
-                sender.sendMessage(Component.text("[OK] " + name));
+                compiled = com.cloudcore.api.page.PageLoader.load(pagesRoot, file, Map.of());
             } catch (com.cloudcore.api.page.PageLoadException exception) {
                 sender.sendMessage(Component.text("[FAIL] " + name + ": "
                         + exception.getMessage()));
+                continue;
+            }
+            ok++;
+            // Attribute-level issues are warnings on purpose; show them here so an author sees
+            // that, say, a progress direction will fall back instead of doing nothing visible.
+            java.util.List<com.cloudcore.api.document.ValidationIssue> issues =
+                    com.cloudcore.api.document.UiDocumentValidator
+                            .validate(compiled.document()).issues();
+            warnings += issues.size();
+            sender.sendMessage(Component.text("[OK] " + name
+                    + (issues.isEmpty() ? "" : " (" + issues.size() + " warning(s))")));
+            for (com.cloudcore.api.document.ValidationIssue issue : issues) {
+                sender.sendMessage(Component.text("  " + issue.severity() + " " + issue.code()
+                        + " " + issue.path() + ": " + issue.message()));
             }
         }
-        sender.sendMessage(Component.text("Validated " + names.size() + " pages, " + ok + " ok"));
-        getLogger().info(sender.getName() + " validated " + names.size() + " pages, " + ok + " ok");
+        sender.sendMessage(Component.text("Validated " + names.size() + " pages, " + ok + " ok, "
+                + warnings + " warning(s)"));
+        getLogger().info(sender.getName() + " validated " + names.size() + " pages, " + ok
+                + " ok, " + warnings + " warning(s)");
     }
 
     /** Reloads config.yml, then recompiles every page and refreshes open views. */

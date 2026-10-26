@@ -4,6 +4,7 @@ import com.cloudcore.api.SurfaceType;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -23,6 +24,9 @@ public final class UiDocumentValidator {
             "panel", "row", "column", "grid", "scroll", "overlay",
             "label", "image", "button", "icon_button", "text_field", "checkbox",
             "slider", "progress", "inventory_grid", "item_icon", "spacer");
+    private static final Set<String> PROGRESS_DIRECTIONS = Set.of("left", "right", "up", "down");
+    private static final Set<String> TEXT_FIELD_FILTERS =
+            Set.of("printable", "digits", "numeric", "alnum", "none", "any");
 
     private UiDocumentValidator() {
     }
@@ -138,9 +142,66 @@ public final class UiDocumentValidator {
                             "Action id must be non-negative"));
                 }
             });
+            checkAttributes(element, path);
             for (int index = 0; index < element.children().size(); index++) {
                 visit(element.children().get(index), path + ".children[" + index + "]", depth + 1);
             }
+        }
+
+        /**
+         * Element-specific attribute sanity checks. These are warnings, not errors: an unknown
+         * value still loads (the client falls back), but the author sees it in `/cloudcore
+         * validate` instead of wondering why it had no effect.
+         */
+        private void checkAttributes(UiElement element, String path) {
+            Map<String, Object> attributes = element.attributes();
+            switch (element.type()) {
+                case "progress" -> {
+                    String direction = text(attributes.get("direction"));
+                    if (direction != null && !PROGRESS_DIRECTIONS.contains(
+                            direction.toLowerCase(Locale.ROOT))) {
+                        result.add(ValidationIssue.warning("CC-DOC-022", path + ".direction",
+                                "Unknown progress direction (client falls back to left): "
+                                        + direction));
+                    }
+                }
+                case "slider" -> {
+                    if (attributes.get("value") instanceof Number number
+                            && (number.doubleValue() < 0.0 || number.doubleValue() > 1.0)) {
+                        result.add(ValidationIssue.warning("CC-DOC-023", path + ".value",
+                                "slider.value outside 0..1 is clamped"));
+                    }
+                }
+                case "text_field" -> {
+                    String filter = text(attributes.get("filter"));
+                    if (filter != null && !isKnownFilter(filter)) {
+                        result.add(ValidationIssue.warning("CC-DOC-024", path + ".filter",
+                                "Unknown text_field filter (input allowed): " + filter));
+                    }
+                }
+                case "button", "icon_button" -> {
+                    Object icon = attributes.get("icon");
+                    if (icon != null && !(icon instanceof String)
+                            && !(icon instanceof Map<?, ?>)) {
+                        result.add(ValidationIssue.warning("CC-DOC-025", path + ".icon",
+                                "icon must be a texture reference or {item, count}"));
+                    }
+                }
+                default -> {
+                }
+            }
+        }
+
+        private static String text(Object value) {
+            if (value instanceof String string && !string.isBlank()) {
+                return string.trim();
+            }
+            return null;
+        }
+
+        private static boolean isKnownFilter(String filter) {
+            String normalised = filter.toLowerCase(Locale.ROOT);
+            return normalised.startsWith("regex:") || TEXT_FIELD_FILTERS.contains(normalised);
         }
     }
 

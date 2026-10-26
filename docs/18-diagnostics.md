@@ -89,6 +89,10 @@
 
 - `CC-DOC-003` 文档 schema 校验失败。
 - `CC-DOC-007` 元素 id 重复。
+- `CC-DOC-022` `progress.direction` 未知，按 `left` 绘制。
+- `CC-DOC-023` `slider.value` 超出 0..1，已钳制。
+- `CC-DOC-024` 未知 `text_field.filter`，放行输入。
+- `CC-DOC-025` `button`/`icon_button` 的 `icon` 类型不对，图标未绘制。
 - `CC-URL-002` 非 https 或主机不在允许列表。
 - `CC-URL-004` 下载超时。
 - `CC-URL-006` SHA-256 不匹配。
