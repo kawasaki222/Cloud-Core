@@ -50,8 +50,15 @@ public final class AnimatedTextures {
             this.totalMs = Math.max(1, sum);
         }
 
-        private Identifier frameAt(long nowMs) {
-            int offset = (int) (nowMs % totalMs);
+        private Identifier frameAt(long nowMs, RenderCommand.Image.Animation options) {
+            if (!options.enabled()) {
+                return frames.get(0);
+            }
+            long scaled = Math.max(0L, (long) (nowMs * (double) options.speed()));
+            if (!options.loop() && scaled >= totalMs) {
+                return frames.get(frames.size() - 1);
+            }
+            int offset = (int) (scaled % totalMs);
             for (int index = 0; index < delays.length; index++) {
                 offset -= delays[index];
                 if (offset < 0) {
@@ -71,6 +78,11 @@ public final class AnimatedTextures {
      * @return the frame to draw now, or {@code null} when the bytes cannot be decoded
      */
     public static Identifier frame(String key, byte[] bytes, long nowMs) {
+        return frame(key, bytes, nowMs, RenderCommand.Image.Animation.DEFAULT);
+    }
+
+    public static Identifier frame(String key, byte[] bytes, long nowMs,
+            RenderCommand.Image.Animation options) {
         Animation animation = CACHE.get(key);
         if (animation == null) {
             animation = decode(key, bytes);
@@ -79,7 +91,8 @@ public final class AnimatedTextures {
             }
             CACHE.put(key, animation);
         }
-        return animation.frameAt(nowMs);
+        return animation.frameAt(nowMs, options == null
+                ? RenderCommand.Image.Animation.DEFAULT : options);
     }
 
     /** Bumped after each decode so a render list holding an old frame can be rebuilt. */

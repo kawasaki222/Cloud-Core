@@ -20,11 +20,29 @@ public sealed interface RenderCommand {
      * @param nineSlice optional {@code [left, top, right, bottom]} borders in source-texture
      *                  pixels; the backends keep them unscaled and stretch the middle
      */
-    record Image(String texture, int x, int y, int width, int height, int[] nineSlice)
-            implements RenderCommand {
+    /**
+     * @param animation playback options for GIF sources; ignored for static textures
+     */
+    record Image(String texture, int x, int y, int width, int height, int[] nineSlice,
+            Animation animation) implements RenderCommand {
 
         public Image(String texture, int x, int y, int width, int height) {
-            this(texture, x, y, width, height, null);
+            this(texture, x, y, width, height, null, Animation.DEFAULT);
+        }
+
+        public Image(String texture, int x, int y, int width, int height, int[] nineSlice) {
+            this(texture, x, y, width, height, nineSlice, Animation.DEFAULT);
+        }
+
+        /** {@code animated: off} freezes the first frame; speed is a multiplier. */
+        record Animation(boolean enabled, boolean loop, float speed) {
+            public static final Animation DEFAULT = new Animation(true, true, 1.0f);
+
+            public Animation {
+                if (!(speed > 0.0f) || speed > 4.0f) {
+                    speed = 1.0f;
+                }
+            }
         }
 
         public Image {

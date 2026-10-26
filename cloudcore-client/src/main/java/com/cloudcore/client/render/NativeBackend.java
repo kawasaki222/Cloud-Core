@@ -72,7 +72,7 @@ public final class NativeBackend implements RenderBackend {
     }
 
     private static void drawImage(FrameContext frame, RenderCommand.Image image) {
-        Identifier texture = TextureReferences.resolve(image.texture());
+        Identifier texture = TextureReferences.resolve(image.texture(), image.animation());
         if (texture == null) {
             return;
         }

@@ -1,6 +1,7 @@
 package com.cloudcore.client.render;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.cloudcore.api.SurfaceType;
@@ -217,6 +218,23 @@ class DocumentRenderListBuilderTest {
 
         assertEquals(0xFF111111, normal.argb());
         assertEquals(0xFF222222, hovered.argb());
+    }
+
+    @Test
+    void imageCarriesAnimationOptions() {
+        UiElement image = new UiElement("banner", "image", 0, 0, "32", "32",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("texture", "local:test/anim.gif", "animated", "off",
+                        "loop", false, "speed", 2.0));
+        UiDocument document = new UiDocument(1, "anim", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(image));
+
+        RenderCommand.Image command = (RenderCommand.Image)
+                DocumentRenderListBuilder.build(document, 200, 100).commands().get(0);
+        assertFalse(command.animation().enabled());
+        assertFalse(command.animation().loop());
+        assertEquals(2.0f, command.animation().speed());
     }
 
     @Test

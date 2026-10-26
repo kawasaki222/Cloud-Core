@@ -167,7 +167,8 @@ public final class DocumentRenderListBuilder {
                 if (texture instanceof String reference && isSupportedTexture(reference)) {
                     addImage(commands, reference, x, y,
                             width > 0 ? width : 64, height > 0 ? height : 64,
-                            intArray(attribute(element, "nine_slice")));
+                            intArray(attribute(element, "nine_slice")),
+                            animation(element));
                 }
             }
             case "item_icon" -> {
@@ -273,9 +274,26 @@ public final class DocumentRenderListBuilder {
 
     private static void addImage(List<RenderCommand> commands, String texture, int x, int y,
             int width, int height, int[] nineSlice) {
+        addImage(commands, texture, x, y, width, height, nineSlice,
+                RenderCommand.Image.Animation.DEFAULT);
+    }
+
+    private static void addImage(List<RenderCommand> commands, String texture, int x, int y,
+            int width, int height, int[] nineSlice,
+            RenderCommand.Image.Animation animation) {
         if (width > 0 && height > 0 && commands.size() < MAX_COMMANDS) {
-            commands.add(new RenderCommand.Image(texture, x, y, width, height, nineSlice));
+            commands.add(new RenderCommand.Image(texture, x, y, width, height, nineSlice,
+                    animation));
         }
+    }
+
+    /** Reads {@code animated: auto|off}, {@code loop} and {@code speed} from the element. */
+    private static RenderCommand.Image.Animation animation(UiElement element) {
+        Object animated = attribute(element, "animated");
+        boolean enabled = !(animated instanceof String text && text.equalsIgnoreCase("off"));
+        boolean loop = !Boolean.FALSE.equals(attribute(element, "loop"));
+        float speed = (float) number(attribute(element, "speed"), 1.0);
+        return new RenderCommand.Image.Animation(enabled, loop, speed);
     }
 
     /** Reads a {@code [a, b, c, d]} attribute array; anything else becomes {@code null}. */

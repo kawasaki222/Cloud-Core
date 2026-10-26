@@ -29,6 +29,11 @@ public final class LocalTextureRegistry {
     }
 
     public static Identifier resolveLocal(String relativePath) {
+        return resolveLocal(relativePath, RenderCommand.Image.Animation.DEFAULT);
+    }
+
+    public static Identifier resolveLocal(String relativePath,
+            RenderCommand.Image.Animation animation) {
         if (relativePath == null || relativePath.isBlank()) {
             return null;
         }
@@ -36,7 +41,7 @@ public final class LocalTextureRegistry {
             byte[] bytes = readBytes(relativePath);
             return bytes == null ? null
                     : AnimatedTextures.frame("local:" + relativePath, bytes,
-                            System.currentTimeMillis());
+                            System.currentTimeMillis(), animation);
         }
         if (CACHE.containsKey(relativePath)) {
             return CACHE.get(relativePath);

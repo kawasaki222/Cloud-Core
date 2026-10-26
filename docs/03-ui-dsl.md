@@ -340,7 +340,8 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
   客户端只做帧轮播。
 - 已实现（客户端直连 + 本地文件）：`AnimatedTextures` 用 ImageIO 解码 GIF，帧按累计延迟循环，
   每次绘制按时间选帧；上限 64 帧、单帧 512×512、解码后 16 MiB、最小帧延迟 50 ms。
-  `animated: off`/`speed`/`loop` 尚未解析。
+  `animated: auto|off`、`loop`、`speed`（0.25..4）已解析：`off` 固定首帧，`loop: false` 播完停在末帧，
+  `speed` 按倍率缩放帧时间。
 - `url:` 在编译时转成 `inline:<key>`；URL、哈希和尺寸通过 `TEXTURE_REF` 或 `TEXTURE_PUT` 另行下发，
   下发文档里不出现原始 URL。
 - 上限：64 帧，单帧 ≤ 512×512，解码后总大小 ≤ 16 MiB，最小帧延迟 50 ms。

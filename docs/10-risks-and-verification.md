@@ -235,7 +235,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **GIF 动画已核实**：`local:test/anim.gif`（3 帧、400 ms/帧）在 `/cloudcore demo-assets` 中
   连续截图显示颜色从绿变蓝，日志 `Decoded GIF ... frames=3 total=1200ms`；
   `AnimatedTexturesTest` 覆盖 GIF 识别与标识符净化（本地路径含中文/冒号也不会生成非法 Identifier）。
-  远端 GIF 走同一解码路径但未真机验证；`animated`/`speed`/`loop` 字段未解析。
+  远端 GIF 走同一解码路径但未真机验证。`animated: off` 已用同一张图两次截图做像素比较
+  （GIF 区域零差异），`loop`/`speed` 只有解析层单测。
 - **悬停样式已核实**：示例页的“关闭”按钮在光标移入后由 `#9F3C6E` 变为 `style.hover` 的
   `#D05C8E`（`hover.png`）；`DocumentRenderListBuilderTest` 覆盖悬停背景选择。
 - **command 动作闸门已核实**：默认配置下点“喊话”写

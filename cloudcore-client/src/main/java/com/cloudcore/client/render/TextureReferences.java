@@ -23,11 +23,16 @@ public final class TextureReferences {
     }
 
     public static Identifier resolve(String reference) {
+        return resolve(reference, RenderCommand.Image.Animation.DEFAULT);
+    }
+
+    public static Identifier resolve(String reference, RenderCommand.Image.Animation animation) {
         if (reference == null || reference.isBlank()) {
             return null;
         }
         if (reference.startsWith("local:")) {
-            return LocalTextureRegistry.resolveLocal(reference.substring("local:".length()));
+            return LocalTextureRegistry.resolveLocal(reference.substring("local:".length()),
+                    animation);
         }
         if (reference.startsWith("pack:")) {
             return resolvePack(reference.substring("pack:".length()));
@@ -40,7 +45,7 @@ public final class TextureReferences {
             return builtin;
         }
         if (reference.startsWith("inline:")) {
-            return resolveInline(reference.substring("inline:".length()));
+            return resolveInline(reference.substring("inline:".length()), animation);
         }
         report("CC-ASSET-005", "unsupported texture reference: " + reference);
         return null;
@@ -79,7 +84,8 @@ public final class TextureReferences {
      * URL images arrive as {@code inline:<key>} plus a {@code TEXTURE_REF}; the bytes are
      * downloaded on a background thread and registered here on the render thread.
      */
-    private static Identifier resolveInline(String key) {
+    private static Identifier resolveInline(String key,
+            RenderCommand.Image.Animation animation) {
         java.util.Map<String, Identifier> cache = INLINE_CACHE;
         Identifier cached = cache.get(key);
         if (cached != null) {
@@ -92,7 +98,7 @@ public final class TextureReferences {
         }
         if (AnimatedTextures.isGif(bytes)) {
             // Frames are chosen per draw; the render list keeps only the reference string.
-            return AnimatedTextures.frame(key, bytes, System.currentTimeMillis());
+            return AnimatedTextures.frame(key, bytes, System.currentTimeMillis(), animation);
         }
         try {
             com.mojang.blaze3d.platform.NativeImage image =

@@ -134,7 +134,8 @@ docs/
 - [x] `url:` 贴图：编译成 `inline:` + `TEXTURE_REF` + 客户端直连下载（真机验证，https/大小/超时/sha256）
 - [ ] 代理模式：`TEXTURE_REQUEST`/`TEXTURE_PUT`
 - [x] GIF 动画：本地与直连图片逐帧播放（3 帧测试图真机验证）
-- [ ] 动画选项：`animated`/`speed`/`loop` 与远端 GIF 真机验证
+- [x] 动画选项：`animated: off` 真机像素对比；`loop`/`speed` 解析层单测
+- [ ] 远端 GIF 真机验证
 - [ ] M2 渲染剩余：文本 shaping、`scroll` 事件回传
 - [x] HUD / Tooltip / BossBar / Container 面板最小闭环
 - [x] HUD 三层（background/foreground/overlay）与锚点/偏移（真机验证）
