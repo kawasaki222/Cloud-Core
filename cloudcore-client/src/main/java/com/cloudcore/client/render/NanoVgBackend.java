@@ -30,6 +30,9 @@ public final class NanoVgBackend implements RenderBackend {
     private static final int IMAGE_FLAGS = 0;
 
     private final FboCompositor compositor = new FboCompositor();
+    private final FontRegistry fonts = new FontRegistry();
+    private final java.util.concurrent.atomic.AtomicBoolean textFailureLogged =
+            new java.util.concurrent.atomic.AtomicBoolean();
     private final Map<String, Integer> imageHandles = new HashMap<>();
     private long context;
     private boolean attempted;
@@ -70,7 +73,8 @@ public final class NanoVgBackend implements RenderBackend {
                 return;
             }
             available = true;
-            LOGGER.info("NanoVG backend initialised");
+            fonts.attach(context);
+            LOGGER.info("NanoVG backend initialised (custom font available={})", fonts.hasFont());
         } catch (Throwable throwable) {
             LOGGER.error("[CC-RENDER-021] NanoVG backend init failed", throwable);
             available = false;
@@ -84,6 +88,8 @@ public final class NanoVgBackend implements RenderBackend {
             return;
         }
         try {
+            // Render at device resolution so text and edges stay crisp after compositing.
+            int pixelRatio = Math.max(1, context.guiScale());
             if (!compositor.ensure(context.width(), context.height())) {
                 fail("FBO unavailable");
                 return;
@@ -94,10 +100,9 @@ public final class NanoVgBackend implements RenderBackend {
             org.lwjgl.opengl.GL13.glActiveTexture(org.lwjgl.opengl.GL13.GL_TEXTURE0);
             GL33.glBindSampler(0, 0);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            NanoVG.nvgBeginFrame(this.context, context.width(), context.height(),
-                    Math.max(1, context.guiScale()));
-            // FBO row 0 is the bottom row, while GuiGraphics samples v=0 as the top row.
-            // Flip the scene so the composited texture is upright.
+            NanoVG.nvgBeginFrame(this.context, context.width(), context.height(), pixelRatio);
+            // FBO row 0 is the bottom row while GuiGraphics samples v=0 as the top row,
+            // so the scene is flipped before compositing.
             NanoVG.nvgTranslate(this.context, 0.0f, context.height());
             NanoVG.nvgScale(this.context, 1.0f, -1.0f);
         } catch (RuntimeException exception) {
@@ -115,9 +120,7 @@ public final class NanoVgBackend implements RenderBackend {
                 switch (command) {
                     case RenderCommand.FillRect rect -> fill(rect);
                     case RenderCommand.Image image -> image(image);
-                    case RenderCommand.Text ignored -> {
-                        // Native text stays native: NanoVG would need a TTF per font.
-                    }
+                    case RenderCommand.Text text -> text(text);
                     case RenderCommand.ItemIcon ignored -> {
                         // Item models are drawn by the native bridge.
                     }
@@ -126,6 +129,39 @@ public final class NanoVgBackend implements RenderBackend {
         } catch (RuntimeException exception) {
             fail("draw failed: " + exception.getMessage());
         }
+    }
+
+    /**
+     * Text is drawn by NanoVG only when the document asks for an explicit font; the default
+     * Minecraft font stays native so ordinary pages keep the vanilla, crisp look.
+     */
+    public boolean drawsText(RenderCommand.Text text) {
+        if (!available() || text.font() == null || text.font().isBlank()) {
+            return false;
+        }
+        return fonts.resolve(text.font()) >= 0;
+    }
+
+    private void text(RenderCommand.Text text) {
+        if (!drawsText(text)) {
+            return;
+        }
+        int fontId = fonts.resolve(text.font());
+        if (fontId < 0) {
+            fontId = fonts.resolve(null);
+        }
+        if (fontId < 0) {
+            if (textFailureLogged.compareAndSet(false, true)) {
+                LOGGER.warn("[CC-FONT-005] no font available for text '{}'", text.text());
+            }
+            return;
+        }
+        NanoVG.nvgFontFaceId(context, fontId);
+        NanoVG.nvgFontSize(context, 9.0f);
+        NanoVG.nvgTextAlign(context, NanoVG.NVG_ALIGN_LEFT | NanoVG.NVG_ALIGN_BASELINE);
+        setColor(text.argb());
+        NanoVG.nvgFillColor(context, color);
+        NanoVG.nvgText(context, text.x(), text.y() + 7.5f, text.text());
     }
 
     private void fill(RenderCommand.FillRect rect) {

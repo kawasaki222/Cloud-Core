@@ -1,5 +1,6 @@
 package com.cloudcore.client.render;
 
+import com.cloudcore.api.document.FontSpec;
 import com.cloudcore.api.document.UiDocument;
 import com.cloudcore.api.document.UiElement;
 import java.util.ArrayList;
@@ -33,15 +34,17 @@ public final class DocumentRenderListBuilder {
         int originX = (screenWidth - documentWidth) / 2;
         int originY = (screenHeight - documentHeight) / 2;
         List<RenderCommand> commands = new ArrayList<>();
+        Map<String, FontSpec> fonts = document.fonts();
         for (UiElement element : document.elements()) {
             append(element, originX, originY, documentWidth, documentHeight,
-                    commands, 1);
+                    commands, 1, fonts);
         }
         return commands.isEmpty() ? RenderList.EMPTY : new RenderList(commands);
     }
 
     private static void append(UiElement element, int parentX, int parentY,
-            int parentWidth, int parentHeight, List<RenderCommand> commands, int depth) {
+            int parentWidth, int parentHeight, List<RenderCommand> commands, int depth,
+            Map<String, FontSpec> fonts) {
         if (!element.visible() || depth > MAX_DEPTH || commands.size() >= MAX_COMMANDS) {
             return;
         }
@@ -67,12 +70,12 @@ public final class DocumentRenderListBuilder {
                 int h = height > 0 ? height : 20;
                 addFill(commands, x, y, w, h, color(style(element, "background"), DEFAULT_BUTTON));
                 addText(commands, text(element), x + 6, y + Math.max(2, (h - 8) / 2),
-                        color(styleText(element), DEFAULT_TEXT));
+                        color(styleText(element), DEFAULT_TEXT), fontPath(element, fonts));
                 childWidth = w;
                 childHeight = h;
             }
             case "label" -> addText(commands, text(element), x, y,
-                    color(attribute(element, "color"), DEFAULT_TEXT));
+                    color(attribute(element, "color"), DEFAULT_TEXT), fontPath(element, fonts));
             case "text_field" -> {
                 int w = width > 0 ? width : parentWidth;
                 int h = height > 0 ? height : 18;
@@ -80,7 +83,7 @@ public final class DocumentRenderListBuilder {
                 Object placeholder = attribute(element, "placeholder");
                 if (placeholder instanceof String value && !value.isEmpty()) {
                     addText(commands, value, x + 4, y + Math.max(2, (h - 8) / 2),
-                            color(styleText(element), 0xFF9A9A9A));
+                            color(styleText(element), 0xFF9A9A9A), fontPath(element, fonts));
                 }
                 childWidth = w;
                 childHeight = h;
@@ -88,7 +91,7 @@ public final class DocumentRenderListBuilder {
             case "checkbox" -> {
                 addFill(commands, x, y, 9, 9, 0xAA303030);
                 addText(commands, text(element), x + 13, y,
-                        color(styleText(element), DEFAULT_TEXT));
+                        color(styleText(element), DEFAULT_TEXT), fontPath(element, fonts));
             }
             case "progress" -> {
                 int w = width > 0 ? width : parentWidth;
@@ -132,7 +135,8 @@ public final class DocumentRenderListBuilder {
         }
 
         for (UiElement child : element.children()) {
-            append(child, childX, childY, childWidth, childHeight, commands, depth + 1);
+            append(child, childX, childY, childWidth, childHeight, commands, depth + 1,
+                    fonts);
         }
     }
 
@@ -143,10 +147,45 @@ public final class DocumentRenderListBuilder {
         }
     }
 
-    private static void addText(List<RenderCommand> commands, String text, int x, int y, int argb) {
+    private static void addText(List<RenderCommand> commands, String text, int x, int y,
+            int argb) {
+        addText(commands, text, x, y, argb, null);
+    }
+
+    private static void addText(List<RenderCommand> commands, String text, int x, int y,
+            int argb, String font) {
         if (!text.isEmpty() && commands.size() < MAX_COMMANDS) {
-            commands.add(new RenderCommand.Text(text, x, y, argb, true));
+            commands.add(new RenderCommand.Text(text, x, y, argb, true, font));
         }
+    }
+
+    /**
+     * Resolves an element's font token to a CloudCore-relative file path. Documents can name
+     * a {@code fonts} entry or write the path directly; unknown keys fall back to the
+     * backend default.
+     */
+    private static String fontPath(UiElement element, Map<String, FontSpec> fonts) {
+        String name = null;
+        Object value = attribute(element, "font");
+        if (value instanceof String candidate && !candidate.isBlank()) {
+            name = candidate;
+        } else {
+            Object styleValue = style(element, "font");
+            if (styleValue instanceof String styleName && !styleName.isBlank()) {
+                name = styleName;
+            }
+        }
+        if (name == null) {
+            return null;
+        }
+        FontSpec spec = fonts.get(name);
+        if (spec == null) {
+            return name;
+        }
+        if ("local".equals(spec.source())) {
+            return spec.id();
+        }
+        return "resource:" + spec.id();
     }
 
     private static void addImage(List<RenderCommand> commands, String texture, int x, int y,

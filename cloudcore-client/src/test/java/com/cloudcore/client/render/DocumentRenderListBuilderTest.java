@@ -92,6 +92,36 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
+    void resolvesDocumentFontTokenToLocalPath() {
+        String fontPath = "公共/字体/body.ttf";
+        UiElement label = new UiElement("label", "label", 0, 0, null, null,
+                true, true, 0, Map.of(), List.of(),
+                Map.of("text", "Hi", "font", "body"));
+        UiDocument document = new UiDocument(1, "fonts", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null, Map.of(),
+                Map.of("body", new com.cloudcore.api.document.FontSpec(
+                        "nanovg_ttf", "local", fontPath, null, 0, false)),
+                List.of(label));
+
+        RenderCommand.Text command = (RenderCommand.Text)
+                DocumentRenderListBuilder.build(document, 200, 100).commands().get(0);
+        assertEquals(fontPath, command.font());
+    }
+
+    @Test
+    void labelWithoutFontLeavesFontNullForTheNativeDefault() {
+        UiElement label = new UiElement("label", "label", 0, 0, null, null,
+                true, true, 0, Map.of(), List.of(), Map.of("text", "Hi"));
+        UiDocument document = new UiDocument(1, "plain", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(label));
+
+        RenderCommand.Text command = (RenderCommand.Text)
+                DocumentRenderListBuilder.build(document, 200, 100).commands().get(0);
+        org.junit.jupiter.api.Assertions.assertNull(command.font());
+    }
+
+    @Test
     void resolvesPercentAndFillDimensions() {
         UiElement panel = new UiElement("root", "panel", 0, 0, "50%", "fill",
                 true, true, 0, Map.of(), List.of(), Map.of());

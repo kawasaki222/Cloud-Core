@@ -129,7 +129,9 @@ docs/
 - [x] NanoVG 类与 Windows/Linux/macOS 原生库并入客户端 jar
 - [x] M0 渲染：FBO 纹理经 `GUI_TEXTURED` blit（显式贴图尺寸）合成上屏（Windows x64，截图验证）
 - [x] NanoVG 生产后端（opt-in）：填充 + `local:`/`pack:` 图片 + 原生文本/物品叠层（Windows x64 截图验证）
-- [ ] NanoVG 默认化：NanoVG 字体（TTF）接入、U30 预乘 alpha、U31 状态隔离、Linux/macOS 验证
+- [x] NanoVG 字体：`fonts:` + `source: local` 的 TTF 由 NanoVG 绘制，未声明字体者仍走原版（Windows 截图验证）
+- [x] U30 预乘 alpha：合成改用 `GUI_TEXTURED_PREMULTIPLIED_ALPHA`
+- [ ] NanoVG 默认化：设备分辨率 FBO（清晰文字）、U31 状态隔离、Linux/macOS 验证
 - [ ] M0 渲染：预乘 alpha/Linux/macOS 运行验证
 
 剩余的是实现前的验证项和待决问题，不是文档缺口。

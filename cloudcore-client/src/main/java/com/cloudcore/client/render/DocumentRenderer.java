@@ -25,7 +25,7 @@ public final class DocumentRenderer {
             vector.endFrame();
         }
         if (vector.id() == BackendId.NANOVG && nanoVg.available()) {
-            RenderList overlay = list.nativeOverlay();
+            RenderList overlay = list.nativeOverlay(nanoVg::drawsText);
             if (!overlay.isEmpty()) {
                 nativeBackend.beginFrame(context);
                 try {

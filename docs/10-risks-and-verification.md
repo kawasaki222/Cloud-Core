@@ -138,7 +138,7 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 | U27 | `renderItemDecorations(Font, ...)` 可用于自定义数量字体 | 物品显示 | 编译 + 视觉 | 数量字体保持原版 |
 | U28 | `lwjgl-nanovg` 版本与 1.21.11 自带 LWJGL 对齐，三平台原生库可加载 | NanoVG 默认 | Windows x64 已验证；Linux/macOS 待测 | 回退 `NativeBackend` |
 | U29 | FBO 颜色纹理可包装成 `AbstractTexture` 并通过 `GuiGraphics.blit` 合成 | 渲染链路 | 2026-10-27 Windows x64 实测：`nvg` FBO 红色矩形经 `GUI_TEXTURED` blit 上屏 | 其余平台待测 |
-| U30 | NanoVG 预乘 alpha 与 MC GUI 混合函数匹配 | 半透明边缘 | 视觉对比 | shader 反预乘或调整混合 |
+| U30 | NanoVG 预乘 alpha 与 MC GUI 混合函数匹配 | 半透明边缘 | 2026-10-27 改用 `GUI_TEXTURED_PREMULTIPLIED_ALPHA` 合成，面板/文字透明度正常 | 其余平台与缩放待测 |
 | U31 | NanoVG FBO 渲染不会破坏 1.21.6 提取/绘制状态 | 渲染稳定性 | 运行 + 截图 | 在独立 pass/回退原生 |
 | U32 | TTF/OTF 从资源包加载、CJK 覆盖与 NanoVG 度量符合布局 | 字体/布局 | 字体样例 + 中文测试 | 内置字体/原版 `Font` |
 | U33 | Iris/Sodium 下 FBO 合成无色差/黑边 | 光影兼容 | 互操作矩阵 | 配置回退原生 |
@@ -224,6 +224,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **NanoVG 字体已核实（Windows x64，opt-in）**：`FontRegistry` 从
+  `resourcepacks/CloudCore/公共/字体/body.ttf` 读取 TTF，`nvgCreateFontMem` 后
+  `/cloudcore demo-assets` 的 `font: body` 标签由 NanoVG 绘制，未声明字体的文本仍由原版绘制。
+  FBO 按逻辑分辨率分配，自定义字体在 GUI scale 2 下略软；设备分辨率 FBO 的清晰化仍待做
+  （第一次尝试因坐标空间不一致回退）。截图：`nanovg-font1.png`。
 - **NanoVG 生产后端已核实（Windows x64，opt-in）**：`-PcloudcoreNanoVg=true` 时
   `NanoVgBackend` 创建 NVGContext，按逻辑分辨率建 FBO（427×240），画填充与
   `local:`/`pack:` 图片，然后合成；文本与 `item_icon` 走原生叠层。

@@ -785,12 +785,19 @@ public final class CloudCorePlugin extends JavaPlugin
                   "surface": "custom_screen",
                   "title": { "runs": [ { "text": "Cloud Core Assets" } ] },
                   "size": [320, 180],
+                  "fonts": {
+                    "body": { "provider": "nanovg_ttf", "source": "local",
+                              "id": "公共/字体/body.ttf" }
+                  },
                   "elements": [
                     { "id": "root", "type": "panel", "x": 0, "y": 0,
                       "width": "fill", "height": "fill",
                       "style": { "background": "#CC202830" } },
                     { "id": "title", "type": "label", "x": 16, "y": 14,
                       "text": "item_icon / pack / builtin", "color": "#FFFFFFFF" },
+                    { "id": "custom_font", "type": "label", "x": 16, "y": 150,
+                      "text": "NanoVG custom font", "color": "#FFFFD479",
+                      "font": "body" },
                     { "id": "diamond", "type": "item_icon", "x": 16, "y": 36,
                       "width": 16, "height": 16,
                       "item": { "id": "minecraft:diamond", "count": 5 },

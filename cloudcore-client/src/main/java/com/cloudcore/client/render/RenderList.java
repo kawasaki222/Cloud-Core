@@ -21,13 +21,32 @@ public record RenderList(List<RenderCommand> commands) {
      * icons, which NanoVG does not render.
      */
     public RenderList nativeOverlay() {
+        return nativeOverlay(true);
+    }
+
+    /**
+     * @param includeText false when NanoVG loaded a font and already drew the text
+     */
+    public RenderList nativeOverlay(boolean includeText) {
+        return nativeOverlay(text -> !includeText);
+    }
+
+    /**
+     * Text is kept for the native backend whenever the predicate reports that the vector
+     * backend did not draw it, so a document with custom fonts mixes both paths.
+     */
+    public RenderList nativeOverlay(java.util.function.Predicate<RenderCommand.Text> vectorText) {
         java.util.List<RenderCommand> overlay = new java.util.ArrayList<>();
         for (RenderCommand command : commands) {
-            if (command instanceof RenderCommand.Text
-                    || command instanceof RenderCommand.ItemIcon
-                    || isNativeImage(command)) {
-                overlay.add(command);
+            if (command instanceof RenderCommand.Text text) {
+                if (vectorText.test(text)) {
+                    continue;
+                }
+            } else if (!(command instanceof RenderCommand.ItemIcon)
+                    && !isNativeImage(command)) {
+                continue;
             }
+            overlay.add(command);
         }
         return overlay.isEmpty() ? EMPTY : new RenderList(overlay);
     }

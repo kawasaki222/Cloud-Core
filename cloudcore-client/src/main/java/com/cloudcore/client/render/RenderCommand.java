@@ -8,7 +8,12 @@ public sealed interface RenderCommand {
     record FillRect(int x, int y, int width, int height, int argb) implements RenderCommand {
     }
 
-    record Text(String text, int x, int y, int argb, boolean shadow) implements RenderCommand {
+    record Text(String text, int x, int y, int argb, boolean shadow, String font)
+            implements RenderCommand {
+
+        public Text(String text, int x, int y, int argb, boolean shadow) {
+            this(text, x, y, argb, shadow, null);
+        }
     }
 
     record Image(String texture, int x, int y, int width, int height) implements RenderCommand {
