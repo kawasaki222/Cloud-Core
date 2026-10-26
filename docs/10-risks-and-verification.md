@@ -69,8 +69,9 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 
 - `net.minecraft.client.gui.components.BossHealthOverlay`，构造参数 `Minecraft`，
   渲染入口 `render(GuiGraphics)`。
-- 内部通过私有 `drawBar(GuiGraphics, int x, int y, BossEvent, int progress,
-  Identifier[], Identifier[])` 绘制；1.21.11 的确切参数列表需确认。
+- 内部有两个私有重载（1.21.11 已确认）：
+  `drawBar(GuiGraphics, int, int, BossEvent)` 和
+  `drawBar(GuiGraphics, int, int, BossEvent, int, Identifier[], Identifier[])`。
 - `Gui` 通过 `getBossOverlay()` 持有该 overlay。
 - 事件类型 `BossEvent` / `LerpingBossEvent`，提供 `getName()`、`getProgress()`、`getColor()` 等。
 
@@ -86,9 +87,13 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 
 ### 1.11 文本与提示
 
-- `GuiGraphics#renderTooltip(Font, Component, int, int)` 与列表/组件重载存在。
+- 1.21.11 的 `GuiGraphics` 只暴露一个 tooltip 入口（已确认）：
+  `renderTooltip(Font, List<ClientTooltipComponent>, int, int, ClientTooltipPositioner, Identifier)`。
+  `AbstractContainerScreen` 另有 `renderTooltip(GuiGraphics, int, int)`。
 - 1.21.6+ 文本颜色为 ARGB。
 - 原版可能在帧末延迟绘制 tooltip；取消/替换时必须配合该时序。
+- 滚轮入口在 `GuiEventListener#mouseScrolled(double, double, double, double)`；
+  `Screen` 本身不覆盖，`AbstractContainerScreen` 覆盖。混入目标需要按此选择。
 
 ## 2. 未验证假设
 
@@ -97,6 +102,7 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 | U1 | Paper `DiscardedPayload` 字节能到达 Fabric 注册的 payload 类型 | 整个传输依赖 | `PING`/`PONG` 真客户端 | 无理想兜底；需重新设计传输 |
 | U2 | `InventoryOpenEvent` 中的插件消息早于 `OpenScreen` | 容器预绑定 | 100 次顺序日志 | 标题哨兵 |
 | U3 | 1.21.11 `GuiGraphics#blit` / `renderTooltip` 的确切重载 | 渲染器 | 编译期读映射源码 | 只改 `FboCompositor` / `NativeBackend` |
+| U3a | 已核实：`blit(RenderPipeline, Identifier, int, int, float, float, int, int, int, int, int)` 等重载；`renderTooltip(Font, List<ClientTooltipComponent>, int, int, ClientTooltipPositioner, Identifier)` | 渲染器 | 2026-10-26 `javap` 静态核对 | 混入仍需运行验证 |
 | U4 | `HudElementRegistry` 在 0.141.x 的包名与锚点 | HUD | 编译 + 运行 | 单锚点 `addLast` |
 | U5 | `AbstractContainerScreen` 的 `leftPos/topPos` 与 `slot.x/y` 可写 | 槽位布局 | 3×3 网格 spike | 使用默认布局 |
 | U6 | Paper 1.21.11 `setResourcePack` 重载 | 资源包 | Javadoc | 旧重载/外部 URL |
@@ -105,8 +111,8 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 | U9 | 混入优先级 900 相对 REI/EMI | 界面替换 | 互操作 | 排除列表 |
 | U10 | `canSend` 需要 `playC2S` 注册 | 发送 `HELLO` | 去掉注册观察 | 两侧都注册 |
 | U11 | `StreamCodec.of` 的签名与参数顺序 | payload | 编译 | 按映射调整 |
-| U12 | `Screen#mouseScrolled` 的参数列表 | Tooltip 滚动 | 编译 | 只改混入 |
-| U13 | `BossHealthOverlay#drawBar` 可被 `@WrapOperation` 包裹 | Boss 面板 | 编译 + 运行 | HEAD 取消并自行渲染 |
+| U12 | `GuiEventListener#mouseScrolled(double, double, double, double)`（`Screen` 不覆盖） | Tooltip 滚动 | 2026-10-26 `javap` 已核对；混入运行待验证 | 只改混入 |
+| U13 | `BossHealthOverlay` 的两个私有 `drawBar` 重载可被 `@WrapOperation` 包裹 | Boss 面板 | 2026-10-26 `javap` 已核对；运行待验证 | HEAD 取消并自行渲染 |
 | U14 | `InventoryScreen` 在 1.21.11 的父类与构造 | 背包面板 | 编译 | 自定义 `AbstractContainerScreen<InventoryMenu>` |
 | U15 | 客户端打开背包一定经过 `Minecraft#setScreen` | 背包拦截 | 运行 | 仅在打开时应用，不拦截按键 |
 | U16 | 原版 Tooltip 的延迟绘制时序可被安全替换 | Tooltip 面板 | spike + 视觉 | 只改样式，不接管 |
@@ -169,7 +175,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 仍未验证：
 
 - U2：`InventoryOpenEvent` 与 `OpenScreen` 的先后顺序；需要容器 spike。
-- U3、U12、U13：`GuiGraphics` blit/tooltip、`Screen#mouseScrolled`、Boss 血条钩子。
+- U3/U3a、U12、U13：签名已用 `javap` 静态核对；混入/运行时行为仍未验证。
 - U28–U31：NanoVG 三平台原生库、FBO 合成、预乘 alpha、1.21.6 提取/绘制状态。
 - NanoVG/FBO：`NanoVgBackend.available()` 仍为 `false`，`FboCompositor` 未实现。
 - UI_DEFINITION 已能解码/校验并打开 `CloudScreen`；原生 RenderList 已支持 panel/label/button/

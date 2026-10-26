@@ -114,8 +114,8 @@ docs/
    - 断线/重连后确认分片组与 pending UI 会话被清理。
 2. **M0 的 spike**（各半天到一天）：
    - U2：`InventoryOpenEvent` 中的插件消息早于 `OpenScreen`，重复 100 次。
-   - U3/U12/U13：`GuiGraphics` 的 blit/tooltip 重载、`Screen#mouseScrolled`、
-     `BossHealthOverlay#drawBar`。
+   - U3/U12/U13：签名已核对（`GuiGraphics` tooltip、`GuiEventListener#mouseScrolled`、
+     `BossHealthOverlay#drawBar`）；还需实际混入验证。
    - U28–U31：`lwjgl-nanovg` 三平台加载、FBO 包装合成、预乘 alpha、1.21.6 提取/绘制状态。
    - 先做一个纯色面板 + 一张 TTF 文本的 NanoVG 合成 spike，确认没有色差和状态泄漏。
 3. **M2 实际渲染**：
@@ -139,7 +139,7 @@ docs/
 - 1.21.11 中 `ResourceLocation` 已改名为 `Identifier`；文档与代码统一用 `Identifier`。
 - `cloudcore-api`、`cloudcore-protocol`、`cloudcore-server-core` 不得 import Minecraft 或 Bukkit。
 - 协议服务端接收上限 32,767 字节；C2S 报文不得随文档大小增长。
-- 四个混入：`Minecraft#setScreen`、`GuiGraphics#renderTooltip`、`Screen#mouseScrolled`、
+- 四个混入：`Minecraft#setScreen`、`GuiGraphics#renderTooltip`、`GuiEventListener#mouseScrolled`、
   `BossHealthOverlay#render`。新增混入需要兼容性评审。
 - 遍历在服务端展开；客户端不执行模板或遍历逻辑。
 - 页面组合在加载期完成；客户端只接收单一文档。

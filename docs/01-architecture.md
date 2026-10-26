@@ -85,7 +85,7 @@ public interface ByteSource  { int readByte(); int readVarInt(); byte[] readByte
   - `ContainerSurfaceAdapter` —— 箱子/容器，`Minecraft#setScreen` + `AbstractContainerScreen`。
   - `PlayerInventoryAdapter` —— 玩家背包，替换 `InventoryScreen`。
   - `HudSurfaceAdapter` —— `HudElementRegistry`。
-  - `TooltipSurfaceAdapter` —— `GuiGraphics#renderTooltip` 钩子 + `Screen#mouseScrolled`。
+  - `TooltipSurfaceAdapter` —— `GuiGraphics#renderTooltip` 钩子 + `GuiEventListener#mouseScrolled`。
   - `BossBarSurfaceAdapter` —— `BossHealthOverlay#render` 钩子。
 - `LayoutEngine`：锚点、百分比、弹性布局、滚动、裁剪、遍历实例布局。
 - `RenderList`：后端无关的绘制指令（矩形、九宫格、文本、图片、裁剪、变换）。
