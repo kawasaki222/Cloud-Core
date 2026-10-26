@@ -112,7 +112,7 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 | U10 | `canSend` 需要 `playC2S` 注册 | 发送 `HELLO` | 去掉注册观察 | 两侧都注册 |
 | U11 | `StreamCodec.of` 的签名与参数顺序 | payload | 编译 | 按映射调整 |
 | U12 | `MouseHandler#onScroll(long, double, double)` 是全局滚轮入口；`Screen` 不保证覆盖 `mouseScrolled` | Tooltip 滚动 | 2026-10-26 真实客户端已核实（ContainerScreen 上滚轮进入混入） | 只改混入 |
-| U13 | `BossHealthOverlay` 的两个私有 `drawBar` 重载可被 `@WrapOperation` 包裹 | Boss 面板 | 2026-10-26 已用 `@Inject` 命中 4 参数重载；`@WrapOperation` 尚未验证 | HEAD 取消并自行渲染 |
+| U13 | `BossHealthOverlay` 的私有 `drawBar` 调用可被 `@WrapOperation` 包裹 | Boss 面板 | 2026-10-26 真实客户端已用 `@WrapOperation` 命中 `render` 内的 4 参数调用 | HEAD 取消并自行渲染 |
 | U14 | `InventoryScreen` 在 1.21.11 的父类与构造 | 背包面板 | 编译 | 自定义 `AbstractContainerScreen<InventoryMenu>` |
 | U15 | 客户端打开背包一定经过 `Minecraft#setScreen` | 背包拦截 | 运行 | 仅在打开时应用，不拦截按键 |
 | U16 | 原版 Tooltip 的延迟绘制时序可被安全替换 | Tooltip 面板 | spike + 视觉 | 只改样式，不接管 |
@@ -165,9 +165,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **Minecraft#setScreen 混入已核实**：客户端日志实际打印 `ContainerScreen` 切换，未发生 mixin 错误。
 - **U12 已核实**：`MouseHandler#onScroll(long,double,double)` 混入在 `ContainerScreen` 上收到
   `Scroll observed ... y=1.0`；全局滚轮入口成立，Tooltip 应在这里消费滚轮而不是只依赖 `Screen`。
-- **U13 部分核实 / U19 已核实**：`BossHealthOverlayMixin` 用 `@Inject` 命中私有
-  `drawBar(GuiGraphics,int,int,BossEvent)`；Paper `BossBar` 的 `\u0000CCB:probe\u0000` 标题
-  在客户端实际可见并被日志捕获。`@WrapOperation` 包裹仍待验证。
+- **U13 / U19 已核实**：`BossHealthOverlayMixin` 用 `@WrapOperation` 命中 `render` 内对私有
+  `drawBar(GuiGraphics,int,int,BossEvent)` 的调用；Paper `BossBar` 的 `\u0000CCB:probe\u0000`
+  标题在客户端实际可见并被日志捕获。
 - **U3 已核实**：`GuiGraphicsMixin` 注入 1.21.11 唯一的
   `renderTooltip(Font, List<ClientTooltipComponent>, int, int, ClientTooltipPositioner, Identifier)`；
   悬停石头时客户端实际打印 `Tooltip observed lines=1`。
@@ -188,7 +188,6 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 
 - NanoVG/FBO：`NanoVgBackend.available()` 仍为 `false`，`FboCompositor` 未实现。
 - U28–U31：NanoVG 三平台原生库、FBO 合成、预乘 alpha、1.21.6 提取/绘制状态。
-- U13：`@WrapOperation` 版本（`@Inject` 探针已命中）。
 - image/item_icon、文本整形、裁剪/滚动、真实布局容器、其余五类面板的实际替换。
 - 当前 screen/scroll/tooltip/boss 混入只是诊断探针，尚未替换绘制或输入。
 

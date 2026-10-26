@@ -99,7 +99,7 @@ docs/
 - [x] U12：`MouseHandler#onScroll` 在 ContainerScreen 上收到滚轮（真实客户端验证）
 - [x] U3：`GuiGraphics#renderTooltip` 混入在悬停石头时实际命中（lines=1）
 - [x] U19：Paper BossBar 哨兵标题在客户端可见
-- [ ] U13：私有 `drawBar` 已用 `@Inject` 命中；`@WrapOperation` 尚未验证
+- [x] U13：`@WrapOperation` 命中 `BossHealthOverlay#render` 内的私有 `drawBar` 调用
 - [x] M1 真机大报文：64,776 字节文档压缩后拆成 3 片并重组成功
 - [x] M1 压力：100 万随机帧解码（仅 ProtocolException）
 - [ ] M1 断线清理：重连后分片组与 pending UI 会话
@@ -117,7 +117,6 @@ docs/
    - 接近 1 MiB 的真机分片与超时/乱序注入。
    - 断线/重连后确认分片组与 pending UI 会话被清理。
 2. **M0 的 spike**（各半天到一天）：
-   - U13：把 `BossHealthOverlay` 的 `@Inject` 探针升级为 `@WrapOperation` 包裹。
    - U28–U31：`lwjgl-nanovg` 三平台加载、FBO 包装合成、预乘 alpha、1.21.6 提取/绘制状态。
    - 先做一个纯色面板 + 一张 TTF 文本的 NanoVG 合成 spike，确认没有色差和状态泄漏。
 3. **M2 实际渲染**：
