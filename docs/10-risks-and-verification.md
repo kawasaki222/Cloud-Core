@@ -312,7 +312,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，135 个测试 / 29 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，147 个测试 / 32 个测试类，0 失败）。
 
 仍未验证：
 

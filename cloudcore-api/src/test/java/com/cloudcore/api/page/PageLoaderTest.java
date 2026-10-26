@@ -384,6 +384,35 @@ class PageLoaderTest {
         assertEquals("b", document.elements().get(1).attributes().get("text"));
     }
 
+    @Test
+    void elementCountIsCapped() throws Exception {
+        Path page = write("many.yml", manyLabels(PageLoader.MAX_ELEMENTS + 20));
+
+        PageLoadException error = assertThrows(PageLoadException.class,
+                () -> PageLoader.loadDocument(pages, page, Map.of()));
+        assertTrue(error.getMessage().contains("Element count"), error.getMessage());
+    }
+
+    @Test
+    void pageAtTheElementLimitStillCompiles() throws Exception {
+        Path page = write("full.yml", manyLabels(PageLoader.MAX_ELEMENTS));
+
+        UiDocument document = PageLoader.loadDocument(pages, page, Map.of());
+
+        assertEquals(PageLoader.MAX_ELEMENTS, document.elements().size());
+    }
+
+    private static String manyLabels(int count) {
+        StringBuilder yaml = new StringBuilder("schema: 1\nid: many\n"
+                + "surface: custom_screen\ntitle: \"Many\"\nsize: [200, 100]\nelements:\n");
+        for (int index = 0; index < count; index++) {
+            yaml.append("  - type: label\n    id: l").append(index)
+                    .append("\n    x: 0\n    y: 0\n    text: t\n");
+        }
+        return yaml.toString();
+    }
+
+
     private Path write(String relative, String content) throws IOException {
         Path file = pages.resolve(relative);
         Files.createDirectories(file.getParent());
