@@ -58,8 +58,10 @@ public final class SurfaceRegistry {
         SurfaceRegistry registry = new SurfaceRegistry();
         registry.register(new CustomScreenAdapter(onPlayerClosed));
         registry.register(new HudSurfaceAdapter());
+        registry.register(new TooltipSurfaceAdapter());
         for (SurfaceType type : SurfaceType.values()) {
-            if (type != SurfaceType.CUSTOM_SCREEN && type != SurfaceType.HUD) {
+            if (type != SurfaceType.CUSTOM_SCREEN && type != SurfaceType.HUD
+                    && type != SurfaceType.TOOLTIP) {
                 registry.register(new UnsupportedSurfaceAdapter(type));
             }
         }

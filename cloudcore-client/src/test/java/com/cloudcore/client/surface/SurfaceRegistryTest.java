@@ -24,6 +24,8 @@ class SurfaceRegistryTest {
         for (SurfaceType type : SurfaceType.values()) {
             if (type == SurfaceType.HUD) {
                 assertInstanceOf(HudSurfaceAdapter.class, registry.get(type));
+            } else if (type == SurfaceType.TOOLTIP) {
+                assertInstanceOf(TooltipSurfaceAdapter.class, registry.get(type));
             } else if (type != SurfaceType.CUSTOM_SCREEN) {
                 assertInstanceOf(UnsupportedSurfaceAdapter.class, registry.get(type));
             }
@@ -38,7 +40,8 @@ class SurfaceRegistryTest {
 
         assertTrue(registry.canHandle(custom, null));
         assertTrue(registry.canHandle(hud, null));
-        assertFalse(registry.canHandle(request(SurfaceType.TOOLTIP), null));
+        assertTrue(registry.canHandle(request(SurfaceType.TOOLTIP), null));
+        assertFalse(registry.canHandle(request(SurfaceType.BOSS_BAR), null));
     }
 
     @Test

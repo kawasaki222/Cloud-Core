@@ -250,6 +250,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 sendDiagnostic(target);
             } else if (args[0].equalsIgnoreCase("demo-hud")) {
                 sendHudOpen(target);
+            } else if (args[0].equalsIgnoreCase("demo-tooltip")) {
+                sendTooltipOpen(target);
             } else {
                 sendDemoOpen(target, args[0].equalsIgnoreCase("demo-big"));
             }
@@ -293,10 +295,15 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core HUD demo sent."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("demo-tooltip")) {
+            sendTooltipOpen(player);
+            sender.sendMessage(Component.text("Cloud Core tooltip demo sent."));
+            return true;
+        }
         if (args.length != 1 || !args[0].equalsIgnoreCase("ping")) {
             sender.sendMessage(Component.text(
                     "Usage: /" + label
-                            + " <ping|demo|demo-big|demo-hud|probe|boss|close|diagnostic>"));
+                            + " <ping|demo|demo-big|demo-hud|demo-tooltip|probe|boss|close|diagnostic>"));
             return true;
         }
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
@@ -313,7 +320,42 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("boss")
                 || action.equalsIgnoreCase("close")
                 || action.equalsIgnoreCase("diagnostic")
-                || action.equalsIgnoreCase("demo-hud");
+                || action.equalsIgnoreCase("demo-hud")
+                || action.equalsIgnoreCase("demo-tooltip");
+    }
+
+    private void sendTooltipOpen(Player player) {
+        String uiId = "cloudcore_demo_tooltip";
+        int token = random.nextInt();
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        session.lastUiId = uiId;
+        UiOpen open = new UiOpen(uiId, 1, SurfaceType.TOOLTIP, BindMode.PERSISTENT,
+                token, RenderMode.SURFACE_NATIVE, 0, "default");
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
+                UiCodec.encodeOpen(open, Limits.S2C)));
+        String json = """
+                {
+                  "schema": 1,
+                  "id": "cloudcore_demo_tooltip",
+                  "surface": "tooltip",
+                  "title": { "runs": [ { "text": "Tooltip" } ] },
+                  "size": [320, 180],
+                  "elements": [
+                    { "id": "tooltip_panel", "type": "panel", "x": 0, "y": 0,
+                      "width": 320, "height": 180,
+                      "style": { "background": "#F0182848" } }
+                  ]
+                }
+                """;
+        UiDefinition definition = new UiDefinition(uiId, 1, 0,
+                json.getBytes(StandardCharsets.UTF_8));
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (player.isOnline()) {
+                sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
+                        UiCodec.encodeDefinition(definition, Limits.S2C)));
+            }
+        }, 1L);
+        getLogger().info("Sent tooltip UI_OPEN/UI_DEFINITION to " + player.getName());
     }
 
     private void sendHudOpen(Player player) {

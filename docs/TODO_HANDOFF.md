@@ -112,10 +112,11 @@ docs/
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
 - [x] `image` 的 `local:` PNG 加载与绘制（真机截图验证）
 - [x] HUD 面板：Fabric `HudElementRegistry` + 持久文档 + UI_CLOSE 清除（真机截图验证）
+- [x] Tooltip 面板：自定义背景 + 原生文本/图片（真机截图验证）
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
 - [ ] M2 完整渲染：NanoVG/FBO、裁剪/滚动、混入
-- [x] HUD 面板最小闭环（非其余五类面板）
-- [ ] Container / PlayerInventory / Tooltip / BossBar 的实际适配器
+- [x] HUD / Tooltip 面板最小闭环
+- [ ] Container / PlayerInventory / BossBar 的实际适配器
 - [x] 协议前向兼容：未知 `surfaceId` 保留原始值并回 `UI_READY(state=4)`
 - [ ] 协议前向兼容：未知 `BindMode` / `RenderMode`（仍拒绝）
 - [x] M0 NanoVG 初始化 + FBO 绘制 + readback（Windows x64，`cloudcore.nanovg.spike`）
