@@ -112,7 +112,7 @@
 | `text_field` | `placeholder`、`max_length`、`filter`、`sensitive`、`invalid`、`style`、`events` |
 | `checkbox` | `text`(TextRuns)、`checked`、`events` |
 | `slider` | `value`（`0..1`，已实现）、`min`/`max`/`step`/`live`（计划）、`events` |
-| `progress` | `value`、`texture_bg`、`texture_fill`、`direction` |
+| `progress` | `value`、`texture_bg`、`texture_fill`、`direction`（left/right/up/down）、`style` |
 | `inventory_grid` | `slots`、`origin`、`cell`、`gap`、`columns`、`render_slots`、`render_items` |
 | `item_icon` | `item`（id/count/components）、`scale`、`show_count`、`show_durability` |
 | `spacer` | 公共字段 |

@@ -205,12 +205,33 @@ public final class DocumentRenderListBuilder {
             case "progress" -> {
                 int w = width > 0 ? width : parentWidth;
                 int h = height > 0 ? height : 8;
-                addFill(commands, x, y, w, h, 0xAA202020);
-                double value = number(attribute(element, "value"), 0.0);
-                int fill = (int) Math.round(w * Math.max(0.0, Math.min(1.0, value)));
-                if (fill > 0) {
-                    addFill(commands, x, y, fill, h, 0xFF3C8CE7);
+                Object background = attribute(element, "texture_bg");
+                if (background instanceof String reference && isSupportedTexture(reference)) {
+                    addImage(commands, reference, x, y, w, h);
+                } else {
+                    addFill(commands, x, y, w, h, color(style(element, "background"), 0xAA202020));
                 }
+                double value = Math.max(0.0, Math.min(1.0,
+                        number(attribute(element, "value"), 0.0)));
+                // The fill keeps its full size and is clipped, so texture_fill is never squashed.
+                Object direction = attribute(element, "direction");
+                int[] area = progressFill(x, y, w, h, value,
+                        direction instanceof String text ? text : null);
+                if (area[2] > 0 && area[3] > 0) {
+                    Object fillTexture = attribute(element, "texture_fill");
+                    if (fillTexture instanceof String reference
+                            && isSupportedTexture(reference)) {
+                        commands.add(new RenderCommand.ClipPush(area[0], area[1], area[2],
+                                area[3]));
+                        addImage(commands, reference, x, y, w, h);
+                        commands.add(new RenderCommand.ClipPop());
+                    } else {
+                        addFill(commands, area[0], area[1], area[2], area[3],
+                                color(style(element, "fill_color"), 0xFF3C8CE7));
+                    }
+                }
+                childWidth = w;
+                childHeight = h;
             }
             case "image" -> {
                 Object texture = attribute(element, "texture");
@@ -339,6 +360,24 @@ public final class DocumentRenderListBuilder {
         if (width > 0 && height > 0 && commands.size() < MAX_COMMANDS) {
             commands.add(new RenderCommand.FillRect(x, y, width, height, argb));
         }
+    }
+
+    /**
+     * Rect of the filled part of a progress bar ({@code x, y, width, height}).
+     * {@code direction} is {@code left} (default), {@code right}, {@code up} or {@code down}.
+     */
+    private static int[] progressFill(int x, int y, int width, int height, double value,
+            String direction) {
+        int fillWidth = (int) Math.round(width * value);
+        int fillHeight = (int) Math.round(height * value);
+        String normalised = direction == null ? "left"
+                : direction.trim().toLowerCase(java.util.Locale.ROOT);
+        return switch (normalised) {
+            case "right" -> new int[]{x + width - fillWidth, y, fillWidth, height};
+            case "up" -> new int[]{x, y + height - fillHeight, width, fillHeight};
+            case "down" -> new int[]{x, y, width, fillHeight};
+            default -> new int[]{x, y, fillWidth, height};
+        };
     }
 
     /** A 1px outline; skipped entirely when the colour is fully transparent. */

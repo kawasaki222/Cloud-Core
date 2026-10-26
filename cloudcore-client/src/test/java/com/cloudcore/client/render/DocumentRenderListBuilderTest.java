@@ -393,6 +393,65 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
+    void progressFillsFromTheRequestedDirection() {
+        UiElement left = progress("a", 0, 0, 100, 10, 0.4, null);
+        UiElement right = progress("b", 0, 20, 100, 10, 0.4, "right");
+        UiElement up = progress("c", 0, 40, 10, 100, 0.5, "up");
+        UiElement down = progress("d", 20, 40, 10, 100, 0.5, "down");
+        UiDocument document = new UiDocument(1, "bars", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 200, 1.0f, null,
+                Map.of(), Map.of(), List.of(left, right, up, down));
+
+        List<RenderCommand> commands = DocumentRenderListBuilder.build(document, 200, 200)
+                .commands();
+        assertEquals(40, ((RenderCommand.FillRect) commands.get(1)).width(), "left: 40% wide");
+        assertEquals(0, ((RenderCommand.FillRect) commands.get(1)).x());
+        RenderCommand.FillRect rightFill = (RenderCommand.FillRect) commands.get(3);
+        assertEquals(60, rightFill.x(), "right: fill starts 40% from the right");
+        assertEquals(40, rightFill.width());
+        RenderCommand.FillRect upFill = (RenderCommand.FillRect) commands.get(5);
+        assertEquals(90, upFill.y(), "up: fill hangs from the bottom");
+        assertEquals(50, upFill.height());
+        RenderCommand.FillRect downFill = (RenderCommand.FillRect) commands.get(7);
+        assertEquals(40, downFill.y(), "down: fill starts at the top");
+        assertEquals(50, downFill.height());
+    }
+
+    @Test
+    void progressTextureFillIsClippedInsteadOfSquashed() {
+        UiElement bar = new UiElement("hp", "progress", 0, 0, "100", "10",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("value", 0.5,
+                        "texture_bg", "pack:minecraft:block/diamond_block",
+                        "texture_fill", "pack:minecraft:block/emerald_block"));
+        UiDocument document = new UiDocument(1, "bar", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(bar));
+
+        List<RenderCommand> commands = DocumentRenderListBuilder.build(document, 200, 100)
+                .commands();
+        assertEquals("pack:minecraft:block/diamond_block",
+                ((RenderCommand.Image) commands.get(0)).texture());
+        RenderCommand.ClipPush clip = (RenderCommand.ClipPush) commands.get(1);
+        assertEquals(50, clip.width(), "half the bar is visible");
+        RenderCommand.Image fill = (RenderCommand.Image) commands.get(2);
+        assertEquals("pack:minecraft:block/emerald_block", fill.texture());
+        assertEquals(100, fill.width(), "the texture keeps its full size and is clipped");
+        assertTrue(commands.get(3) instanceof RenderCommand.ClipPop);
+    }
+
+    private static UiElement progress(String id, int x, int y, int width, int height,
+            double value, String direction) {
+        java.util.HashMap<String, Object> attributes = new java.util.HashMap<>();
+        attributes.put("value", value);
+        if (direction != null) {
+            attributes.put("direction", direction);
+        }
+        return new UiElement(id, "progress", x, y, String.valueOf(width),
+                String.valueOf(height), true, true, 0, Map.of(), List.of(), attributes);
+    }
+
+    @Test
     void resolvesPercentAndFillDimensions() {
         UiElement panel = new UiElement("root", "panel", 0, 0, "50%", "fill",
                 true, true, 0, Map.of(), List.of(), Map.of());

@@ -277,6 +277,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `REJECTED` 且状态不变；未注册动作名写 `Unsupported action ...` 并回 `EVENT_RESULT(REJECTED)`
   （客户端日志 `status=1 (REJECTED)`）。动作名规则有 `ActionNamesTest`。
   截图：`api-demo1.png`、`api-demo3.png`。
+- **progress 已核实**：`/cloudcore page progress_demo` 同时画出 left（60%）、right（35%，从右往左）、
+  up（70%，底部对齐）、down（70%，顶部对齐）四种方向；`texture_bg` 钻石块 + `texture_fill`
+  绿宝石块的进度条按 50% 裁剪，纹理没有被拉伸（`progress-demo1.png`）。把滑块点到 80% 后
+  服务端 `state={hp=0.8025}`，`value: "${state.hp}"` 的进度条与 `hp = ...` 标签同步更新
+  （`progress-demo2.png`）。`DocumentRenderListBuilderTest` 覆盖四种方向的填充矩形与裁剪命令。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
@@ -361,7 +366,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，173 个测试 / 36 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，175 个测试 / 36 个测试类，0 失败）。
 
 仍未验证：
 

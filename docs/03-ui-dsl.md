@@ -513,15 +513,30 @@ YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范�
 
 ### 5.8 `progress`
 
+已实现：`value`（`0..1`）、`direction`（`left` 默认 / `right` / `up` / `down`）、
+`texture_bg` 与 `texture_fill`（贴图引用，填充贴图按 `value` 裁剪而不是压扁）、
+`style.background` 与 `style.fill_color`（颜色路径）。
+
 ```yaml
 - type: progress
   id: hp
-  width: 100
-  height: 8
-  value: 0.75
-  texture_bg: "tx:bar_bg"
-  texture_fill: "tx:bar_fill"
+  x: 12
+  y: 66
+  width: 200
+  height: 12
+  value: "${state.hp}"
+  direction: right
+  texture_bg: "pack:minecraft:block/diamond_block"
+  texture_fill: "pack:minecraft:block/emerald_block"
+  style:
+    fill_color: "#FF3C8CE7"     # 没有 texture_fill 时用这个颜色
 ```
+
+- 填充区宽/高按 `value` 取整；贴图填充把整张图按进度条的宽高绘制后裁剪到填充区，
+  所以纹理不会被拉伸变形。
+- `value` 可以来自状态：`set_state` 后文档重编译，进度条随新值更新
+  （见 `pages/progress_demo.yml` 的滑块 → 进度条联动）。
+- 九宫格背景、圆角与分段（`segments`）尚未实现。
 
 ### 5.8b 背景贴图与富文本
 

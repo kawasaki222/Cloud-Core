@@ -1,0 +1,105 @@
+# 进度条示例：四种方向、贴图背景/填充、由状态驱动的数值
+# /cloudcore page progress_demo <玩家>
+schema: 1
+id: progress_demo
+surface: custom_screen
+title: "Progress Demo"
+theme: dark
+size: [240, 140]
+state:
+  hp: 0.5
+includes: []
+elements:
+  - type: panel
+    id: root
+    x: 0
+    y: 0
+    width: fill
+    height: fill
+    style:
+      background: "#CC202830"
+  - type: label
+    id: heading
+    x: 12
+    y: 8
+    text: "progress 四个方向 + 贴图"
+    color: "#FFFFFFFF"
+
+  - type: progress
+    id: bar_left
+    x: 12
+    y: 26
+    width: 120
+    height: 10
+    value: 0.6
+  - type: progress
+    id: bar_right
+    x: 12
+    y: 42
+    width: 120
+    height: 10
+    value: 0.35
+    direction: right
+    style:
+      background: "#AA202020"
+      fill_color: "#FFE79A3C"
+
+  - type: progress
+    id: bar_up
+    x: 150
+    y: 26
+    width: 12
+    height: 50
+    value: 0.7
+    direction: up
+    style:
+      fill_color: "#FF6ED05C"
+  - type: progress
+    id: bar_down
+    x: 172
+    y: 26
+    width: 12
+    height: 50
+    value: 0.7
+    direction: down
+    style:
+      fill_color: "#FF4FA3E8"
+
+  - type: progress
+    id: bar_texture
+    x: 12
+    y: 66
+    width: 200
+    height: 12
+    value: 0.5
+    texture_bg: "pack:minecraft:block/diamond_block"
+    texture_fill: "pack:minecraft:block/emerald_block"
+
+  # 用滑块驱动一条进度条：滑块 change 上报比例 → set_state → 文档重编译
+  - type: slider
+    id: hp_slider
+    x: 12
+    y: 90
+    width: 200
+    height: 6
+    value: "${state.hp}"
+    on:
+      change:
+        - action: set_state
+          key: hp
+          value: "${amount}"
+  - type: label
+    id: hp_label
+    x: 12
+    y: 100
+    text: "hp = ${state.hp}"
+    color: "#FFB8F0FF"
+  - type: progress
+    id: bar_state
+    x: 12
+    y: 114
+    width: 200
+    height: 8
+    value: "${state.hp}"
+    style:
+      fill_color: "#FFD05C8E"

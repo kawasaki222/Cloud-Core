@@ -14,7 +14,7 @@
   `set_state` 重编译后推送更高 revision。
 - 客户端：六类面板 + RenderList（文字/富文本/图片/九宫格/背景贴图/裁剪/滚动/悬停/物品图标/GIF/URL 贴图）；
   NanoVG 后端与 FBO 合成（opt-in）；客户端日志与诊断码。
-- 构建：`./gradlew build` 通过，173 个测试 / 36 个类，0 失败。
+- 构建：`./gradlew build` 通过，175 个测试 / 36 个类，0 失败。
 
 ## 已有内容
 
@@ -109,6 +109,8 @@ docs/
 - [ ] `text_field` 剩余：`padding` 补偿、光标/选区颜色、清除按钮
 - [x] `checkbox`：`checked` 绘制 + `change{checked}` → `set_state` 往返（真机验证）
 - [x] `icon_button` 与 `button.icon`：贴图引用或 `{item, count}`，物品图标按按钮缩放（真机验证 + 单测）
+- [x] `progress`：四种方向、贴图背景/填充按进度裁剪、状态驱动（真机验证 + 单测）
+- [ ] `progress` 剩余：九宫格背景、圆角、分段（segments）
 - [ ] `button`/`icon_button` 剩余：`pressed` / `disabled` 样式
 - [x] `slider`：`value` 填充 + 点击比例 `change{amount}` → `set_state` 往返（真机验证）
 - [x] 附属插件 API：`CloudCoreApi.open/registerActionHandler/unregister/isModded` 经
