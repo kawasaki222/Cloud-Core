@@ -57,3 +57,19 @@ elements:
         text: "${i}. ${entry.name} - ${entry.price}"
         style:
           background: "#FF3C6E9F"
+        on:
+          click:
+            - action: message
+              value: "选择了 ${entry.name}（${entry.price} 金）"
+  - type: button
+    id: close_button
+    x: 232
+    y: 96
+    width: 72
+    height: 20
+    text: "关闭"
+    style:
+      background: "#FF9F3C6E"
+    on:
+      click:
+        - action: close_ui

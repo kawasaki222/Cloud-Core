@@ -38,6 +38,48 @@ import org.yaml.snakeyaml.constructor.SafeConstructor;
  * <p>Pure Java: no Minecraft or Bukkit types.
  */
 public final class PageLoader {
+
+    /** One server-side action compiled from {@code on: {event: [ ... ]}}. */
+    public record PageAction(String type, Map<String, Object> params) {
+        public PageAction {
+            Objects.requireNonNull(type, "type");
+            params = Map.copyOf(Objects.requireNonNull(params, "params"));
+        }
+    }
+
+    /**
+     * The document plus what stays on the server: action bodies and the state snapshot the
+     * page was expanded from (used to resolve {@code ${state.x}} when an action runs).
+     */
+    public record CompiledPage(UiDocument document,
+            Map<Integer, List<PageAction>> actions,
+            Map<String, Object> state) {
+        public CompiledPage {
+            Objects.requireNonNull(document, "document");
+            Objects.requireNonNull(state, "state");
+            actions = Map.copyOf(actions);
+            state = Map.copyOf(state);
+        }
+    }
+
+    private static final class BuildContext {
+        private final String pageId;
+        private final Map<Integer, List<PageAction>> actions = new LinkedHashMap<>();
+        private final Set<Integer> usedActionIds = new LinkedHashSet<>();
+
+        private BuildContext(String pageId) {
+            this.pageId = pageId;
+        }
+
+        private int actionId(String elementId, String event) {
+            int candidate = Math.floorMod((pageId + "|" + elementId + "|" + event).hashCode(),
+                    65534) + 1;
+            while (!usedActionIds.add(candidate)) {
+                candidate = candidate % 65534 + 1;
+            }
+            return candidate;
+        }
+    }
     public static final int MAX_INCLUDE_DEPTH = 8;
     public static final int MAX_FRAGMENT_FILES = 64;
     public static final int MAX_REPEAT_INSTANCES = 256;
@@ -58,7 +100,12 @@ public final class PageLoader {
      * @param pageFile  {@code page.yml} or a single-file page
      * @param state     state snapshot used for templates and repeat expansion
      */
-    public static UiDocument load(Path pagesRoot, Path pageFile, Map<String, Object> state)
+    public static UiDocument loadDocument(Path pagesRoot, Path pageFile, Map<String, Object> state)
+            throws PageLoadException {
+        return load(pagesRoot, pageFile, state).document();
+    }
+
+    public static CompiledPage load(Path pagesRoot, Path pageFile, Map<String, Object> state)
             throws PageLoadException {
         Objects.requireNonNull(pagesRoot, "pagesRoot");
         Objects.requireNonNull(pageFile, "pageFile");
@@ -99,11 +146,13 @@ public final class PageLoader {
 
         Map<String, Object> scope = new LinkedHashMap<>();
         scope.put("state", mergedState);
-        List<UiElement> elements = buildElements(mergedElements, scope, "");
+        String pageId = requireString(manifest, "id");
+        BuildContext context = new BuildContext(pageId);
+        List<UiElement> elements = buildElements(mergedElements, scope, "", context);
 
         UiDocument document = new UiDocument(
                 intValue(manifest.get("schema"), UiDocument.CURRENT_SCHEMA),
-                requireString(manifest, "id"),
+                pageId,
                 surface(requireString(manifest, "surface")),
                 title(manifest.get("title")),
                 optionalString(manifest.get("theme")),
@@ -120,7 +169,7 @@ public final class PageLoader {
             ValidationIssue issue = validation.errors().get(0);
             throw new PageLoadException(issue.code() + " " + issue.path() + ": " + issue.message());
         }
-        return document;
+        return new CompiledPage(document, context.actions, mergedState);
     }
 
     private static void mergeInclude(Path root, Path baseDir, String relative,
@@ -175,7 +224,7 @@ public final class PageLoader {
                 throw new PageLoadException("Page file exceeds " + MAX_FILE_BYTES + " bytes: "
                         + file.getFileName());
             }
-            String text = Files.readString(file, StandardCharsets.UTF_8);
+            String text = quoteEventKeys(Files.readString(file, StandardCharsets.UTF_8));
             LoaderOptions options = new LoaderOptions();
             options.setAllowDuplicateKeys(false);
             options.setMaxAliasesForCollections(16);
@@ -192,6 +241,15 @@ public final class PageLoader {
             throw new PageLoadException("Invalid YAML in " + file.getFileName() + ": "
                     + exception.getMessage(), exception);
         }
+    }
+
+    /**
+     * YAML 1.1 resolves the bare key {@code on} to boolean true, but {@code on:} is the
+     * documented event key. Quoting it at the source keeps SnakeYAML's safe constructor and
+     * avoids a custom resolver.
+     */
+    private static String quoteEventKeys(String text) {
+        return text.replaceAll("(?m)^(\\s*)on:(\\s|$)", "$1\"on\":$2");
     }
 
     private static void appendElements(Object raw, List<Map<String, Object>> target)
@@ -211,14 +269,15 @@ public final class PageLoader {
     }
 
     private static List<UiElement> buildElements(List<Map<String, Object>> raw,
-            Map<String, Object> scope, String idPrefix) throws PageLoadException {
+            Map<String, Object> scope, String idPrefix, BuildContext context)
+            throws PageLoadException {
         List<UiElement> elements = new ArrayList<>();
         for (Map<String, Object> element : raw) {
             if ("repeat".equals(String.valueOf(element.get("type")))) {
-                elements.addAll(expandRepeat(element, scope, idPrefix));
+                elements.addAll(expandRepeat(element, scope, idPrefix, context));
                 continue;
             }
-            elements.add(buildElement(element, scope, idPrefix));
+            elements.add(buildElement(element, scope, idPrefix, 0, context));
             if (elements.size() > MAX_ELEMENTS) {
                 throw new PageLoadException("Element count exceeds " + MAX_ELEMENTS);
             }
@@ -227,7 +286,8 @@ public final class PageLoader {
     }
 
     private static List<UiElement> expandRepeat(Map<String, Object> repeat,
-            Map<String, Object> scope, String idPrefix) throws PageLoadException {
+            Map<String, Object> scope, String idPrefix, BuildContext context)
+            throws PageLoadException {
         String repeatId = String.valueOf(repeat.get("id"));
         Object source = resolveTemplate(repeat.get("source"), scope);
         if (!(source instanceof List<?> items)) {
@@ -258,10 +318,11 @@ public final class PageLoader {
                 }
                 Map<String, Object> materialised = toStringMap(childMap);
                 if ("repeat".equals(String.valueOf(materialised.get("type")))) {
-                    result.addAll(expandRepeat(materialised, instanceScope, instancePrefix));
+                    result.addAll(expandRepeat(materialised, instanceScope, instancePrefix,
+                            context));
                 } else {
                     result.add(buildElement(materialised, instanceScope, instancePrefix,
-                            yOffset));
+                            yOffset, context));
                 }
             }
         }
@@ -282,12 +343,7 @@ public final class PageLoader {
     }
 
     private static UiElement buildElement(Map<String, Object> raw, Map<String, Object> scope,
-            String idPrefix) throws PageLoadException {
-        return buildElement(raw, scope, idPrefix, 0);
-    }
-
-    private static UiElement buildElement(Map<String, Object> raw, Map<String, Object> scope,
-            String idPrefix, int yOffset) throws PageLoadException {
+            String idPrefix, int yOffset, BuildContext context) throws PageLoadException {
         Object rawId = raw.get("id");
         if (!(rawId instanceof String id) || id.isBlank()) {
             throw new PageLoadException("Element is missing an id");
@@ -298,7 +354,8 @@ public final class PageLoader {
         }
         Map<String, Object> attributes = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
-            if (!STRUCTURE_FIELDS.contains(entry.getKey())) {
+            // Action bodies stay on the server; the document only carries events map.
+            if (!STRUCTURE_FIELDS.contains(entry.getKey()) && !"on".equals(entry.getKey())) {
                 attributes.put(entry.getKey(), applyTemplate(entry.getValue(), scope));
             }
         }
@@ -311,9 +368,10 @@ public final class PageLoader {
                 }
                 childMaps.add(toStringMap(childMap));
             }
-            children = buildElements(childMaps, scope, idPrefix + id + ".");
+            children = buildElements(childMaps, scope, idPrefix + id + ".", context);
         }
         String fullId = idPrefix + id;
+        Map<String, Integer> events = compileEvents(raw.get("on"), fullId, scope, context);
 
         return new UiElement(
                 fullId,
@@ -325,9 +383,61 @@ public final class PageLoader {
                 !Boolean.FALSE.equals(raw.get("visible")),
                 !Boolean.FALSE.equals(raw.get("enabled")),
                 (int) number(raw.get("z"), 0),
-                Map.of(),
+                events,
                 children,
                 attributes);
+    }
+
+    /**
+     * Compiles {@code on: {event: [actions]}} into the document's {@code events} map
+     * (event -> actionId) and keeps the action bodies for the server.
+     */
+    private static Map<String, Integer> compileEvents(Object raw, String elementId,
+            Map<String, Object> scope, BuildContext context) throws PageLoadException {
+        if (raw == null) {
+            return Map.of();
+        }
+        if (!(raw instanceof Map<?, ?> onMap)) {
+            throw new PageLoadException("Element '" + elementId + "' has a non-mapping 'on'");
+        }
+        Map<String, Integer> events = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : onMap.entrySet()) {
+            String event = String.valueOf(entry.getKey());
+            Object rawActions = entry.getValue();
+            if (rawActions == null) {
+                continue;
+            }
+            Object resolved = applyTemplate(rawActions, scope);
+            List<PageAction> actions = new ArrayList<>();
+            if (resolved instanceof List<?> list) {
+                for (Object item : list) {
+                    actions.add(toAction(item, elementId));
+                }
+            } else {
+                actions.add(toAction(resolved, elementId));
+            }
+            int actionId = context.actionId(elementId, event);
+            context.actions.put(actionId, actions);
+            events.put(event, actionId);
+        }
+        return events;
+    }
+
+    private static PageAction toAction(Object raw, String elementId) throws PageLoadException {
+        if (!(raw instanceof Map<?, ?> map)) {
+            throw new PageLoadException("Action in '" + elementId + "' must be a mapping");
+        }
+        Object type = map.get("action");
+        if (!(type instanceof String name) || name.isBlank()) {
+            throw new PageLoadException("Action in '" + elementId + "' is missing 'action'");
+        }
+        Map<String, Object> params = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            if (!"action".equals(String.valueOf(entry.getKey()))) {
+                params.put(String.valueOf(entry.getKey()), entry.getValue());
+            }
+        }
+        return new PageAction(name, params);
     }
 
     /** Replaces {@code ${state.x}}, {@code ${item.field}} and {@code ${i}} in strings. */

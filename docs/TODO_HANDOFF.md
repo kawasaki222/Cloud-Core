@@ -111,7 +111,8 @@ docs/
 - [x] M2 骨架：SurfaceRegistry/SurfaceAdapter/SurfaceProvider、UiDocument、RenderBackend、CloudScreen
 - [x] M2 文档链路：UI_DEFINITION 解码、校验、`CloudScreen` 打开
 - [x] M3 核心：YAML 页面加载、`includes` 合并、`repeat` 展开、模板替换、JSON 回写（真机验证）
-- [ ] M3 剩余：热重载/依赖图、`/cloudcore validate`、动作 `on:` 绑定
+- [x] 事件链路：`EVENT` 编解码、点击命中、服务端动作表（`message`/`close_ui`，真机验证）
+- [ ] M3 剩余：热重载/依赖图、`/cloudcore validate`、`set_state`/`command` 与 `EVENT_RESULT`
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
 - [x] `image` 的 `local:`/`pack:`/`builtin:` 贴图，以及 `item_icon`（原生物品、数量、缩放）（真机截图验证）
 - [x] HUD 面板：Fabric `HudElementRegistry` + 持久文档 + UI_CLOSE 清除（真机截图验证）

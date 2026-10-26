@@ -72,6 +72,8 @@ public final class CloudCorePlugin extends JavaPlugin
     private final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
     private final SecureRandom random = new SecureRandom();
     private java.nio.file.Path pagesRoot;
+    private final Map<String, com.cloudcore.api.page.PageLoader.CompiledPage> compiledPages =
+            new ConcurrentHashMap<>();
 
     @Override
     public void onEnable() {
@@ -151,9 +153,54 @@ public final class CloudCorePlugin extends JavaPlugin
             case Opcode.PONG -> handlePong(player, session, frame);
             case Opcode.UI_READY -> handleUiReady(player, frame);
             case Opcode.UI_CLOSED -> handleUiClosed(player, frame);
+            case Opcode.EVENT -> handleEvent(player, session, frame);
             default -> getLogger().info("Unhandled C2S opcode=0x"
                     + Integer.toHexString(frame.opcode()) + " bytes=" + frame.bodyLength()
                     + " player=" + player.getUniqueId());
+        }
+    }
+
+    /**
+     * Executes the actions the page compiler attached to this action id. Action bodies never
+     * travel to the client; the client only echoes the id it received in the document.
+     */
+    private void handleEvent(Player player, Session session, Frame frame) {
+        com.cloudcore.protocol.UiEvent event;
+        try {
+            event = com.cloudcore.protocol.EventCodec.decode(frame.body(), Limits.C2S);
+        } catch (ProtocolException exception) {
+            getLogger().warning("Malformed EVENT from " + player.getName() + ": "
+                    + exception.getMessage());
+            return;
+        }
+        com.cloudcore.api.page.PageLoader.CompiledPage page = compiledPages.get(event.uiId());
+        java.util.List<com.cloudcore.api.page.PageLoader.PageAction> actions =
+                page == null ? null : page.actions().get(event.actionId());
+        if (actions == null) {
+            getLogger().warning("EVENT for unknown action ui=" + event.uiId()
+                    + " element=" + event.elementId() + " action=" + event.actionId()
+                    + " player=" + player.getName());
+            return;
+        }
+        getLogger().info("EVENT ui=" + event.uiId() + " element=" + event.elementId()
+                + " actions=" + actions.size() + " player=" + player.getName());
+        for (com.cloudcore.api.page.PageLoader.PageAction action : actions) {
+            executeAction(player, page, action);
+        }
+    }
+
+    private void executeAction(Player player,
+            com.cloudcore.api.page.PageLoader.CompiledPage page,
+            com.cloudcore.api.page.PageLoader.PageAction action) {
+        switch (action.type().toLowerCase(java.util.Locale.ROOT)) {
+            case "close_ui", "close" -> sendClose(player);
+            case "message" -> {
+                Object text = action.params().getOrDefault("value",
+                        action.params().getOrDefault("text", ""));
+                player.sendMessage(Component.text(String.valueOf(text)));
+            }
+            default -> getLogger().warning("Unsupported action '" + action.type()
+                    + "' from page " + page.document().id() + " (planned for the action engine)");
         }
     }
 
@@ -842,13 +889,15 @@ public final class CloudCorePlugin extends JavaPlugin
             getLogger().warning("Page not found: " + name + " under " + pagesRoot);
             return;
         }
-        UiDocument document;
+        com.cloudcore.api.page.PageLoader.CompiledPage compiled;
         try {
-            document = com.cloudcore.api.page.PageLoader.load(pagesRoot, pageFile, Map.of());
+            compiled = com.cloudcore.api.page.PageLoader.load(pagesRoot, pageFile, Map.of());
         } catch (com.cloudcore.api.page.PageLoadException exception) {
             getLogger().warning("Page '" + name + "' failed to load: " + exception.getMessage());
             return;
         }
+        UiDocument document = compiled.document();
+        compiledPages.put(document.id(), compiled);
         if (document.surface() != SurfaceType.CUSTOM_SCREEN) {
             getLogger().warning("Page '" + name + "' uses surface " + document.surface()
                     + "; /cloudcore page only opens custom screens");

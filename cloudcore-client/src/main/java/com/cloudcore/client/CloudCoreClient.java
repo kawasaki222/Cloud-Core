@@ -63,9 +63,11 @@ public final class CloudCoreClient implements ClientModInitializer {
 
     private static SurfaceRegistry surfaceRegistry;
     private final FragmentAssembler assembler = new FragmentAssembler(Limits.S2C);
+    private static final java.util.concurrent.atomic.AtomicInteger EVENT_REQUEST_ID =
+            new java.util.concurrent.atomic.AtomicInteger();
     private final Map<String, OpenRequest> pendingOpens = new HashMap<>();
     private final Map<String, UiDefinition> pendingDefinitions = new HashMap<>();
-    private volatile boolean handshakeComplete;
+    private static volatile boolean handshakeComplete;
 
     @Override
     public void onInitializeClient() {
@@ -273,6 +275,25 @@ public final class CloudCoreClient implements ClientModInitializer {
             LOGGER.info(line, diagnostic.code(), diagnostic.scope(), trace,
                     diagnostic.message(), diagnostic.detail());
         }
+    }
+
+    /**
+     * Sends one UI event. The action id comes from the document's {@code events} map, so the
+     * client never decides what an action does.
+     */
+    public static void sendEvent(String uiId, String elementId, int actionId,
+            java.util.Map<String, com.cloudcore.protocol.WireValue> payload) {
+        if (!handshakeComplete) {
+            LOGGER.debug("Dropping event before handshake: {}/{}", uiId, elementId);
+            return;
+        }
+        int requestId = EVENT_REQUEST_ID.incrementAndGet();
+        com.cloudcore.protocol.UiEvent event = new com.cloudcore.protocol.UiEvent(
+                requestId, uiId, elementId, actionId, payload);
+        sendFrame(new Frame(ProtocolVersion.MAJOR, 0, Opcode.EVENT,
+                com.cloudcore.protocol.EventCodec.encode(event, Limits.C2S)));
+        LOGGER.debug("Sent EVENT request={} ui={} element={} action={}",
+                requestId, uiId, elementId, actionId);
     }
 
     private void sendPlayerClosed(String uiId) {

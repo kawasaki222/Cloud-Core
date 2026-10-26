@@ -54,7 +54,7 @@ class PageLoaderTest {
                         text: "${i}: ${item.name}"
                 """);
 
-        UiDocument document = PageLoader.load(pages, page, Map.of());
+        UiDocument document = PageLoader.loadDocument(pages, page, Map.of());
 
         assertEquals(SurfaceType.CUSTOM_SCREEN, document.surface());
         assertEquals("shop", document.id());
@@ -112,7 +112,7 @@ class PageLoaderTest {
                     text: "${state.title}"
                 """);
 
-        UiDocument document = PageLoader.load(pages, page, Map.of());
+        UiDocument document = PageLoader.loadDocument(pages, page, Map.of());
 
         List<String> ids = document.elements().stream().map(UiElement::id).toList();
         assertEquals(List.of("common_label", "header_label", "page_label"), ids);
@@ -138,7 +138,7 @@ class PageLoaderTest {
                 """);
 
         PageLoadException error = assertThrows(PageLoadException.class,
-                () -> PageLoader.load(pages, page, Map.of()));
+                () -> PageLoader.loadDocument(pages, page, Map.of()));
         assertTrue(error.getMessage().contains("must not declare 'id'"), error.getMessage());
     }
 
@@ -163,7 +163,7 @@ class PageLoaderTest {
                 """);
 
         PageLoadException error = assertThrows(PageLoadException.class,
-                () -> PageLoader.load(pages, page, Map.of()));
+                () -> PageLoader.loadDocument(pages, page, Map.of()));
         assertTrue(error.getMessage().contains("cycle"), error.getMessage());
     }
 
@@ -182,7 +182,67 @@ class PageLoaderTest {
                     children: []
                 """);
 
-        assertThrows(PageLoadException.class, () -> PageLoader.load(pages, page, Map.of()));
+        assertThrows(PageLoadException.class,
+                () -> PageLoader.loadDocument(pages, page, Map.of()));
+    }
+
+    @Test
+    void compilesActionsIntoEventIdsAndKeepsBodiesServerSide() throws Exception {
+        Path page = write("actions.yml", """
+                schema: 1
+                id: actions
+                surface: custom_screen
+                title: "Actions"
+                size: [200, 100]
+                elements:
+                  - type: button
+                    id: close_button
+                    x: 8
+                    y: 8
+                    width: 80
+                    height: 20
+                    text: "Close"
+                    on:
+                      click:
+                        - action: close_ui
+                """);
+
+        PageLoader.CompiledPage compiled = PageLoader.load(pages, page, Map.of());
+
+        UiElement button = compiled.document().elements().get(0);
+        assertEquals(1, button.events().size());
+        int actionId = button.events().get("click");
+        assertTrue(actionId > 0);
+        java.util.List<PageLoader.PageAction> actions = compiled.actions().get(actionId);
+        assertEquals("close_ui", actions.get(0).type());
+        assertTrue(compiled.document().elements().get(0).attributes().get("on") == null,
+                "action bodies never reach the client");
+    }
+
+    @Test
+    void actionIdsAreStableAcrossLoads() throws Exception {
+        Path page = write("stable.yml", """
+                schema: 1
+                id: stable
+                surface: custom_screen
+                title: "Stable"
+                size: [200, 100]
+                elements:
+                  - type: button
+                    id: b
+                    x: 0
+                    y: 0
+                    text: "B"
+                    on:
+                      click: [ { action: close_ui } ]
+                """);
+
+        int first = PageLoader.load(pages, page, Map.of()).document().elements().get(0)
+                .events().get("click");
+        int second = PageLoader.load(pages, page, Map.of()).document().elements().get(0)
+                .events().get("click");
+
+        assertEquals(first, second);
     }
 
     private Path write(String relative, String content) throws IOException {

@@ -350,7 +350,7 @@ u16    ttlSeconds   # 0 表示按内容哈希永久缓存
 | --- | --- | --- |
 | `0x80` | `HELLO` | `u16 protoMajor, u16 protoMinor, string modVersion, u16 features, string locale, u16 guiScale, u16 scaledWidth, u16 scaledHeight` |
 | `0x81` | `UI_READY` | `string uiId, varint revision, u32 token, u8 surface, u8 state, string detail` |
-| `0x82` | `EVENT` | `varint requestId, string uiId, string elementId, u16 actionId, varint payloadLen, WireValue payload` |
+| `0x82` | `EVENT` | `varint requestId, string uiId, string elementId, u16 actionId, varint payloadLen, WireValue payload`（已实现，`EventCodec`） |
 | `0x83` | `UI_CLOSED` | `string uiId, u8 reason` |
 | `0x84` | `TEXTURE_REQUEST` | `string key`（请求服务端代理或重发内联贴图） |
 | `0x85` | `PONG` | `u32 nonce, u64 clientTimeMs` |
@@ -425,6 +425,10 @@ u16    ttlSeconds   # 0 表示按内容哈希永久缓存
 | `key` | int32 | 按键 |
 
 `actionId` 由服务端编译时分配，由元素 id + 事件名派生，保存于文档。重排 YAML 不会改变它。
+实现：`PageLoader` 用 `hash(pageId|elementId|event) mod 65534 + 1` 生成，冲突时顺延；动作体只留在服务端
+（`CompiledPage.actions()`），文档里只有 `events: {click: actionId}`。
+客户端点击命中元素后用文档里的 actionId 发 `EVENT`，payload 至少含 `button`、`shift`。
+服务端当前执行 `message`、`close_ui` 两种动作；`EVENT_RESULT` 尚未下发（动作引擎 v1 一并补）。
 
 `requestId` 客户端单调递增，每条连接从 1 开始。1 秒内重复的 `requestId` 返回缓存结果。
 

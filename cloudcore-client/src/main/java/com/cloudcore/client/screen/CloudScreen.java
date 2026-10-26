@@ -101,6 +101,26 @@ public final class CloudScreen extends Screen {
     }
 
     @Override
+    public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+        com.cloudcore.api.document.UiElement hit =
+                com.cloudcore.client.render.ElementHitTester.findWithEvent(document, width,
+                        height, (int) event.x(), (int) event.y(),
+                        id -> localScroll.getOrDefault(id, 0), "click");
+        if (hit != null) {
+            Integer actionId = hit.events().get("click");
+            if (actionId != null) {
+                com.cloudcore.client.CloudCoreClient.sendEvent(document.id(), hit.id(), actionId,
+                        java.util.Map.of(
+                                "button", new com.cloudcore.protocol.WireValue.IntValue(event.button()),
+                                "shift", new com.cloudcore.protocol.WireValue.BoolValue(
+                                        event.hasShiftDown())));
+                return true;
+            }
+        }
+        return super.mouseClicked(event, doubleClick);
+    }
+
+    @Override
     public boolean isPauseScreen() {
         return false;
     }

@@ -227,6 +227,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **事件链路已核实**：示例页点击 `repeat` 行后服务端日志
+  `EVENT ui=example element=rows[0].row`，聊天收到编译期替换后的
+  `选择了 铁剑（120 金）`；点“关闭”按钮触发 `close_ui`，服务端发 `UI_CLOSE`，界面关闭
+  （`action-click-row.png`、`action-message.png`）。`EventCodecTest` 覆盖编解码与非法载荷。
 - **YAML 页面链路已核实**：`/cloudcore page example <玩家>` 从 `plugins/CloudCore/pages/example.yml`
   加载（含 `state`、`repeat`、`${...}` 模板与九宫格图片），3 条 `repeat` 实例按高度+gap 堆叠显示，
   中文文本正常（`page-example3.png`）。`PageLoaderTest` 覆盖合并顺序、片段禁用字段、循环引用、
