@@ -378,7 +378,9 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
 ```
 
 动作已实现：`message`、`set_state`、`close_ui`、`command`（配置闸门）、`if`（`condition`+`then`/`else`）、
-`delay`（`ticks`+`then`）；`${...}` 支持表达式（算术/比较/`&&`/`||`/`!`/字符串拼接）。
+`delay`（`ticks`+`then`）、`open_page`（`page`，可带 `${...}`）、`sound`（`sound`/`volume`/`pitch`）；
+`${...}` 支持表达式（算术/比较/`&&`/`||`/`!`/字符串拼接）。
+每条动作可带 `permission:`：缺权限时整次点击拒绝（`REJECTED`），后续动作不再执行。
 
 `checkbox` 已实现：`checked` 属性（"true"/布尔）决定绘制，点击发 `change` 事件载荷 `{checked}`，
 常用写法 `set_state key: notify value: "${checked}"`。

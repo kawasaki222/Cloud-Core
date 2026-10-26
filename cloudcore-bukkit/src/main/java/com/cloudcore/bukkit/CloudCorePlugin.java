@@ -86,7 +86,8 @@ public final class CloudCorePlugin extends JavaPlugin
             new ConcurrentHashMap<>();
     private final Placeholders placeholders = new Placeholders(this, placeholderResolvers);
     private static final Set<String> BUILT_IN_ACTIONS = Set.of(
-            "message", "close_ui", "close", "set_state", "if", "delay", "command");
+            "message", "close_ui", "close", "set_state", "if", "delay", "command",
+            "open_page", "sound");
     private final com.cloudcore.bukkit.api.CloudCoreApi api = new Api();
 
     @Override
@@ -286,6 +287,41 @@ public final class CloudCorePlugin extends JavaPlugin
         }
         switch (action.type().toLowerCase(java.util.Locale.ROOT)) {
             case "close_ui", "close" -> sendClose(player);
+            case "open_page" -> {
+                Object target = action.params().getOrDefault("page",
+                        action.params().getOrDefault("value", null));
+                if (target == null) {
+                    getLogger().warning("open_page without page in page "
+                            + page.document().id());
+                    return ActionOutcome.FAILED;
+                }
+                String name = resolveState(String.valueOf(target), state, payload);
+                // Close the page that is being replaced so the client does not keep a stale id.
+                if (session.lastUiId != null && !session.lastUiId.equals(name)) {
+                    sendClose(player);
+                }
+                sendPage(player, name);
+            }
+            case "sound" -> {
+                Object sound = action.params().getOrDefault("sound",
+                        action.params().getOrDefault("value", null));
+                if (sound == null) {
+                    getLogger().warning("sound without sound in page " + page.document().id());
+                    return ActionOutcome.FAILED;
+                }
+                String key = resolveState(String.valueOf(sound), state, payload);
+                float volume = action.params().get("volume") instanceof Number number
+                        ? Math.max(0.0f, Math.min(4.0f, number.floatValue())) : 1.0f;
+                float pitch = action.params().get("pitch") instanceof Number number
+                        ? Math.max(0.5f, Math.min(2.0f, number.floatValue())) : 1.0f;
+                try {
+                    player.playSound(player.getLocation(), key, volume, pitch);
+                } catch (RuntimeException exception) {
+                    getLogger().warning("sound action failed for '" + key + "': "
+                            + exception.getMessage());
+                    return ActionOutcome.FAILED;
+                }
+            }
             case "message" -> {
                 Object text = action.params().getOrDefault("value",
                         action.params().getOrDefault("text", ""));

@@ -309,6 +309,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   返回 `OPENED`，界面显示 `hello Player338`、`level 0`（`provider-page2.png`），
   证明自定义解析器先于 PlaceholderAPI 生效、提供器构建的代码页可正常打开。
   令牌规则由 `PlaceholderTokenTest` 覆盖（拆分、非法令牌、命名空间长度）。
+- **open_page / sound 动作已核实**：`/cloudcore page actions_demo` 点“打开示例页”后日志为
+  `EVENT ... element=open_example actions=1`、`Sent UI_CLOSE ... ui=actions_demo`、
+  `Sent page 'example'`，界面切换为示例页（`actions-demo2.png`、`open-page.png`）；
+  点“播放按钮音效”记为 `EVENT ... element=play_sound actions=2` 且无失败警告
+  （声音本身无法用截图证明，只验证了服务端执行与后续 `message` 的送达）。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。

@@ -23,10 +23,15 @@
 - 服务端：`message`（聊天消息，含编译期模板 + 运行期 `${state.x}` 替换）、`close_ui`、
   `set_state`（写会话状态 → 重新编译页面 → 以更高 revision 重发 `UI_DEFINITION`）已可执行；
   客户端收到同一 `uiId` 的更高 revision 会替换界面。
+- `open_page`：`page: <页面名>`（支持 `${...}` 模板），关闭当前页后发送目标页；
+  页面导航不再需要命令方块或附属插件。
+- `sound`：`sound: "minecraft:ui.button.click"`、`volume`（0..4，默认 1）、`pitch`（0.5..2，默认 1）。
 - `EVENT_RESULT`：执行完成回 `OK`；未知 actionId 回 `UNKNOWN_ELEMENT`；动作类型不支持回 `REJECTED`。
+- 动作级 `permission:`：缺权限整次点击 `REJECTED`，后续动作不再执行。
 - `command`：`command: "say hi"`（可带前导斜杠），`as: player|console`（默认 player）。
   默认关闭：`config.yml` 的 `actions.commands.enabled: false`；开启后只有
   `actions.commands.allowlist` 里的第一个词能执行，其余回 `REJECTED` 并写警告日志。
+- 附属动作处理器：`CloudCoreApi.registerActionHandler`，未注册的动作名写警告并 `REJECTED`。
 - 表达式：`${state.balance - 100}`、比较、`&&`/`||`/`!`、字符串拼接由
   `ExpressionEvaluator` 求值（`set_state`/`message`/`if` 的条件都走它，整数值不显示 `.0`）。
 - `if`：`condition` + `then`/`else` 动作列表；`delay`：`ticks` + `then` 延迟执行。

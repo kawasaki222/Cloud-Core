@@ -1,0 +1,76 @@
+# 动作示例：open_page / sound / close_ui
+# /cloudcore page actions_demo <玩家>
+schema: 1
+id: actions_demo
+surface: custom_screen
+title: "Actions Demo"
+theme: dark
+size: [220, 118]
+state: {}
+includes: []
+elements:
+  - type: panel
+    id: root
+    x: 0
+    y: 0
+    width: fill
+    height: fill
+    style:
+      background: "#CC202830"
+  - type: label
+    id: heading
+    x: 12
+    y: 10
+    text: "动作：open_page / sound / close_ui"
+    color: "#FFFFFFFF"
+
+  - type: button
+    id: open_example
+    x: 12
+    y: 32
+    width: 196
+    height: 18
+    text: "打开示例页（open_page）"
+    style:
+      background: "#FF3C6E9F"
+      hover:
+        background: "#FF5C8EBF"
+    on:
+      click:
+        - action: open_page
+          page: example
+
+  - type: button
+    id: play_sound
+    x: 12
+    y: 56
+    width: 196
+    height: 18
+    text: "播放按钮音效（sound）"
+    style:
+      background: "#FF3C9F6E"
+      hover:
+        background: "#FF5CBF8E"
+    on:
+      click:
+        - action: sound
+          sound: "minecraft:ui.button.click"
+          volume: 1.0
+          pitch: 1.2
+        - action: message
+          value: "已播放音效"
+
+  - type: button
+    id: close
+    x: 12
+    y: 80
+    width: 196
+    height: 18
+    text: "关闭（close_ui）"
+    style:
+      background: "#FF9F3C6E"
+      hover:
+        background: "#FFD05C8E"
+    on:
+      click:
+        - action: close_ui
