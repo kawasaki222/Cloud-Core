@@ -273,6 +273,79 @@ class PageLoaderTest {
         assertEquals("https://cdn.example.com/hero.png", compiled.textures().get(0).url());
     }
 
+    @Test
+    void includeDepthIsCapped() throws Exception {
+        int depth = PageLoader.MAX_INCLUDE_DEPTH + 2;
+        for (int index = 0; index < depth; index++) {
+            write("deep" + index + ".yml",
+                    "includes: [deep" + (index + 1) + ".yml]\nelements: []\n");
+        }
+        write("deep" + depth + ".yml", "elements: []\n");
+        Path page = write("deep-page.yml", """
+                schema: 1
+                id: deep
+                surface: custom_screen
+                title: "Deep"
+                size: [100, 100]
+                includes: [deep0.yml]
+                """);
+
+        PageLoadException error = assertThrows(PageLoadException.class,
+                () -> PageLoader.loadDocument(pages, page, Map.of()));
+        assertTrue(error.getMessage().contains("depth"), error.getMessage());
+    }
+
+    @Test
+    void oversizedFragmentIsRejected() throws Exception {
+        StringBuilder filler = new StringBuilder("elements: []\n#");
+        while (filler.length() < PageLoader.MAX_FILE_BYTES + 128) {
+            filler.append("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n#");
+        }
+        write("big.yml", filler.toString());
+        Path page = write("big-page.yml", """
+                schema: 1
+                id: big
+                surface: custom_screen
+                title: "Big"
+                size: [100, 100]
+                includes: [big.yml]
+                """);
+
+        PageLoadException error = assertThrows(PageLoadException.class,
+                () -> PageLoader.loadDocument(pages, page, Map.of()));
+        assertTrue(error.getMessage().contains("exceeds"), error.getMessage());
+    }
+
+    @Test
+    void malformedYamlNamesTheFile() throws Exception {
+        Path page = write("broken.yml", "schema: 1\nid: [unclosed\n");
+
+        PageLoadException error = assertThrows(PageLoadException.class,
+                () -> PageLoader.loadDocument(pages, page, Map.of()));
+        assertTrue(error.getMessage().contains("broken.yml"), error.getMessage());
+    }
+
+    @Test
+    void missingTemplateVariableBecomesEmpty() throws Exception {
+        Path page = write("template.yml", """
+                schema: 1
+                id: template
+                surface: custom_screen
+                title: "T"
+                size: [100, 100]
+                elements:
+                  - type: label
+                    id: t
+                    x: 0
+                    y: 0
+                    text: "value=[${state.missing}]"
+                """);
+
+        UiDocument document = PageLoader.loadDocument(pages, page, Map.of());
+
+        assertEquals("value=[]", document.elements().get(0).attributes().get("text"));
+    }
+
     private Path write(String relative, String content) throws IOException {
         Path file = pages.resolve(relative);
         Files.createDirectories(file.getParent());
