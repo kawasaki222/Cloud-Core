@@ -10,13 +10,17 @@ import java.util.Objects;
  * u8  version
  * u8  flags
  * varint opcode
- * varint uncompressedBodyLength
- * bytes payload (raw or raw-deflate)
+ * varint bodyLength
+ * bytes payload (raw, raw-deflate, or fragment body)
  * </pre>
+ *
+ * <p>For normal frames {@code bodyLength} is the uncompressed logical body length. For
+ * FRAGMENT frames it is the length of the fragment body because the fragment header carries
+ * the logical length separately.
  */
 public final class FrameCodec {
     public static final int MAGIC = 0x4343;
-    public static final int VERSION = 1;
+    public static final int VERSION = ProtocolVersion.MAJOR;
 
     private FrameCodec() {
     }
@@ -31,12 +35,14 @@ public final class FrameCodec {
         if ((frame.flags() & ~FrameFlags.KNOWN_MASK) != 0) {
             throw new ProtocolException("Unknown frame flags: " + frame.flags());
         }
-        if (frame.bodyLength() > limits.maxDecompressedBytes()) {
-            throw new ProtocolException("Body exceeds decompressed limit: " + frame.bodyLength());
+        boolean fragmented = (frame.flags() & FrameFlags.FRAGMENT) != 0;
+        int bodyLimit = fragmented ? limits.maxFrameBytes() : limits.maxDecompressedBytes();
+        if (frame.bodyLength() > bodyLimit) {
+            throw new ProtocolException("Body exceeds frame limit: " + frame.bodyLength());
         }
 
         byte[] payload = frame.body();
-        if ((frame.flags() & FrameFlags.COMPRESSED) != 0) {
+        if (!fragmented && (frame.flags() & FrameFlags.COMPRESSED) != 0) {
             payload = Deflate.compress(payload);
         }
 
@@ -81,13 +87,21 @@ public final class FrameCodec {
 
         int opcode = source.readVarInt();
         int bodyLength = source.readVarInt();
-        if (bodyLength < 0 || bodyLength > limits.maxDecompressedBytes()) {
+        boolean fragmented = (flags & FrameFlags.FRAGMENT) != 0;
+        int bodyLimit = fragmented ? limits.maxFrameBytes() : limits.maxDecompressedBytes();
+        if (bodyLength < 0 || bodyLength > bodyLimit) {
             throw new ProtocolException("Invalid body length: " + bodyLength);
         }
 
         int remaining = source.readableBytes();
         byte[] body;
-        if ((flags & FrameFlags.COMPRESSED) != 0) {
+        if (fragmented) {
+            if (remaining != bodyLength) {
+                throw new ProtocolException(
+                        "Fragment body length mismatch: header " + bodyLength + ", payload " + remaining);
+            }
+            body = source.readBytes(bodyLength);
+        } else if ((flags & FrameFlags.COMPRESSED) != 0) {
             byte[] compressed = source.readBytes(remaining);
             body = Deflate.decompress(compressed, limits.maxDecompressedBytes());
             if (body.length != bodyLength) {

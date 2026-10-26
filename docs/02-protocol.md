@@ -92,13 +92,20 @@ body（flags |= FRAGMENT）:
   u16   fragmentId
   u8    index
   u8    count
+  varint totalBodyLength
   bytes chunk
 ```
 
-- 每方向最多 4 个并发分片组，每组 5 秒超时。
-- 接受乱序；重复索引内容不同则中止该组。
-- 重组后总长度超过 1 MiB 中止。
-- 单分片报文不得设置 `FRAGMENT`。
+- `totalBodyLength` 是逻辑报文解压后的长度；`chunk` 是分片数据，`bytes` 自带 varint 长度。
+- FRAGMENT 帧信封头里的 `bodyLength` 是**分片体长度**，不是逻辑长度；逻辑长度以
+  `totalBodyLength` 为准。
+- 压缩在分片之前完成：所有分片设置 `COMPRESSED` 时，各 `chunk` 依次拼接成一条原始
+  DEFLATE 流，**不是**每个分片单独一条压缩流；重组完成后统一解压并校验 `totalBodyLength`。
+- 分片标志必须一致；同一组内 `COMPRESSED`、`count`、`totalBodyLength`、操作码不一致即中止。
+- 每方向最多 4 个并发分片组，每组从首片起 5 秒超时。
+- 接受乱序；重复索引内容相同则忽略，内容不同则中止该组。
+- `count` 至少为 2；单分片报文不得设置 `FRAGMENT`。
+- 重组后总长度超过 1 MiB 中止；压缩流的临时拼接长度允许少量 DEFLATE 膨胀余量。
 
 ## 3. 面板类型
 
@@ -225,7 +232,7 @@ u16 protoMajor, u16 protoMinor
 u16 acceptedFeatures
 string serverId
 u32 maxFrameBytes
-u8  compressionThreshold
+varint compressionThreshold
 string serverMessage
 ```
 
@@ -437,6 +444,7 @@ Tooltip 的滚轮事件默认**不**上报服务端；只有文档显式声明 `
 - 编解码器位于 `cloudcore-protocol`，不依赖任何 Minecraft 类型。
 - 客户端用 `ByteSource`/`ByteSink` 包装 `RegistryFriendlyByteBuf`；服务端包装 `byte[]`。
 - 写入：body → 压缩 → 分片。读取：每一步都受剩余帧大小和类型上限约束，先检查再分配。
+- 分片重组在协议层完成；上层只看到解压后的逻辑帧。畸形分片只丢弃该组并计数，不断连。
 - `fragmentId` 是 `u16` 随机值；与在途组冲突时拒绝新组。
 - 计数器（`unknown_opcode`、`bad_fragment`、`crc_fail`、`rate_limited`、`surface_unsupported`）
   通过 `/cloudcore stats` 和客户端 F3 叠加层暴露。
