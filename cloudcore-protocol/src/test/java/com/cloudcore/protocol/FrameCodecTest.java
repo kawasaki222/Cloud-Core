@@ -40,6 +40,21 @@ class FrameCodecTest {
     }
 
     @Test
+    void compressionPolicyOnlyMarksLargeUnfragmentedFrames() {
+        Frame small = new Frame(1, 0, Opcode.PING, new byte[10]);
+        assertEquals(0, FrameCodec.compressIfUseful(small).flags());
+
+        Frame large = new Frame(1, 0, Opcode.UI_DEFINITION, new byte[512]);
+        assertEquals(FrameFlags.COMPRESSED, FrameCodec.compressIfUseful(large).flags());
+
+        Frame already = new Frame(1, FrameFlags.COMPRESSED, Opcode.UI_DEFINITION, new byte[512]);
+        assertEquals(FrameFlags.COMPRESSED, FrameCodec.compressIfUseful(already).flags());
+
+        Frame fragment = new Frame(1, FrameFlags.FRAGMENT, Opcode.UI_DEFINITION, new byte[512]);
+        assertEquals(FrameFlags.FRAGMENT, FrameCodec.compressIfUseful(fragment).flags());
+    }
+
+    @Test
     void rejectsInvalidMagic() {
         byte[] encoded = FrameCodec.encode(new Frame(1, 0, Opcode.PING, new byte[0]), Limits.S2C);
         encoded[0] = 0;

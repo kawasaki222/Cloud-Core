@@ -25,6 +25,20 @@ public final class FrameCodec {
     private FrameCodec() {
     }
 
+    /**
+     * Marks a sufficiently large, unfragmented frame as compressed. Receivers always honor
+     * the flag; senders may skip this policy for frames where compression is not useful.
+     */
+    public static Frame compressIfUseful(Frame frame) {
+        Objects.requireNonNull(frame, "frame");
+        if (frame.bodyLength() >= HandshakeCodec.COMPRESSION_THRESHOLD
+                && (frame.flags() & (FrameFlags.COMPRESSED | FrameFlags.FRAGMENT)) == 0) {
+            return new Frame(frame.version(), frame.flags() | FrameFlags.COMPRESSED,
+                    frame.opcode(), frame.body());
+        }
+        return frame;
+    }
+
     public static byte[] encode(Frame frame, Limits limits) {
         Objects.requireNonNull(frame, "frame");
         Objects.requireNonNull(limits, "limits");

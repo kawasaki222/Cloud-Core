@@ -197,7 +197,8 @@ public final class CloudCorePlugin extends JavaPlugin
     private void sendFrame(Player player, Frame frame) {
         try {
             int fragmentId = Fragmenter.randomFragmentId(random);
-            for (Frame part : Fragmenter.fragment(compressIfUseful(frame), Limits.S2C, fragmentId)) {
+            for (Frame part : Fragmenter.fragment(
+                    FrameCodec.compressIfUseful(frame), Limits.S2C, fragmentId)) {
                 byte[] data = FrameCodec.encode(part, Limits.S2C);
                 player.sendPluginMessage(this, CHANNEL, data);
                 if (getConfig().getBoolean("debug", false)) {
@@ -211,15 +212,6 @@ public final class CloudCorePlugin extends JavaPlugin
             getLogger().warning("Failed to encode opcode 0x" + Integer.toHexString(frame.opcode())
                     + " for " + player.getName() + ": " + exception.getMessage());
         }
-    }
-
-    private static Frame compressIfUseful(Frame frame) {
-        if (frame.bodyLength() >= HandshakeCodec.COMPRESSION_THRESHOLD
-                && (frame.flags() & (FrameFlags.COMPRESSED | FrameFlags.FRAGMENT)) == 0) {
-            return new Frame(frame.version(), frame.flags() | FrameFlags.COMPRESSED,
-                    frame.opcode(), frame.body());
-        }
-        return frame;
     }
 
     @Override
