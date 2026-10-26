@@ -371,6 +371,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 // nothing; repeat events (hover, scroll at the ends) depend on this guard.
                 if (!java.util.Objects.equals(previous, sessionState.get(String.valueOf(key)))) {
                     session.stateDirty = true;
+                    session.stateVersion.incrementAndGet();
                     refreshPage(player, session, page);
                 }
             }
@@ -1828,12 +1829,17 @@ public final class CloudCorePlugin extends JavaPlugin
         if (stateStore == null) {
             return true;
         }
+        long version = session.stateVersion.get();
         Map<String, Map<String, Object>> snapshot = new java.util.LinkedHashMap<>();
         session.pageState.forEach((page, values) ->
                 snapshot.put(page, new java.util.LinkedHashMap<>(values)));
         try {
             stateStore.save(player, snapshot);
-            session.stateDirty = false;
+            // A set_state that lands while the file is being written keeps the session dirty,
+            // so the next pass saves it instead of losing the change.
+            if (session.stateVersion.get() == version) {
+                session.stateDirty = false;
+            }
             return true;
         } catch (java.io.IOException exception) {
             getLogger().log(Level.WARNING, "Could not save page state for " + player, exception);
@@ -2165,5 +2171,8 @@ public final class CloudCorePlugin extends JavaPlugin
         private final Map<String, Integer> pageRevisions = new ConcurrentHashMap<>();
         /** Set by set_state; the persistence task writes the state and clears it. */
         private volatile boolean stateDirty;
+        /** Bumped on every state write so a save in flight does not clear a newer change. */
+        private final java.util.concurrent.atomic.AtomicLong stateVersion =
+                new java.util.concurrent.atomic.AtomicLong();
     }
 }
