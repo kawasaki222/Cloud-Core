@@ -51,6 +51,7 @@ public final class CloudCoreClient implements ClientModInitializer {
     private static SurfaceRegistry surfaceRegistry;
     private final FragmentAssembler assembler = new FragmentAssembler(Limits.S2C);
     private final Map<String, OpenRequest> pendingOpens = new HashMap<>();
+    private final Map<String, UiDefinition> pendingDefinitions = new HashMap<>();
     private volatile boolean handshakeComplete;
 
     @Override
@@ -66,6 +67,7 @@ public final class CloudCoreClient implements ClientModInitializer {
             handshakeComplete = false;
             assembler.clear();
             pendingOpens.clear();
+            pendingDefinitions.clear();
             sendHello(client);
         });
 
@@ -73,6 +75,7 @@ public final class CloudCoreClient implements ClientModInitializer {
             handshakeComplete = false;
             assembler.clear();
             pendingOpens.clear();
+            pendingDefinitions.clear();
         });
 
         LOGGER.info("Cloud Core client initialized (protocol {}.{})",
@@ -135,16 +138,28 @@ public final class CloudCoreClient implements ClientModInitializer {
         pendingOpens.put(open.uiId(), request);
         LOGGER.info("UI_OPEN queued for {} ui={} revision={} surfaceKey={}",
                 open.surface(), open.uiId(), open.revision(), open.surfaceKey());
+
+        UiDefinition earlyDefinition = pendingDefinitions.remove(open.uiId());
+        if (earlyDefinition != null) {
+            openDefinition(request, earlyDefinition);
+        }
     }
 
     private void handleUiDefinition(Frame frame) {
         UiDefinition definition = UiCodec.decodeDefinition(frame.body(), Limits.S2C);
         OpenRequest request = pendingOpens.get(definition.uiId());
         if (request == null) {
-            LOGGER.warn("UI_DEFINITION for unknown ui={} revision={}",
+            if (pendingDefinitions.size() < 64) {
+                pendingDefinitions.put(definition.uiId(), definition);
+            }
+            LOGGER.warn("UI_DEFINITION arrived before UI_OPEN for ui={} revision={}",
                     definition.uiId(), definition.revision());
             return;
         }
+        openDefinition(request, definition);
+    }
+
+    private void openDefinition(OpenRequest request, UiDefinition definition) {
         if (definition.revision() < request.revision()) {
             LOGGER.warn("Ignoring stale UI_DEFINITION ui={} revision={} (current {})",
                     definition.uiId(), definition.revision(), request.revision());

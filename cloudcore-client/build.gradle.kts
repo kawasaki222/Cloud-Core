@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.SourceSetContainer
+
 plugins {
     alias(libs.plugins.fabric.loom)
 }
@@ -18,4 +20,14 @@ tasks.processResources {
     filesMatching("fabric.mod.json") {
         expand("version" to project.version)
     }
+}
+
+val apiMain = project(":cloudcore-api").extensions.getByType<SourceSetContainer>()["main"]
+val protocolMain = project(":cloudcore-protocol").extensions.getByType<SourceSetContainer>()["main"]
+
+// The distributed mod jar must carry its pure-Java dependencies; Fabric does not resolve
+// Gradle project dependencies at runtime.
+tasks.jar {
+    from(apiMain.output)
+    from(protocolMain.output)
 }

@@ -17,6 +17,8 @@
 - M2 骨架：客户端 `SurfaceRegistry`/`SurfaceAdapter`/`CloudScreen`、`RenderBackend`/`NativeBackend`、
   `NanoVgBackend`/`FboCompositor` 空实现；服务端 `SurfaceProvider`/`SurfaceProviderRegistry`。
 - `UI_DEFINITION` JSON 已能解码、校验并打开最小 `CloudScreen`（仅标题/背景）；元素绘制与混入未实现。
+- 客户端 jar 已合并 `api` + `protocol` 类，插件 jar 已合并 `api` + `protocol` + `server-core` 类；
+  两者仍是独立可部署 jar，Gson 由 Minecraft/Paper 提供。
 - 未验证：真实 Minecraft 客户端连接、Paper 服务端、NanoVG/FBO、混入签名、U1/U2/U3/U28–U31。
 
 - 客户端与服务端统一使用 **Mojang 映射**，不使用 Yarn。
