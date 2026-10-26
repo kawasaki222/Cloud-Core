@@ -135,6 +135,7 @@ public final class CloudCoreClient implements ClientModInitializer {
         UiOpen open = UiCodec.decodeOpen(frame.body(), Limits.S2C);
         OpenRequest request = new OpenRequest(
                 open.surface(),
+                open.surfaceId(),
                 open.uiId(),
                 open.revision(),
                 open.token(),
@@ -145,7 +146,7 @@ public final class CloudCoreClient implements ClientModInitializer {
         Minecraft minecraft = Minecraft.getInstance();
         if (!surfaceRegistry.canHandle(request, minecraft)) {
             UiReady ready = new UiReady(open.uiId(), open.revision(), open.token(),
-                    open.surface(), UiReadyState.SURFACE_UNSUPPORTED,
+                    open.surface(), open.surfaceId(), UiReadyState.SURFACE_UNSUPPORTED,
                     "Surface not implemented: " + open.surface());
             sendFrame(new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_READY,
                     UiCodec.encodeReady(ready, Limits.C2S)));
@@ -278,7 +279,7 @@ public final class CloudCoreClient implements ClientModInitializer {
 
     private void sendReady(OpenRequest request, int revision, int state, String detail) {
         UiReady ready = new UiReady(request.uiId(), revision, request.token(),
-                request.surface(), state, truncate(detail));
+                request.surface(), request.surfaceId(), state, truncate(detail));
         sendFrame(new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_READY,
                 UiCodec.encodeReady(ready, Limits.C2S)));
     }

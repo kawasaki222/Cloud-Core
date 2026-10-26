@@ -203,8 +203,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - U28–U31：Linux/macOS、FBO 屏幕合成、预乘 alpha、1.21.6 提取/绘制状态。
 - image/item_icon、文本整形、裁剪/滚动、真实布局容器、其余五类面板的实际替换。
 - 当前 screen/scroll/tooltip/boss 混入只是诊断探针，尚未替换绘制或输入。
-- 前向兼容缺口：`UiCodec` 遇到未知 `surfaceId` / `BindMode` / `RenderMode` 会拒绝整帧；
-  1.0 前应保留原始 id，让客户端回 `UI_READY(state=4)` 而不是丢帧。
+- `BindMode` / `RenderMode` 的未知值仍会拒绝整帧；`surfaceId` 已改为保留原始 id 并回
+  `UI_READY(state=4)`。
 
 ## 3. 风险登记
 

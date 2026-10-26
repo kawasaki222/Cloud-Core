@@ -18,7 +18,7 @@ public final class UiCodec {
         ArrayByteSink sink = new ArrayByteSink();
         ProtocolText.write(sink, open.uiId(), limits);
         sink.writeVarInt(open.revision());
-        sink.writeByte(open.surface().id());
+        sink.writeByte(open.surfaceId());
         sink.writeByte(open.bindMode().id());
         sink.writeInt(open.token());
         sink.writeByte(open.renderMode().id());
@@ -36,14 +36,16 @@ public final class UiCodec {
         if (revision < 0) {
             throw new ProtocolException("Invalid revision: " + revision);
         }
-        SurfaceType surface = surface(source.readUnsignedByte());
+        int surfaceId = source.readUnsignedByte();
+        SurfaceType surface = SurfaceType.fromIdOrUnknown(surfaceId);
         BindMode bindMode = bindMode(source.readUnsignedByte());
         int token = source.readInt();
         RenderMode renderMode = renderMode(source.readUnsignedByte());
         int flags = source.readUnsignedByte();
         String surfaceKey = ProtocolText.read(source, limits);
         requireFullyConsumed(source, "UI_OPEN");
-        return new UiOpen(uiId, revision, surface, bindMode, token, renderMode, flags, surfaceKey);
+        return new UiOpen(uiId, revision, surface, surfaceId, bindMode, token,
+                renderMode, flags, surfaceKey);
     }
 
     public static byte[] encodeReady(UiReady ready, Limits limits) {
@@ -53,7 +55,7 @@ public final class UiCodec {
         ProtocolText.write(sink, ready.uiId(), limits);
         sink.writeVarInt(ready.revision());
         sink.writeInt(ready.token());
-        sink.writeByte(ready.surface().id());
+        sink.writeByte(ready.surfaceId());
         sink.writeByte(ready.state());
         ProtocolText.write(sink, ready.detail(), limits);
         return sink.toByteArray();
@@ -69,11 +71,12 @@ public final class UiCodec {
             throw new ProtocolException("Invalid revision: " + revision);
         }
         int token = source.readInt();
-        SurfaceType surface = surface(source.readUnsignedByte());
+        int surfaceId = source.readUnsignedByte();
+        SurfaceType surface = SurfaceType.fromIdOrUnknown(surfaceId);
         int state = source.readUnsignedByte();
         String detail = ProtocolText.read(source, limits);
         requireFullyConsumed(source, "UI_READY");
-        return new UiReady(uiId, revision, token, surface, state, detail);
+        return new UiReady(uiId, revision, token, surface, surfaceId, state, detail);
     }
 
     public static byte[] encodeDefinition(UiDefinition definition, Limits limits) {
@@ -147,14 +150,6 @@ public final class UiCodec {
         int reason = source.readUnsignedByte();
         requireFullyConsumed(source, "UI_CLOSED");
         return new UiClosed(uiId, reason);
-    }
-
-    private static SurfaceType surface(int id) {
-        try {
-            return SurfaceType.fromId(id);
-        } catch (IllegalArgumentException exception) {
-            throw new ProtocolException("Unknown surface id: " + id);
-        }
     }
 
     private static BindMode bindMode(int id) {

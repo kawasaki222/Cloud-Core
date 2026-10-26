@@ -112,7 +112,8 @@ docs/
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
 - [ ] M2 完整渲染：NanoVG/FBO、image/item_icon、裁剪/滚动、混入
-- [ ] 协议前向兼容：未知 surface/bind/render id 保留原始值并回 UI_READY(state=4)
+- [x] 协议前向兼容：未知 `surfaceId` 保留原始值并回 `UI_READY(state=4)`
+- [ ] 协议前向兼容：未知 `BindMode` / `RenderMode`（仍拒绝）
 - [x] M0 NanoVG 初始化 + FBO 绘制 + readback（Windows x64，`cloudcore.nanovg.spike`）
 - [x] NanoVG 类与 Windows/Linux/macOS 原生库并入客户端 jar
 - [ ] M0 渲染：FBO 纹理注册成功但 `GuiGraphics.blit` 画面不可见，需排查 UV/TextureSetup/GL 状态

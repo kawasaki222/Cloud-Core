@@ -135,6 +135,10 @@ body（flags |= FRAGMENT）:
 | `6–127` | 保留 | — | 后续面板 |
 | `128–255` | 实验 | — | 不进入正式版本 |
 
+客户端遇到未知 `surface` 值时不丢弃整帧，而是保留原始 `u8` 并在 `UI_READY(surface=原值,
+state=4)` 中回传；`cloudcore-api` 内部用 `SurfaceType.UNKNOWN` 表示，不能当作可打开面板。
+`BindMode` / `RenderMode` 的未知值仍先拒绝，后续版本按需扩展。
+
 `BindMode`（`u8`）：
 
 | 值 | 名称 | 含义 |

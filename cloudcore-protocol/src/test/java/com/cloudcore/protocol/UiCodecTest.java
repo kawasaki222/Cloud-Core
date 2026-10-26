@@ -1,7 +1,6 @@
 package com.cloudcore.protocol;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.cloudcore.api.BindMode;
 import com.cloudcore.api.RenderMode;
@@ -62,10 +61,17 @@ class UiCodecTest {
     }
 
     @Test
-    void rejectsUnknownSurfaceId() {
+    void preservesUnknownSurfaceIdForForwardCompatibility() {
         byte[] body = UiCodec.encodeOpen(new UiOpen("a", 1, SurfaceType.CUSTOM_SCREEN,
                 BindMode.NONE, 1, RenderMode.SCREEN, 0, ""), Limits.S2C);
         body[3] = (byte) 0x7F;
-        assertThrows(ProtocolException.class, () -> UiCodec.decodeOpen(body, Limits.S2C));
+        UiOpen decoded = UiCodec.decodeOpen(body, Limits.S2C);
+        assertEquals(0x7F, decoded.surfaceId());
+        assertEquals(SurfaceType.UNKNOWN, decoded.surface());
+
+        UiReady ready = new UiReady("a", 1, 1, decoded.surface(), decoded.surfaceId(),
+                UiReadyState.SURFACE_UNSUPPORTED, "future surface");
+        assertEquals(ready, UiCodec.decodeReady(
+                UiCodec.encodeReady(ready, Limits.C2S), Limits.C2S));
     }
 }
