@@ -7,22 +7,24 @@
 
 ## 当前状态
 
-**实现阶段。** 文档基线已完成；Gradle 多模块、协议信封/WireValue、分片/重组、HELLO/HELLO_ACK、
-PING/PONG、UI_OPEN/UI_READY 编解码与黄金向量、Paper/Fabric 接线已落地，`./gradlew build` 通过。
-M2 的面板注册表、最小 `UiDocument`、`UI_DEFINITION` 解码/校验、`CloudScreen`、渲染后端骨架，
-以及 panel/label/button/text_field/checkbox/progress 的原生最小渲染也已存在。已在本地 Paper 1.21.11
-+ Fabric 开发客户端上验证握手、PING/PONG、UI 打开/关闭、64 KiB 文档压缩分片重组、demo 页面显示，
-  以及 `InventoryOpenEvent` 早于 `ContainerScreen#setScreen` 的容器时序、`MouseHandler#onScroll` 全局滚轮钩子、
-  私有 `BossHealthOverlay#drawBar` 的 `@WrapOperation` 与 Paper BossBar 哨兵标题、
-  `GuiGraphics#renderTooltip` 命中、服务端主动 `UI_CLOSE`、`DIAGNOSTIC` 下发链路；
-  Windows x64 上 NanoVG 初始化/FBO 绘制/readback 已通过（`(255,0,0,255)`），NanoVG 类与三平台原生库
-  已并入客户端 jar；FBO 纹理用 `GUI_TEXTURED` blit 已能合成上屏，NanoVG 后端（`-PcloudcoreNanoVg=true`）
-  已能绘制填充与 `local:`/`pack:` 图片并叠原生文本/物品；
-  本地 `local:`、`pack:`、`builtin:` 贴图与 `item_icon` 已能绘制；HUD、Tooltip、BossBar、Container、
-  玩家背包的最小面板闭环已能正常显示（玩家背包按 `E` 打开时换成自绘皮肤，`UI_CLOSE` 后回到原版）；
-  容器 `managed`/`readonly` 点击策略已启用。
-未知 `surfaceId` 会保留原值并回 `UI_READY(state=4)`；NanoVG 生产后端接入、裁剪/滚动、九宫格、GIF、
-Linux/macOS、1 MiB 真机分片和断线重连清理尚未验证，见 `docs/TODO_HANDOFF.md`。
+**M1 协议核心与 M2 面板链路已完成并在真机联调，M3 页面加载与基础动作已落地。**
+
+- 构建：`./gradlew build` 通过（JDK 21，135+ 个测试 / 30 个测试类，0 失败）。
+- 协议：信封、DEFLATE、分片/重组、HELLO/HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED、
+  `EVENT`/`EVENT_RESULT`、`TEXTURE_REF`、`DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
+  真机验证：830 KB 文档拆成 27 片重组、断线/重连清理、1,000,000 随机帧解码。
+- 服务端：Paper 插件（自包含 jar）、`managed`/`readonly`/`passthrough` 点击策略、
+  `inventory_grid` 槽位重排、事件限流、`command` 动作闸门、`/cloudcore validate|reload|page`。
+- 页面：YAML 单文件或 `includes` 组合、`repeat`（含嵌套）、`${...}` 模板、动作编译成 actionId；
+  `set_state` 触发重编译并推送更高 revision 的文档更新。
+- 客户端：六类面板（自定义页面、容器、玩家背包、HUD 三层带锚点、Tooltip 裁剪与滚轮、Boss 血条）；
+  RenderList 支持文字/富文本、图片（`local:`/`pack:`/`builtin:`/`inline:`）、九宫格、背景贴图、
+  裁剪/滚动、悬停样式、`item_icon`；GIF 逐帧播放；`url:` 贴图客户端直连下载（https/限额/sha256）；
+  NanoVG 后端（`-PcloudcoreNanoVg=true`，填充/图片/自定义字体 + 原生叠层）与 FBO 合成已通过；
+  客户端日志 `logs/cloudcore-client.log` 带 `CC-*` 码。
+- 尚未验证/未实现：Linux/macOS 运行、NanoVG 默认化与设备分辨率清晰文字、代理贴图
+  （`TEXTURE_REQUEST`/`TEXTURE_PUT`）、`command` 以外的条件/等待/表达式、配方书与玩家背包槽位重排、
+  WatchService 热重载。详见 `docs/TODO_HANDOFF.md` 与 `docs/10-risks-and-verification.md`。
 
 ## 目标技术栈
 

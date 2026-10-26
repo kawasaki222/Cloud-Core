@@ -4,46 +4,17 @@
 
 ## 当前状态
 
-**文档基线完成；M1 协议核心与真实 Paper/Fabric 联调已通过，M2 最小面板链路已落地并可显示原生页面。**
+**M1 协议核心、M2 面板链路、M3 页面加载与基础动作均已完成真机联调。**
 
-- Gradle 9.2.0 wrapper、5 模块、JDK 21 toolchain、Loom 1.14 + Mojang 映射。
-- `cloudcore-protocol`：Frame/FrameCodec/Deflate/VarInt/WireValue、分片/重组、Hello/HelloAck/Ping/Pong、
-  UI_OPEN/UI_READY + JUnit 测试（含黄金向量、10,000 随机帧）。
-- `cloudcore-bukkit`：Paper 通道、HELLO/HELLO_ACK、PING/PONG、`/cloudcore ping`、
-  每玩家分片重组、UI_READY 日志。
-- `cloudcore-client`：Fabric 入口、payload 注册、JOIN 发送 HELLO、PONG、S2C 分片重组、
-  UI_OPEN 分发、未实现面板回 UI_READY(state=4)。
-- `cloudcore-api`：`UiDocument`/`UiElement`/`TextRuns` 最小模型、校验器、单文件页面载入接口。
-- M2 骨架：客户端 `SurfaceRegistry`/`SurfaceAdapter`/`CloudScreen`、`RenderBackend`/`NativeBackend`、
-  `NanoVgBackend`/`FboCompositor` 空实现；服务端 `SurfaceProvider`/`SurfaceProviderRegistry`。
-- `UI_DEFINITION` JSON 已能解码、校验并打开 `CloudScreen`；`DocumentRenderListBuilder` 已能用原生后端
-  绘制 panel/label/button/text_field/checkbox/progress，图片、物品图标、裁剪/滚动和混入未实现。
-- 客户端 jar 已合并 `api` + `protocol` 类，插件 jar 已合并 `api` + `protocol` + `server-core` 类；
-  两者仍是独立可部署 jar，Gson 由 Minecraft/Paper 提供。
-- 客户端文件日志已启用：`logs/cloudcore-client.log`，只收 `cloudcore` logger，10 MiB × 5 轮转；
-  安装失败只回退控制台。
-- 已联调（2026-10-26，Paper 1.21.11 build 132 + Fabric 开发客户端，离线模式）：
-  `HELLO`/`HELLO_ACK`、`/cloudcore ping`（RTT 9ms）、`UI_OPEN`/`UI_DEFINITION`/`UI_READY`、
-  Escape 关闭后的 `UI_CLOSED`，以及 demo 页面 panel/label/button 的实际显示。
-- 同一 tick 内回 `HELLO_ACK` 会丢失；服务端延迟 1 tick 后稳定，已写入协议实现说明。
-- 六类面板的最小闭环已完成：自定义页面、容器、玩家背包、HUD、Tooltip、Boss 血条。
-- 未验证：NanoVG/FBO 屏幕合成、U28–U31 的跨平台部分、容器点击策略。
-
-- 客户端与服务端统一使用 **Mojang 映射**，不使用 Yarn。
-- 六类面板：HUD、箱子界面、玩家背包界面、ItemTooltip、自定义页面、Boss 血条。
-- 面板可扩展，新增类型不改协议主干。
-- 页面支持多 YAML 组合与单文件两种形态。
-- 支持遍历（`repeat`）与自定义字体。
-- ItemTooltip 支持滚轮滚动。
-- 动作引擎分两阶段：v1 线性动作（M8）、v2 服务端图执行器（M9）；与 NanoVG/原生渲染无关。
-- v1 已定义 `ActionEngine` 接缝，v2 的图节点编译为 `sequence`，旧 YAML 不需要重写。
-- Tooltip 滚动条与 Boss 血条样式全部数据化。
-- `url:` 图片默认客户端直连，服务端代理可选；GIF 按模式在客户端或服务端解码。
-- PAPI 变量支持定时刷新，默认同步、异步白名单。
-- 绘制默认使用 **NanoVG 离屏渲染 + 原生合成**；原生 `GuiGraphics` 后端作为回退。
-- 物品、槽位、Tooltip 内容、输入法文本继续由原版绘制。
-- 所有配置/协议/文档/资源/渲染/动作错误写入客户端 `logs/cloudcore-client.log`，带 `CC-*` 码，
-  服务端通过 `DIAGNOSTIC` 下发摘要，`F10` 导出诊断包。
+- 协议：信封/DEFLATE/分片重组/握手/PING-PONG/UI_OPEN-READY-CLOSE-CLOSED/EVENT-EVENT_RESULT/
+  TEXTURE_REF/DIAGNOSTIC 全部实现并有测试；未知 surface 与 bind/render 模式前向兼容。
+- 服务端：Paper 插件自包含；容器三种点击策略、`inventory_grid` 槽位重排、事件限流（20/s 突发 40）、
+  `command` 动作闸门、`/cloudcore validate|reload|page|demo-*`。
+- 页面：YAML 单文件/`includes`/`repeat`（含嵌套）/模板；动作编译成 actionId 并只留在服务端；
+  `set_state` 重编译后推送更高 revision。
+- 客户端：六类面板 + RenderList（文字/富文本/图片/九宫格/背景贴图/裁剪/滚动/悬停/物品图标/GIF/URL 贴图）；
+  NanoVG 后端与 FBO 合成（opt-in）；客户端日志与诊断码。
+- 构建：`./gradlew build` 通过，135+ 测试，0 失败。
 
 ## 已有内容
 
