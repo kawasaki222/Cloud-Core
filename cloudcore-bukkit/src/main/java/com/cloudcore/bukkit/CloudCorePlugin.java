@@ -18,6 +18,7 @@ import com.cloudcore.protocol.Ping;
 import com.cloudcore.protocol.Pong;
 import com.cloudcore.protocol.ProtocolException;
 import com.cloudcore.protocol.ProtocolVersion;
+import com.cloudcore.protocol.UiClose;
 import com.cloudcore.protocol.UiClosed;
 import com.cloudcore.protocol.UiCodec;
 import com.cloudcore.protocol.UiDefinition;
@@ -240,6 +241,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 sendProbe(target);
             } else if (args[0].equalsIgnoreCase("boss")) {
                 sendBoss(target);
+            } else if (args[0].equalsIgnoreCase("close")) {
+                sendClose(target);
             } else {
                 sendDemoOpen(target, args[0].equalsIgnoreCase("demo-big"));
             }
@@ -268,9 +271,14 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core probe boss bar sent."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("close")) {
+            sendClose(player);
+            sender.sendMessage(Component.text("Cloud Core probe close sent."));
+            return true;
+        }
         if (args.length != 1 || !args[0].equalsIgnoreCase("ping")) {
             sender.sendMessage(Component.text(
-                    "Usage: /" + label + " <ping|demo|demo-big|probe|boss>"));
+                    "Usage: /" + label + " <ping|demo|demo-big|probe|boss|close>"));
             return true;
         }
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
@@ -284,7 +292,20 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("demo")
                 || action.equalsIgnoreCase("demo-big")
                 || action.equalsIgnoreCase("probe")
-                || action.equalsIgnoreCase("boss");
+                || action.equalsIgnoreCase("boss")
+                || action.equalsIgnoreCase("close");
+    }
+
+    private void sendClose(Player player) {
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        if (session.lastUiId == null) {
+            getLogger().info("No probe UI open for " + player.getName());
+            return;
+        }
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_CLOSE,
+                UiCodec.encodeClose(new UiClose(session.lastUiId, 0), Limits.S2C)));
+        getLogger().info("Sent UI_CLOSE to " + player.getName() + " ui=" + session.lastUiId);
+        session.lastUiId = null;
     }
 
     private void sendBoss(Player player) {
@@ -334,6 +355,8 @@ public final class CloudCorePlugin extends JavaPlugin
                     + Base64.getEncoder().encodeToString(bytes) + "\"";
         }
         int token = random.nextInt();
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        session.lastUiId = uiId;
         UiOpen open = new UiOpen(uiId, 1, SurfaceType.CUSTOM_SCREEN,
                 BindMode.NONE, token, RenderMode.SCREEN, 0, big ? "demo-big" : "demo");
         sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
@@ -392,5 +415,6 @@ public final class CloudCorePlugin extends JavaPlugin
         private int pingNonce;
         private long pingSentNanos;
         private BossBar bossBar;
+        private String lastUiId;
     }
 }

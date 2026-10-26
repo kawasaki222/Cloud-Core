@@ -173,6 +173,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   悬停石头时客户端实际打印 `Tooltip observed lines=1`。
 - **客户端文件日志已核实**：log4j2 appender 写入 `logs/cloudcore-client.log`，只挂载到
   `cloudcore` logger，不掠夺 Minecraft/Fabric 日志；10 MiB × 5 轮转已配置。
+- **服务端主动关闭已核实**：`/cloudcore close` 发送 `UI_CLOSE`，客户端关闭 `CloudScreen`
+  并记录 `UI_CLOSE ui=cloudcore_demo reason=0`；服务端日志显示对应 S2C 帧。
 - `GuiGraphics#blit` 的 RenderPipeline 重载已静态核对；FBO 合成仍需实现。
 - **U20 已核实**：Fabric API 0.141.3 能在 officialMojangMappings 下编译并启动。
 - **U10 已核实并规避**：Fabric `canSend()` 只反映服务端声明的通道；Paper 不保证声明，
