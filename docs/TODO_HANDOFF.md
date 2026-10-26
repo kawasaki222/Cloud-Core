@@ -24,7 +24,7 @@
   `HELLO`/`HELLO_ACK`、`/cloudcore ping`（RTT 9ms）、`UI_OPEN`/`UI_DEFINITION`/`UI_READY`、
   Escape 关闭后的 `UI_CLOSED`，以及 demo 页面 panel/label/button 的实际显示。
 - 同一 tick 内回 `HELLO_ACK` 会丢失；服务端延迟 1 tick 后稳定，已写入协议实现说明。
-- 未验证：NanoVG/FBO、混入签名、U2/U3/U28–U31、100 万随机帧压测、真机大报文分片。
+- 未验证：NanoVG/FBO、U13 的 `@WrapOperation`、U28–U31、跨平台运行。
 
 - 客户端与服务端统一使用 **Mojang 映射**，不使用 Yarn。
 - 六类面板：HUD、箱子界面、玩家背包界面、ItemTooltip、自定义页面、Boss 血条。
@@ -97,6 +97,7 @@ docs/
 - [x] M1 真实联调：Paper + Fabric 握手、`/cloudcore ping`（RTT 9ms）、UI 打开/关闭
 - [x] U2：容器打开事件中的 PING 先于 `ContainerScreen#setScreen`（真实客户端验证）
 - [x] U12：`MouseHandler#onScroll` 在 ContainerScreen 上收到滚轮（真实客户端验证）
+- [x] U3：`GuiGraphics#renderTooltip` 混入在悬停石头时实际命中（lines=1）
 - [x] U19：Paper BossBar 哨兵标题在客户端可见
 - [ ] U13：私有 `drawBar` 已用 `@Inject` 命中；`@WrapOperation` 尚未验证
 - [x] M1 真机大报文：64,776 字节文档压缩后拆成 3 片并重组成功
@@ -107,20 +108,16 @@ docs/
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
 - [ ] M2 完整渲染：NanoVG/FBO、image/item_icon、裁剪/滚动、混入
 - [ ] M0 渲染 spike：NanoVG 三平台/FBO 合成/预乘 alpha
-- [ ] U3 Tooltip 混入运行验证（签名已静态核对）
 
 剩余的是实现前的验证项和待决问题，不是文档缺口。
 
 ## 下一步动作（按顺序）
 
 1. **M1 压力与边界**：
-   - 100 万随机帧压测（当前 10,000）。
    - 接近 1 MiB 的真机分片与超时/乱序注入。
    - 断线/重连后确认分片组与 pending UI 会话被清理。
 2. **M0 的 spike**（各半天到一天）：
-   - U2：`InventoryOpenEvent` 中的插件消息早于 `OpenScreen`，重复 100 次。
-   - U3/U12/U13：签名已核对（`GuiGraphics` tooltip、`GuiEventListener#mouseScrolled`、
-     `BossHealthOverlay#drawBar`）；还需实际混入验证。
+   - U13：把 `BossHealthOverlay` 的 `@Inject` 探针升级为 `@WrapOperation` 包裹。
    - U28–U31：`lwjgl-nanovg` 三平台加载、FBO 包装合成、预乘 alpha、1.21.6 提取/绘制状态。
    - 先做一个纯色面板 + 一张 TTF 文本的 NanoVG 合成 spike，确认没有色差和状态泄漏。
 3. **M2 实际渲染**：

@@ -101,8 +101,8 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 | --- | --- | --- | --- | --- |
 | U1 | Paper `DiscardedPayload` 字节能到达 Fabric 注册的 payload 类型 | 整个传输依赖 | `PING`/`PONG` 真客户端 | 无理想兜底；需重新设计传输 |
 | U2 | `InventoryOpenEvent` 中的插件消息早于 `OpenScreen` | 容器预绑定 | 2026-10-26 真实 Paper/Fabric 顺序日志已核实（PING 先于 `ContainerScreen`） | 标题哨兵 |
-| U3 | 1.21.11 `GuiGraphics#blit` / `renderTooltip` 的确切重载 | 渲染器 | 编译期读映射源码 | 只改 `FboCompositor` / `NativeBackend` |
-| U3a | 已核实：`blit(RenderPipeline, Identifier, int, int, float, float, int, int, int, int, int)` 等重载；`renderTooltip(Font, List<ClientTooltipComponent>, int, int, ClientTooltipPositioner, Identifier)` | 渲染器 | 2026-10-26 `javap` 静态核对 | 混入仍需运行验证 |
+| U3 | 1.21.11 `GuiGraphics#blit` / `renderTooltip` 的确切重载 | 渲染器 | 2026-10-26 `javap` + 真实 Tooltip 混入 | 只改 `FboCompositor` / `NativeBackend` |
+| U3a | 已核实：`blit(RenderPipeline, Identifier, int, int, float, float, int, int, int, int, int)` 等重载；`renderTooltip(Font, List<ClientTooltipComponent>, int, int, ClientTooltipPositioner, Identifier)` | 渲染器 | 2026-10-26 静态 + 运行验证 | 无 |
 | U4 | `HudElementRegistry` 在 0.141.x 的包名与锚点 | HUD | 编译 + 运行 | 单锚点 `addLast` |
 | U5 | `AbstractContainerScreen` 的 `leftPos/topPos` 与 `slot.x/y` 可写 | 槽位布局 | 3×3 网格 spike | 使用默认布局 |
 | U6 | Paper 1.21.11 `setResourcePack` 重载 | 资源包 | Javadoc | 旧重载/外部 URL |
@@ -168,7 +168,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **U13 部分核实 / U19 已核实**：`BossHealthOverlayMixin` 用 `@Inject` 命中私有
   `drawBar(GuiGraphics,int,int,BossEvent)`；Paper `BossBar` 的 `\u0000CCB:probe\u0000` 标题
   在客户端实际可见并被日志捕获。`@WrapOperation` 包裹仍待验证。
-- `GuiGraphics` tooltip 入口已静态核对（U3），运行时混入待做。
+- **U3 已核实**：`GuiGraphicsMixin` 注入 1.21.11 唯一的
+  `renderTooltip(Font, List<ClientTooltipComponent>, int, int, ClientTooltipPositioner, Identifier)`；
+  悬停石头时客户端实际打印 `Tooltip observed lines=1`。
+- `GuiGraphics#blit` 的 RenderPipeline 重载已静态核对；FBO 合成仍需实现。
 - **U20 已核实**：Fabric API 0.141.3 能在 officialMojangMappings 下编译并启动。
 - **U10 已核实并规避**：Fabric `canSend()` 只反映服务端声明的通道；Paper 不保证声明，
   发送路径不再用 `canSend()` 作为门控。
@@ -179,15 +182,15 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew clean build` 通过（JDK 21，60+ 测试，0 失败）。
+- `./gradlew clean build` 通过（JDK 21，65 个测试，0 失败）。
 
 仍未验证：
 
-- U3/U3a：签名已用 `javap` 静态核对；Tooltip 混入的运行时行为仍未验证。
-- U28–U31：NanoVG 三平台原生库、FBO 合成、预乘 alpha、1.21.6 提取/绘制状态。
 - NanoVG/FBO：`NanoVgBackend.available()` 仍为 `false`，`FboCompositor` 未实现。
-- UI_DEFINITION 已能解码/校验并打开 `CloudScreen`；原生 RenderList 已支持 panel/label/button/
-  text_field/checkbox/progress；image/item_icon、NanoVG/FBO、裁剪/滚动、混入替换仍未实现。
+- U28–U31：NanoVG 三平台原生库、FBO 合成、预乘 alpha、1.21.6 提取/绘制状态。
+- U13：`@WrapOperation` 版本（`@Inject` 探针已命中）。
+- image/item_icon、文本整形、裁剪/滚动、真实布局容器、其余五类面板的实际替换。
+- 当前 screen/scroll/tooltip/boss 混入只是诊断探针，尚未替换绘制或输入。
 
 ## 3. 风险登记
 

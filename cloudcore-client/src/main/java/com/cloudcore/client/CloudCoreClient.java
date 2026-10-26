@@ -55,6 +55,8 @@ public final class CloudCoreClient implements ClientModInitializer {
     private static final boolean DIAGNOSTICS = Boolean.getBoolean("cloudcore.diagnostics");
     private static final java.util.Set<String> OBSERVED_BOSS_TITLES =
             java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private static final java.util.concurrent.atomic.AtomicBoolean TOOLTIP_SEEN =
+            new java.util.concurrent.atomic.AtomicBoolean();
 
     private static SurfaceRegistry surfaceRegistry;
     private final FragmentAssembler assembler = new FragmentAssembler(Limits.S2C);
@@ -305,6 +307,17 @@ public final class CloudCoreClient implements ClientModInitializer {
                 LOGGER.debug("Scroll observed screen={} x={} y={}",
                         minecraft.screen.getClass().getName(), xOffset, yOffset);
             }
+        }
+    }
+
+    public static void onTooltip(int lines) {
+        if (lines <= 0) {
+            return;
+        }
+        if (TOOLTIP_SEEN.compareAndSet(false, true)) {
+            LOGGER.info("Tooltip observed lines={}", lines);
+        } else {
+            LOGGER.debug("Tooltip observed lines={}", lines);
         }
     }
 

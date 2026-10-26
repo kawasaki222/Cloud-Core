@@ -138,7 +138,7 @@ public final class SurfaceRegistry {
 | 混入 | 目标 | 目的 |
 | --- | --- | --- |
 | `MinecraftMixin` | `Minecraft#setScreen` | 用 `@ModifyVariable` 替换界面参数 |
-| `TooltipMixin` | `GuiGraphics#renderTooltip(...)` | 捕获并替换物品提示渲染 |
+| `GuiGraphicsMixin` | `GuiGraphics#renderTooltip(...)` | 捕获并替换物品提示渲染 |
 | `MouseHandlerMixin` | `MouseHandler#onScroll(long,double,double)` | Tooltip 可滚动时消费滚轮 |
 | `BossHealthOverlayMixin` | `BossHealthOverlay#render` | 接管已绑定的 Boss 血条 |
 
