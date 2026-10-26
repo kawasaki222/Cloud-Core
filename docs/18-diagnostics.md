@@ -28,6 +28,8 @@
 - 控制台同步输出，便于开发。
 - 启动时写 banner：客户端版本、协议版本、Minecraft/Fabric/NanoVG 版本、渲染后端、FBO 尺寸、
   字体数量、资源根目录、日志级别。
+- `-Dcloudcore.diagnostics=true` 把界面切换与滚轮观察日志提升到 INFO；默认只在 DEBUG 输出，
+  避免正常游戏刷屏。U2/U12 复现时使用该开关。
 
 格式：
 

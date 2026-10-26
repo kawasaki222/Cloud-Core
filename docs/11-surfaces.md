@@ -11,7 +11,7 @@
 | 箱子/容器 | `1` | 临时 | 打开后备物品栏、点击策略 | `Minecraft#setScreen` |
 | 玩家背包 | `2` | 持久 | 推送皮肤、权限检查 | `Minecraft#setScreen` 识别 `InventoryScreen` |
 | HUD | `3` | 持久 | 推送层文档、状态更新 | `HudElementRegistry` |
-| ItemTooltip | `4` | 持久 | 推送样式文档 | `GuiGraphics#renderTooltip` + `GuiEventListener#mouseScrolled` |
+| ItemTooltip | `4` | 持久 | 推送样式文档 | `GuiGraphics#renderTooltip` + `MouseHandler#onScroll` |
 | Boss 血条 | `5` | 附加 | 创建带哨兵的 BossBar、绑定文档 | `BossHealthOverlay#render` |
 
 新增面板类型需要同时修改：

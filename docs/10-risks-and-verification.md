@@ -111,7 +111,7 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 | U9 | 混入优先级 900 相对 REI/EMI | 界面替换 | 互操作 | 排除列表 |
 | U10 | `canSend` 需要 `playC2S` 注册 | 发送 `HELLO` | 去掉注册观察 | 两侧都注册 |
 | U11 | `StreamCodec.of` 的签名与参数顺序 | payload | 编译 | 按映射调整 |
-| U12 | `GuiEventListener#mouseScrolled(double, double, double, double)`（`Screen` 不覆盖） | Tooltip 滚动 | 2026-10-26 `javap` 已核对；混入运行待验证 | 只改混入 |
+| U12 | `MouseHandler#onScroll(long, double, double)` 是全局滚轮入口；`Screen` 不保证覆盖 `mouseScrolled` | Tooltip 滚动 | 2026-10-26 真实客户端已核实（ContainerScreen 上滚轮进入混入） | 只改混入 |
 | U13 | `BossHealthOverlay` 的两个私有 `drawBar` 重载可被 `@WrapOperation` 包裹 | Boss 面板 | 2026-10-26 `javap` 已核对；运行待验证 | HEAD 取消并自行渲染 |
 | U14 | `InventoryScreen` 在 1.21.11 的父类与构造 | 背包面板 | 编译 | 自定义 `AbstractContainerScreen<InventoryMenu>` |
 | U15 | 客户端打开背包一定经过 `Minecraft#setScreen` | 背包拦截 | 运行 | 仅在打开时应用，不拦截按键 |
@@ -163,6 +163,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **U2 已核实**：`InventoryOpenEvent` 中发送的 PING 先到达客户端，随后才出现
   `Screen changed: net.minecraft.client.gui.screens.inventory.ContainerScreen`；容器预绑定顺序成立。
 - **Minecraft#setScreen 混入已核实**：客户端日志实际打印 `ContainerScreen` 切换，未发生 mixin 错误。
+- **U12 已核实**：`MouseHandler#onScroll(long,double,double)` 混入在 `ContainerScreen` 上收到
+  `Scroll observed ... y=1.0`；全局滚轮入口成立，Tooltip 应在这里消费滚轮而不是只依赖 `Screen`。
+- `GuiGraphics` tooltip 与两个私有 `drawBar` 重载已静态核对（U3/U13），运行时混入待做。
 - **U20 已核实**：Fabric API 0.141.3 能在 officialMojangMappings 下编译并启动。
 - **U10 已核实并规避**：Fabric `canSend()` 只反映服务端声明的通道；Paper 不保证声明，
   发送路径不再用 `canSend()` 作为门控。
@@ -177,7 +180,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 
 仍未验证：
 
-- U3/U3a、U12、U13：签名已用 `javap` 静态核对；Tooltip/Boss 混入的运行时行为仍未验证。
+- U3/U3a、U13：签名已用 `javap` 静态核对；Tooltip/Boss 混入的运行时行为仍未验证。
 - U28–U31：NanoVG 三平台原生库、FBO 合成、预乘 alpha、1.21.6 提取/绘制状态。
 - NanoVG/FBO：`NanoVgBackend.available()` 仍为 `false`，`FboCompositor` 未实现。
 - UI_DEFINITION 已能解码/校验并打开 `CloudScreen`；原生 RenderList 已支持 panel/label/button/

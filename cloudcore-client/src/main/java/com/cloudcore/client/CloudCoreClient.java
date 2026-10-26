@@ -52,6 +52,7 @@ public final class CloudCoreClient implements ClientModInitializer {
     public static final String MOD_ID = "cloudcore";
     private static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static final int CURRENT_FEATURES = FeatureFlags.NONE;
+    private static final boolean DIAGNOSTICS = Boolean.getBoolean("cloudcore.diagnostics");
 
     private static SurfaceRegistry surfaceRegistry;
     private final FragmentAssembler assembler = new FragmentAssembler(Limits.S2C);
@@ -290,12 +291,31 @@ public final class CloudCoreClient implements ClientModInitializer {
         LOGGER.info("Received PING nonce=0x{}", Integer.toHexString(ping.nonce()));
     }
 
+    public static void onScroll(double xOffset, double yOffset) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (yOffset != 0.0
+                && minecraft.screen
+                        instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>) {
+            if (DIAGNOSTICS) {
+                LOGGER.info("Scroll observed screen={} x={} y={}",
+                        minecraft.screen.getClass().getName(), xOffset, yOffset);
+            } else {
+                LOGGER.debug("Scroll observed screen={} x={} y={}",
+                        minecraft.screen.getClass().getName(), xOffset, yOffset);
+            }
+        }
+    }
+
     public static void onScreenChanged(net.minecraft.client.gui.screens.Screen screen) {
         if (screen == null) {
             LOGGER.debug("Screen changed: null");
         } else if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>
                 || screen instanceof com.cloudcore.client.screen.CloudScreen) {
-            LOGGER.info("Screen changed: {}", screen.getClass().getName());
+            if (DIAGNOSTICS) {
+                LOGGER.info("Screen changed: {}", screen.getClass().getName());
+            } else {
+                LOGGER.debug("Screen changed: {}", screen.getClass().getName());
+            }
         } else {
             LOGGER.debug("Screen changed: {}", screen.getClass().getName());
         }

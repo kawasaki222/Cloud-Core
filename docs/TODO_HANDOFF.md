@@ -96,6 +96,7 @@ docs/
 - [x] M1 接线：Paper 与 Fabric 的 HELLO/PING/PONG/分片/UI_OPEN 处理
 - [x] M1 真实联调：Paper + Fabric 握手、`/cloudcore ping`（RTT 9ms）、UI 打开/关闭
 - [x] U2：容器打开事件中的 PING 先于 `ContainerScreen#setScreen`（真实客户端验证）
+- [x] U12：`MouseHandler#onScroll` 在 ContainerScreen 上收到滚轮（真实客户端验证）
 - [x] M1 真机大报文：64,776 字节文档压缩后拆成 3 片并重组成功
 - [x] M1 压力：100 万随机帧解码（仅 ProtocolException）
 - [ ] M1 断线清理：重连后分片组与 pending UI 会话
@@ -104,7 +105,7 @@ docs/
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
 - [ ] M2 完整渲染：NanoVG/FBO、image/item_icon、裁剪/滚动、混入
 - [ ] M0 渲染 spike：NanoVG 三平台/FBO 合成/预乘 alpha
-- [ ] U3/U12/U13 混入运行验证（签名已静态核对）
+- [ ] U3/U13 混入运行验证（签名已静态核对；U12 已完成）
 
 剩余的是实现前的验证项和待决问题，不是文档缺口。
 
@@ -141,7 +142,7 @@ docs/
 - 1.21.11 中 `ResourceLocation` 已改名为 `Identifier`；文档与代码统一用 `Identifier`。
 - `cloudcore-api`、`cloudcore-protocol`、`cloudcore-server-core` 不得 import Minecraft 或 Bukkit。
 - 协议服务端接收上限 32,767 字节；C2S 报文不得随文档大小增长。
-- 四个混入：`Minecraft#setScreen`、`GuiGraphics#renderTooltip`、`GuiEventListener#mouseScrolled`、
+- 四个混入：`Minecraft#setScreen`、`GuiGraphics#renderTooltip`、`MouseHandler#onScroll`、
   `BossHealthOverlay#render`。新增混入需要兼容性评审。
 - 遍历在服务端展开；客户端不执行模板或遍历逻辑。
 - 页面组合在加载期完成；客户端只接收单一文档。

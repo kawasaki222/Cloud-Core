@@ -128,7 +128,7 @@ public final class SurfaceRegistry {
 | `ContainerSurfaceAdapter` | 箱子类容器 | `Minecraft#setScreen` + `AbstractContainerScreen` |
 | `PlayerInventoryAdapter` | 玩家背包 | `Minecraft#setScreen`（识别 `InventoryScreen`） |
 | `HudSurfaceAdapter` | HUD | `HudElementRegistry` |
-| `TooltipSurfaceAdapter` | 物品提示 | `GuiGraphics#renderTooltip` + `GuiEventListener#mouseScrolled` |
+| `TooltipSurfaceAdapter` | 物品提示 | `GuiGraphics#renderTooltip` + `MouseHandler#onScroll` |
 | `BossBarSurfaceAdapter` | Boss 血条 | `BossHealthOverlay#render` |
 
 新增面板 = 新增适配器 + 注册 + 协议常量 + 特性位。
@@ -139,14 +139,15 @@ public final class SurfaceRegistry {
 | --- | --- | --- |
 | `MinecraftMixin` | `Minecraft#setScreen` | 用 `@ModifyVariable` 替换界面参数 |
 | `TooltipMixin` | `GuiGraphics#renderTooltip(...)` | 捕获并替换物品提示渲染 |
-| `ScreenScrollMixin` | `GuiEventListener#mouseScrolled(double,double,double,double)` | Tooltip 可滚动时消费滚轮 |
+| `ScreenScrollMixin` | `MouseHandler#onScroll(long,double,double)` | Tooltip 可滚动时消费滚轮 |
 | `BossHealthOverlayMixin` | `BossHealthOverlay#render` | 接管已绑定的 Boss 血条 |
 
 混入只负责生命周期和捕获，不负责绘制；绘制统一走 `RenderBackend`。混入都设置明确的优先级，
-并且只在对应面板启用时生效。1.21.11 中 `Screen` 不覆盖滚轮方法，入口是
-`GuiEventListener#mouseScrolled(double, double, double, double)`；`GuiGraphics` 的 tooltip 入口是
+并且只在对应面板启用时生效。1.21.11 的全局滚轮入口是
+`MouseHandler#onScroll(long, double, double)`；`Screen` 不保证覆盖 `mouseScrolled`。
+`GuiGraphics` 的 tooltip 入口是
 `renderTooltip(Font, List<ClientTooltipComponent>, int, int, ClientTooltipPositioner, Identifier)`。
-两者已用 `javap` 核对（见 `10-risks-and-verification.md`），接口混入仍需 spike。
+两者已核对（见 `10-risks-and-verification.md`），滚轮混入已在真实容器界面验证。
 
 ## 6. 界面替换
 
@@ -275,14 +276,13 @@ HudElementRegistry.addLast(
 ### 10.3 滚轮路由
 
 ```java
-@Mixin(GuiEventListener.class)
-public interface ScreenScrollMixin {
-    @Inject(method = "mouseScrolled", at = @At("HEAD"), cancellable = true)
-    private void cloudcore$scrollTooltip(double mouseX, double mouseY,
-                                         double scrollX, double scrollY,
-                                         CallbackInfoReturnable<Boolean> cir) {
-        if (TooltipSurfaceAdapter.consumeScroll(scrollY)) {
-            cir.setReturnValue(true);
+@Mixin(MouseHandler.class)
+public abstract class ScreenScrollMixin {
+    @Inject(method = "onScroll", at = @At("HEAD"), cancellable = true)
+    private void cloudcore$scrollTooltip(long window, double xOffset, double yOffset,
+                                         CallbackInfo ci) {
+        if (TooltipSurfaceAdapter.consumeScroll(yOffset)) {
+            ci.cancel();
         }
     }
 }
@@ -290,9 +290,8 @@ public interface ScreenScrollMixin {
 
 - 只有 Tooltip 处于滚动模式且可见时才消费。
 - 不改变聊天、快捷栏、其他界面的滚轮行为。
-- 1.21.11 的签名是 `GuiEventListener#mouseScrolled(double, double, double, double)`；
-  接口默认方法混入需在 M6 spike 中验证，失败时改注入 `AbstractContainerScreen` 或
-  `MouseHandler`。
+- 1.21.11 的全局入口是 `MouseHandler#onScroll(long, double, double)`；真实容器界面已验证
+  混入能收到滚轮。`Screen#mouseScrolled` 可能被子类覆盖，不作为唯一钩子。
 - 滚动条样式来自文档 `surface_options.tooltip.scrollbar`：轨道、滑块、悬停态贴图、九宫格、宽度、
   间距、最小滑块高度、颜色、`draggable`。
 - 滚动条绘制在提示框内并裁剪到可见区域；`draggable: true` 时支持拖动滑块，和滚轮共享同一个偏移。
