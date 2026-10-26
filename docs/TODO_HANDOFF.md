@@ -120,7 +120,8 @@ docs/
 - [ ] M2 完整渲染：NanoVG/FBO、裁剪/滚动、混入
 - [x] HUD / Tooltip / BossBar / Container 面板最小闭环
 - [x] PlayerInventory 面板：持久皮肤、`CloudInventoryScreen`、`UI_CLOSE` 还原原版（真机截图验证）
-- [ ] 容器/背包点击策略的自动化交互验证（managed/readonly/passthrough）
+- [x] 容器点击策略：`managed`/`readonly` 的 `InventoryClickEvent` 取消与日志（真机验证，服务端解析文档槽位）
+- [ ] 容器点击策略补充：`passthrough`、`allow_player_inventory`、`InventoryDragEvent` 的真机验证
 - [ ] 玩家背包配方书（v1 隐藏；v2 再补 `skinned`/`custom`）与玩家模型/状态效果选项
 - [x] 协议前向兼容：未知 `surfaceId` 保留原始值并回 `UI_READY(state=4)`
 - [ ] 协议前向兼容：未知 `BindMode` / `RenderMode`（仍拒绝）
@@ -143,8 +144,7 @@ docs/
 3. **M2 实际渲染**：
    - 补齐 `inline:`/`pack:` 图片、GIF、`item_icon`、text shaping、裁剪、scroll 和真实布局容器。
    - 接入 `NanoVgBackend`/`FboCompositor`；失败时整帧回退 `NativeBackend`。
-   - 容器与玩家背包的点击策略（`managed`/`readonly`/`passthrough`）自动化交互测试。
-   - 玩家背包 v2：配方书四档、玩家模型与状态效果。
+   - 容器与玩家背包的点击策略（`managed`/`readonly`/`passthrough`）自动化交互测试。   - 玩家背包 v2：配方书四档、玩家模型与状态效果。
 4. 之后按 `08-roadmap.md` 的 M3–M10 推进。
 
 ## 环境搭建

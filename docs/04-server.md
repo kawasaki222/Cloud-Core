@@ -266,6 +266,17 @@ player.openInventory(inv);
 | `readonly` | 全部取消，除非 `allow_player_inventory: true` |
 | `passthrough` | 永不取消；旧界面适配使用 |
 
+实现要点（`ContainerClickPolicy` + `CloudInventoryHolder`）：
+
+- 物品栏由 `Bukkit.createInventory(new CloudInventoryHolder(...), ...)` 创建，holder 携带
+  玩家、`uiId`、交互模式和已声明槽位。
+- 已声明槽位来自文档里 `inventory_grid` 元素的 `slots: [first, last]`；服务端解析自己下发的
+  文档得到集合，保证客户端与服务端判定同源。
+- 玩家背包（下层）槽位在 `managed`/`passthrough` 下不受限；`readonly` 默认全部取消。
+- 交互模式无法解析时按 `readonly` 处理（fail closed），并写服务端日志。
+- `InventoryDragEvent` 使用同一判定；任一目标槽位不允许就整体取消。
+- 被取消的点击写一行日志：`CANCELLED click ui=... interaction=... top=... slot=... declared=...`。
+
 ### 7.2 玩家背包面板
 
 服务端不打开背包，只推送皮肤：

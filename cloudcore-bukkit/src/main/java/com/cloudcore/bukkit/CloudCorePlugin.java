@@ -3,6 +3,9 @@ package com.cloudcore.bukkit;
 import com.cloudcore.api.BindMode;
 import com.cloudcore.api.RenderMode;
 import com.cloudcore.api.SurfaceType;
+import com.cloudcore.api.document.UiDocument;
+import com.cloudcore.api.document.UiDocumentJson;
+import com.cloudcore.api.page.PageLoadException;
 import com.cloudcore.protocol.Diagnostic;
 import com.cloudcore.protocol.DiagnosticCodec;
 import com.cloudcore.protocol.DiagnosticSeverity;
@@ -27,16 +30,19 @@ import com.cloudcore.protocol.UiCodec;
 import com.cloudcore.protocol.UiDefinition;
 import com.cloudcore.protocol.UiOpen;
 import com.cloudcore.protocol.UiReady;
+import com.cloudcore.server.surface.ContainerClickPolicy;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
@@ -45,10 +51,14 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
@@ -254,6 +264,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 sendTooltipOpen(target);
             } else if (args[0].equalsIgnoreCase("demo-container")) {
                 sendDemoContainer(target);
+            } else if (args[0].equalsIgnoreCase("demo-readonly")) {
+                openDemoChest(target, ContainerClickPolicy.Interaction.READONLY);
             } else if (args[0].equalsIgnoreCase("demo-inventory")) {
                 sendDemoInventory(target);
             } else {
@@ -309,6 +321,11 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core container demo sent."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("demo-readonly")) {
+            openDemoChest(player, ContainerClickPolicy.Interaction.READONLY);
+            sender.sendMessage(Component.text("Cloud Core readonly container demo sent."));
+            return true;
+        }
         if (args.length == 1 && args[0].equalsIgnoreCase("demo-inventory")) {
             sendDemoInventory(player);
             sender.sendMessage(Component.text("Cloud Core inventory demo sent."));
@@ -318,7 +335,7 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text(
                     "Usage: /" + label
                             + " <ping|demo|demo-big|demo-hud|demo-tooltip|demo-container"
-                            + "|demo-inventory|probe|boss|close|diagnostic>"));
+                            + "|demo-readonly|demo-inventory|probe|boss|close|diagnostic>"));
             return true;
         }
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
@@ -338,11 +355,11 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("demo-hud")
                 || action.equalsIgnoreCase("demo-tooltip")
                 || action.equalsIgnoreCase("demo-container")
+                || action.equalsIgnoreCase("demo-readonly")
                 || action.equalsIgnoreCase("demo-inventory");
     }
 
-    private void sendDemoInventory(Player player) {
-        String uiId = "cloudcore_demo_inventory";
+    private void sendDemoInventory(Player player) {        String uiId = "cloudcore_demo_inventory";
         int token = random.nextInt();
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
         session.lastUiId = uiId;
@@ -378,6 +395,15 @@ public final class CloudCorePlugin extends JavaPlugin
     }
 
     private void sendDemoContainer(Player player) {
+        openDemoChest(player, ContainerClickPolicy.Interaction.MANAGED);
+    }
+
+    /**
+     * Opens a 27-slot chest backed by a {@link CloudInventoryHolder}. The document declares a
+     * grid over slots 0-8, so {@code managed} lets the player take those items while
+     * {@code readonly} cancels every click.
+     */
+    private void openDemoChest(Player player, ContainerClickPolicy.Interaction interaction) {
         String uiId = "cloudcore_demo_container";
         int token = random.nextInt();
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
@@ -393,31 +419,57 @@ public final class CloudCorePlugin extends JavaPlugin
                   "surface": "container",
                   "title": { "runs": [ { "text": "Cloud Core Container" } ] },
                   "size": [176, 166],
-                  "container": { "rows": 3, "interaction": "managed" },
+                  "container": { "rows": 3, "interaction": "%s" },
                   "elements": [
                     { "id": "container_bg", "type": "panel", "x": 0, "y": 0,
                       "width": "fill", "height": "fill",
                       "style": { "background": "#E0203040" } },
                     { "id": "container_hint", "type": "label", "x": 8, "y": 6,
-                      "text": "Cloud Core Container", "color": "#FFFFFFFF" }
+                      "text": "Cloud Core Container", "color": "#FFFFFFFF" },
+                    { "id": "container_grid", "type": "inventory_grid", "x": 8, "y": 18,
+                      "width": "fill", "height": 18,
+                      "slots": [0, 8], "origin": [8, 18], "cell": [18, 18],
+                      "columns": 9 }
                   ]
                 }
-                """;
+                """.formatted(interaction.name().toLowerCase(java.util.Locale.ROOT));
         UiDefinition definition = new UiDefinition(uiId, 1, 0,
                 json.getBytes(StandardCharsets.UTF_8));
         getServer().getScheduler().runTaskLater(this, () -> {
-            if (player.isOnline()) {
-                sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
-                        UiCodec.encodeDefinition(definition, Limits.S2C)));
-                getServer().getScheduler().runTaskLater(this, () -> {
-                    if (player.isOnline()) {
-                        player.openInventory(Bukkit.createInventory(null, 27,
-                                Component.text("Cloud Core Container")));
-                    }
-                }, 1L);
+            if (!player.isOnline()) {
+                return;
             }
+            sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
+                    UiCodec.encodeDefinition(definition, Limits.S2C)));
+            getServer().getScheduler().runTaskLater(this, () -> {
+                if (!player.isOnline()) {
+                    return;
+                }
+                Set<Integer> declared = declaredSlotsOf(player, definition);
+                CloudInventoryHolder holder = new CloudInventoryHolder(
+                        player.getUniqueId(), uiId, interaction, declared);
+                Inventory inventory = Bukkit.createInventory(holder, 27,
+                        Component.text("Cloud Core Container"));
+                holder.attach(inventory);
+                inventory.setItem(0, new ItemStack(Material.DIAMOND, 5));
+                inventory.setItem(13, new ItemStack(Material.GOLD_INGOT, 3));
+                player.openInventory(inventory);
+                getLogger().info("Opened demo chest for " + player.getName()
+                        + " interaction=" + interaction + " declared=" + declared);
+            }, 1L);
         }, 1L);
         getLogger().info("Sent container UI_OPEN/UI_DEFINITION to " + player.getName());
+    }
+
+    private Set<Integer> declaredSlotsOf(Player player, UiDefinition definition) {
+        try {
+            UiDocument document = UiDocumentJson.parse(definition.data());
+            return ContainerClickPolicy.declaredSlots(document);
+        } catch (PageLoadException exception) {
+            getLogger().warning("Demo container document failed to parse for "
+                    + player.getName() + ": " + exception.getMessage());
+            return Set.of();
+        }
     }
 
     private void sendTooltipOpen(Player player) {
@@ -578,6 +630,57 @@ public final class CloudCorePlugin extends JavaPlugin
         sendPing(player, session);
         getLogger().info("PROBE InventoryOpenEvent -> PING " + player.getName()
                 + " inventory=" + event.getInventory().getType());
+    }
+
+    /**
+     * Cancels clicks the container document does not allow. Runs at LOWEST so no other plugin
+     * can observe or re-enable a forbidden click.
+     */
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onCloudInventoryClick(InventoryClickEvent event) {
+        CloudInventoryHolder holder = holderOf(event.getInventory());
+        if (holder == null) {
+            return;
+        }
+        int rawSlot = event.getRawSlot();
+        boolean top = rawSlot >= 0 && rawSlot < event.getView().getTopInventory().getSize();
+        if (ContainerClickPolicy.allow(holder.interaction(), top, rawSlot,
+                holder.declaredSlots(), false)) {
+            return;
+        }
+        event.setCancelled(true);
+        getLogger().info("CANCELLED click ui=" + holder.uiId()
+                + " interaction=" + holder.interaction()
+                + " top=" + top + " slot=" + rawSlot
+                + " declared=" + holder.declaredSlots()
+                + " player=" + event.getWhoClicked().getName());
+    }
+
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
+    public void onCloudInventoryDrag(InventoryDragEvent event) {
+        CloudInventoryHolder holder = holderOf(event.getInventory());
+        if (holder == null) {
+            return;
+        }
+        int topSize = event.getView().getTopInventory().getSize();
+        for (int rawSlot : event.getRawSlots()) {
+            boolean top = rawSlot >= 0 && rawSlot < topSize;
+            if (!ContainerClickPolicy.allow(holder.interaction(), top, rawSlot,
+                    holder.declaredSlots(), false)) {
+                event.setCancelled(true);
+                getLogger().info("CANCELLED drag ui=" + holder.uiId()
+                        + " interaction=" + holder.interaction()
+                        + " slots=" + event.getRawSlots()
+                        + " player=" + event.getWhoClicked().getName());
+                return;
+            }
+        }
+    }
+
+    private static CloudInventoryHolder holderOf(Inventory inventory) {
+        return inventory != null && inventory.getHolder(false) instanceof CloudInventoryHolder holder
+                ? holder
+                : null;
     }
 
     private void sendDemoOpen(Player player, boolean big) {

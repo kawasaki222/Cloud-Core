@@ -188,7 +188,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   标题实际显示为 `Cloud Core Boss`。九宫格/样式数据化尚未实现。
 - **Container 面板已核实**：`/cloudcore demo-container` 先发 UI_OPEN/文档，再打开 27 格箱子；
   `Minecraft#setScreen` 的 `@ModifyVariable` 替换为 `CloudContainerScreen`，自定义背景下仍显示
-  3 行容器槽位与玩家背包槽位。点击语义仍由原版 menu 处理，尚未做自动化交互测试。
+  3 行容器槽位与玩家背包槽位。
+- **容器点击策略已核实**：文档声明 `inventory_grid.slots=[0,8]`，服务端从同一份文档解析出
+  已声明槽位。`managed` 模式下点击 0 号槽取出钻石、点击 13 号槽被取消并写
+  `CANCELLED click ... slot=13`；`/cloudcore demo-readonly` 的 `readonly` 模式点击 0 号槽同样被取消。
+  未验证：`passthrough` 真机、`allow_player_inventory: true`、拖拽（`InventoryDragEvent`）真机。
 - **PlayerInventory 面板已核实**：`/cloudcore demo-inventory` 下发持久皮肤后按 `E`，
   `Minecraft#setScreen` 的 `@ModifyVariable` 把原版 `InventoryScreen` 换成
   `CloudInventoryScreen`（`AbstractContainerScreen<InventoryMenu>`，复用 `player.inventoryMenu`）。
