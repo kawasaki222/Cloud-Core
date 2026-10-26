@@ -253,6 +253,8 @@ public record UiSession(
 
 ```yaml
 inventory-probe: false      # 打开后每次 InventoryOpenEvent 发一个 PING（排查容器时序）
+pages:
+  watch: true               # 页面文件变化后自动重载（400ms 合并）并推送更新
 actions:
   commands:
     enabled: false          # command 动作总开关

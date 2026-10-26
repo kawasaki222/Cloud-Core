@@ -23,7 +23,10 @@
 - `UiDocumentJson.write` 把编译结果写回线上下发的 JSON；已做往返测试。
 - Paper 插件启动时创建 `plugins/CloudCore/pages/` 并写入示例页；`/cloudcore page <名字> [玩家]`
   加载并下发（当前只处理 `custom_screen`）。
-- 尚未实现：WatchService 热重载、依赖图增量编译、`/cloudcore validate`、动作绑定（`on:` 目前丢弃）。
+- 已实现：`PageWatcher` 监听 `pages/`（含子目录，`pages.watch` 默认开），`.yml`/`.yaml` 变化 400ms
+  合并后回调主线程重载并推送更新；`/cloudcore validate`、`/cloudcore reload`、动作绑定（actionId +
+  服务端动作表）。
+- 尚未实现：依赖图增量编译（当前变化即全量重载）、内容哈希去重。
 
 ## 2. 目录结构
 

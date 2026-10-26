@@ -228,6 +228,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
+  `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
+  变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
 - **Tooltip 滚动已核实**：把示例 Tooltip 的 `max_height` 设为 12 后，悬停物品的自定义提示框
   被裁剪成 12px（日志 `scrollable=true`），右侧出现滚动条；滚轮一格后文本整体上移
   （`tooltip-small1.png`、`tooltip-small2.png`）。正常文档用默认 160 高度不受影响。

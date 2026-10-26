@@ -72,6 +72,7 @@ public final class CloudCorePlugin extends JavaPlugin
     private final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
     private final SecureRandom random = new SecureRandom();
     private java.nio.file.Path pagesRoot;
+    private com.cloudcore.bukkit.PageWatcher pageWatcher;
     private final Map<String, com.cloudcore.api.page.PageLoader.CompiledPage> compiledPages =
             new ConcurrentHashMap<>();
     private final com.cloudcore.server.surface.EventRateLimiter eventLimiter =
@@ -89,6 +90,7 @@ public final class CloudCorePlugin extends JavaPlugin
         }
         saveDefaultConfig();
         preparePagesDirectory();
+        startPageWatcher();
         getLogger().info("Cloud Core transport online on " + CHANNEL
                 + " (protocol " + ProtocolVersion.MAJOR + "." + ProtocolVersion.MINOR + ")");
     }
@@ -115,8 +117,31 @@ public final class CloudCorePlugin extends JavaPlugin
         }
     }
 
+    /** Hot reload of authored pages; the callback hops back to the main thread. */
+    private void startPageWatcher() {
+        if (!getConfig().getBoolean("pages.watch", true) || pagesRoot == null) {
+            return;
+        }
+        try {
+            pageWatcher = new com.cloudcore.bukkit.PageWatcher(pagesRoot, () -> {
+                if (!isEnabled()) {
+                    return;
+                }
+                getServer().getScheduler().runTask(this,
+                        () -> reloadPages(getServer().getConsoleSender()));
+            }, getLogger());
+            getLogger().info("Watching " + pagesRoot + " for page changes");
+        } catch (java.io.IOException exception) {
+            getLogger().log(Level.WARNING, "Cannot watch the pages directory", exception);
+        }
+    }
+
     @Override
     public void onDisable() {
+        if (pageWatcher != null) {
+            pageWatcher.close();
+            pageWatcher = null;
+        }
         getServer().getMessenger().unregisterIncomingPluginChannel(this, CHANNEL, this);
         getServer().getMessenger().unregisterOutgoingPluginChannel(this, CHANNEL);
         sessions.clear();
