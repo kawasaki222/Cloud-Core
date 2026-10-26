@@ -1,0 +1,19 @@
+[versions]
+minecraft = "1.21.11"
+fabric-loader = "0.19.5"
+fabric-api = "0.141.3+1.21.11"
+loom = "1.14-SNAPSHOT"
+paper-api = "1.21.11-R0.1-SNAPSHOT"
+gson = "2.11.0"
+junit = "5.11.4"
+junit-platform = "1.11.4"
+slf4j = "2.0.16"
+
+[libraries]
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+
+[plugins]
+fabric-loom = { id = "fabric-loom", version.ref = "loom" }

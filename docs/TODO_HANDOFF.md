@@ -1,0 +1,179 @@
+# 待办 / 交接
+
+最后更新：2026-10-26。
+
+## 当前状态
+
+**文档基线完成，M0 脚手架与协议核心已开始落地。**
+
+- Gradle 9.2.0 wrapper、5 模块、JDK 21 toolchain、Loom 1.14 + Mojang 映射。
+- `cloudcore-protocol`：Frame/FrameCodec/Deflate/VarInt/WireValue + JUnit 测试。
+- `cloudcore-bukkit`：Paper 通道注册与 C2S 帧解码。
+- `cloudcore-client`：Fabric 入口、`CustomPacketPayload`/`StreamCodec`、S2C 帧解码。
+- 下一步：分片/重组、握手、NanoVG/FBO spike。
+
+- 客户端与服务端统一使用 **Mojang 映射**，不使用 Yarn。
+- 六类面板：HUD、箱子界面、玩家背包界面、ItemTooltip、自定义页面、Boss 血条。
+- 面板可扩展，新增类型不改协议主干。
+- 页面支持多 YAML 组合与单文件两种形态。
+- 支持遍历（`repeat`）与自定义字体。
+- ItemTooltip 支持滚轮滚动。
+- 动作引擎分两阶段：v1 线性动作（M8）、v2 服务端图执行器（M9）；与 NanoVG/原生渲染无关。
+- v1 已定义 `ActionEngine` 接缝，v2 的图节点编译为 `sequence`，旧 YAML 不需要重写。
+- Tooltip 滚动条与 Boss 血条样式全部数据化。
+- `url:` 图片默认客户端直连，服务端代理可选；GIF 按模式在客户端或服务端解码。
+- PAPI 变量支持定时刷新，默认同步、异步白名单。
+- 绘制默认使用 **NanoVG 离屏渲染 + 原生合成**；原生 `GuiGraphics` 后端作为回退。
+- 物品、槽位、Tooltip 内容、输入法文本继续由原版绘制。
+- 所有配置/协议/文档/资源/渲染/动作错误写入客户端 `logs/cloudcore-client.log`，带 `CC-*` 码，
+  服务端通过 `DIAGNOSTIC` 下发摘要，`F10` 导出诊断包。
+
+## 已有内容
+
+```
+README.md
+docs/
+  00-project-charter.md
+  01-architecture.md
+  02-protocol.md
+  03-ui-dsl.md
+  04-server.md
+  05-client.md
+  06-resources-and-rendering.md
+  07-security.md
+  08-roadmap.md
+  09-testing.md
+  10-risks-and-verification.md
+  11-surfaces.md
+  12-page-composition.md
+  13-action-engine.md
+  14-render-backends.md
+  15-engineering-guide.md
+  16-ui-document-schema.md
+  17-operations.md
+  18-diagnostics.md
+  19-addon-api.md
+  TODO_HANDOFF.md
+```
+
+## 文档完整性检查
+
+- [x] 章程、目标、非目标、术语（`00`）
+- [x] 模块边界、面板抽象、渲染架构、线程（`01`）
+- [x] 协议信封、操作码、面板类型、状态码、限额（`02`）
+- [x] YAML 语法、元素、样式、字体、遍历、动作（`03`）
+- [x] 服务端启动、配置、页面组合、会话、面板策略（`04`）
+- [x] 客户端初始化、网络、混入、后端、输入（`05`）
+- [x] NanoVG/FBO/字体/Tooltip/Boss/性能（`06`、`14`）
+- [x] 威胁模型、校验、限流、敏感输入（`07`）
+- [x] 里程碑、依赖、估算、验收（`08`）
+- [x] 测试金字塔、模糊、互操作、浸泡（`09`）
+- [x] 风险、未验证项、ADR、迁移（`10`）
+- [x] 六类面板生命周期与扩展（`11`）
+- [x] 多 YAML 组合、重载、遍历展开（`12`）
+- [x] 动作引擎 v1/v2、作用域、等待、预算（`13`）
+- [x] 工程结构、编码规范、常见改动流程（`15`）
+- [x] 下发文档字段、类型、限额、示例（`16`）
+- [x] 部署、本地资源、原生库、升级、故障手册（`17`）
+- [x] 客户端日志、错误码、服务端诊断、诊断包（`18`）
+- [x] 附属插件 API、代码构造页面、兼容策略（`19`）
+- [x] M0：Gradle 多模块/协议核心/Paper 通道/Fabric payload 骨架
+- [ ] M1 剩余：分片与重组、握手、黄金向量
+- [ ] M0 渲染 spike：NanoVG 三平台/FBO 合成/预乘 alpha
+
+剩余的是实现前的验证项和待决问题，不是文档缺口。
+
+## 下一步动作（按顺序）
+
+1. **M0 的 spike**（各半天到一天），在写其他代码之前：
+   - U1：Paper 发送 `PING` 帧，Fabric 客户端收到并回 `PONG`。
+   - U2：`InventoryOpenEvent` 中的插件消息早于 `OpenScreen`，重复 100 次。
+   - U3/U12/U13：`GuiGraphics` 的 blit/tooltip 重载、`Screen#mouseScrolled`、
+     `BossHealthOverlay#drawBar`。
+   - U28–U31：`lwjgl-nanovg` 三平台加载、FBO 包装合成、预乘 alpha、1.21.6 提取/绘制状态。
+   - 先做一个纯色面板 + 一张 TTF 文本的 NanoVG 合成 spike，确认没有色差和状态泄漏。
+2. **M0 脚手架**：
+   - Gradle 多模块，Java 21。
+   - 客户端 `loom.officialMojangMappings()`，无 `yarn_mappings`。
+   - `lwjgl-nanovg` 依赖与三平台 natives，版本对齐 Minecraft 自带 LWJGL。
+   - `CloudCoreClient` 空入口、`cloudcore.mixins.json`。
+   - 客户端日志骨架：文件、轮转、级别、脱敏、`CC-*` 占位。
+   - Paper 插件空 `onEnable`，注册通道。
+   - CI。
+3. **M1 协议核心**：信封、分片、`WireValue`、协议 1.1 的 `SurfaceType`/`BindMode`、
+   `CustomPacketPayload` + `StreamCodec`、黄金向量、模糊测试。
+4. 之后按 `08-roadmap.md` 的 M2–M10 推进。
+
+## 环境搭建
+
+- JDK 21。
+- Gradle wrapper 在脚手架阶段固定。
+- IntelliJ IDEA + Minecraft Development 插件（混入支持）。
+- 本地 Paper 1.21.11 服务端目录（`run-paper`）。
+- `./gradlew :cloudcore-client:runClient` 启动开发客户端。
+- 需要显示器；客户端集成测试可在本地 Windows 或 Xvfb + 软件 GL 上跑。
+
+## 已知约束
+
+- 全项目 Java 21；26.1 将要求 Java 25。
+- 1.21.11 中 `ResourceLocation` 已改名为 `Identifier`；文档与代码统一用 `Identifier`。
+- `cloudcore-api`、`cloudcore-protocol`、`cloudcore-server-core` 不得 import Minecraft 或 Bukkit。
+- 协议服务端接收上限 32,767 字节；C2S 报文不得随文档大小增长。
+- 四个混入：`Minecraft#setScreen`、`GuiGraphics#renderTooltip`、`Screen#mouseScrolled`、
+  `BossHealthOverlay#render`。新增混入需要兼容性评审。
+- 遍历在服务端展开；客户端不执行模板或遍历逻辑。
+- 页面组合在加载期完成；客户端只接收单一文档。
+- 正式素材放客户端 `.minecraft/resourcepacks/CloudCore/`，可按 `副本/`、`签到/`、`公共/` 分类；
+  模组只留最小回退。
+- 字体来自本地 CloudCore 目录/资源包，不能运行时推送；NanoVG 用 TTF/OTF，原版文本用 `Font`。
+- 所有错误写客户端日志，默认脱敏；`F10`/`dump` 生成诊断包。
+- 默认渲染后端是 NanoVG：`NVGContext`、FBO、字体创建和合成只能在渲染线程。
+- NanoVG 原生库随模组打包，加载失败必须回退 `NativeBackend`。
+- FBO 按逻辑分辨率整数倍分配，单层显存上限 8 MiB，窗口/GUI 缩放变化才重建。
+- URL 贴图只允许 https；直连模式由客户端执行私网/回环/大小/超时策略，代理模式由服务端执行允许列表。
+- GIF 直连模式客户端解码，代理模式服务端解码；两侧都有帧数/像素/延迟上限。
+- PlaceholderAPI 默认主线程同步解析；异步仅限 `async-namespaces` 白名单。
+- Tooltip 滚动条与 Boss 样式字段都有范围校验和默认值。
+
+## 待决策事项
+
+见 `10-risks-and-verification.md` 第 6 节。会阻塞 M2/M6 的是：
+
+- 内置字体的字形覆盖范围（拉丁 + CJK 子集）与体积。
+- 玩家背包 v1 是否接受隐藏配方书。
+- Boss 血条只接管 Paper BossBar，还是也支持第三方 Boss 事件。
+- Tooltip 是否需要服务端逐行追加内容。
+- 多面板同时需要输入时的焦点规则。
+- URL 直连默认开启还是让玩家选择；默认允许列表怎么定。
+- 哪些场景强制服务端代理（隐私/内网/鉴权图床）。
+- GIF 64 帧上限是否满足实际美术需求。
+- PAPI 同步预算（2 ms/玩家、10 ms 全局）是否适合目标玩家规模。
+- NanoVG FBO 默认 1x 还是 2x；文字清晰度与 GPU 填充/显存成本的取舍。
+- 是否在光影包环境下默认回退原生后端。
+
+## M0 的完成定义
+
+- 干净 JDK 21 环境下 `./gradlew build` 成功。
+- 客户端在 1.21.11 上加载，入口打印日志，混入没有报错。
+- NanoVG 在三平台初始化成功，FBO 合成一个纯色面板无异常；失败时回退原生。
+- U28–U31 有结论并写入 `10-risks-and-verification.md`。
+- 插件在 Paper 1.21.11 上启用，注册通道不抛异常。
+- U1、U2 有结论并写入 `10-risks-and-verification.md`。
+- CI 在 Windows 与 Linux 上绿色。
+- 本文件更新实际命令名与偏差。
+
+## 文件归属表
+
+| 领域 | 模块 | 主要文档 |
+| --- | --- | --- |
+| 线上格式 | `cloudcore-protocol` | `02-protocol.md` |
+| 文档模型 / 校验 | `cloudcore-api` | `03-ui-dsl.md`、`16-ui-document-schema.md` |
+| 工程 / 构建 / 规范 | 全部 | `15-engineering-guide.md` |
+| 部署 / 运维 | 全部 | `17-operations.md` |
+| 测试策略 | 全部 | `09-testing.md` |
+| 页面组合 / 遍历 | `cloudcore-server-core` | `12-page-composition.md` |
+| 动作引擎 | `cloudcore-server-core` | `13-action-engine.md` |
+| 服务端面板策略 | `cloudcore-bukkit` | `04-server.md`、`11-surfaces.md` |
+| 客户端面板适配 | `cloudcore-client` | `05-client.md`、`11-surfaces.md` |
+| 渲染 / 字体 / Tooltip / Boss | `cloudcore-client` | `06-resources-and-rendering.md`、`14-render-backends.md` |
+| 安全评审 | 全部 | `07-security.md` |
