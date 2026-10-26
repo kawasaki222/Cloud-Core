@@ -275,8 +275,10 @@ public final class CloudCorePlugin extends JavaPlugin
                     getLogger().warning("set_state without key in page " + page.document().id());
                     return false;
                 }
-                Object value = action.params().get("value");
-                state.put(String.valueOf(key), value);
+                Object raw = action.params().get("value");
+                Object value = raw instanceof String text
+                        ? resolveState(text, state, payload) : raw;
+                state.put(String.valueOf(key), normalise(value));
                 refreshPage(player, session, page);
             }
             default -> {
@@ -357,6 +359,18 @@ public final class CloudCorePlugin extends JavaPlugin
             result = result.replace("${" + entry.getKey() + "}", String.valueOf(entry.getValue()));
         }
         return result;
+    }
+
+    /** Booleans and numbers arrive from payloads as text after substitution. */
+    private static Object normalise(Object value) {
+        if (value instanceof String text) {
+            return switch (text) {
+                case "true" -> Boolean.TRUE;
+                case "false" -> Boolean.FALSE;
+                default -> text;
+            };
+        }
+        return value;
     }
 
     private static String payloadText(com.cloudcore.protocol.WireValue value) {

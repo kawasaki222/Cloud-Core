@@ -183,10 +183,12 @@ public final class PageLoader {
         }
         appendElements(manifest.get("elements"), mergedElements);
 
-        // Page-level state wins over fragments.
+        // Page-level state wins over fragments; the caller's state (the player's session)
+        // wins over both, so set_state survives recompiles.
         if (manifest.get("state") instanceof Map<?, ?> pageState) {
             mergedState.putAll(toStringMap(pageState));
         }
+        mergedState.putAll(state);
         if (manifest.get("fonts") instanceof Map<?, ?> fonts) {
             mergedFonts.putAll(toStringMap(fonts));
         }
@@ -459,7 +461,8 @@ public final class PageLoader {
             if (rawActions == null) {
                 continue;
             }
-            Object resolved = applyTemplate(rawActions, scope);
+            // Runtime payload placeholders such as ${checked} must survive compilation.
+            Object resolved = applyTemplatePreserving(rawActions, scope);
             List<PageAction> actions = new ArrayList<>();
             if (resolved instanceof List<?> list) {
                 for (Object item : list) {
@@ -494,23 +497,34 @@ public final class PageLoader {
 
     /** Replaces {@code ${state.x}}, {@code ${item.field}} and {@code ${i}} in strings. */
     static Object applyTemplate(Object value, Map<String, Object> scope) {
+        return applyTemplate(value, scope, false);
+    }
+
+    /** Like {@link #applyTemplate} but leaves unknown {@code ${...}} for runtime payloads. */
+    static Object applyTemplatePreserving(Object value, Map<String, Object> scope) {
+        return applyTemplate(value, scope, true);
+    }
+
+    private static Object applyTemplate(Object value, Map<String, Object> scope,
+            boolean keepUnknown) {
         if (value instanceof String text) {
             if (text.contains("${")) {
-                return interpolate(text, scope);
+                return interpolate(text, scope, keepUnknown);
             }
             return text;
         }
         if (value instanceof Map<?, ?> map) {
             Map<String, Object> result = new LinkedHashMap<>();
             for (Map.Entry<?, ?> entry : map.entrySet()) {
-                result.put(String.valueOf(entry.getKey()), applyTemplate(entry.getValue(), scope));
+                result.put(String.valueOf(entry.getKey()),
+                        applyTemplate(entry.getValue(), scope, keepUnknown));
             }
             return result;
         }
         if (value instanceof List<?> list) {
             List<Object> result = new ArrayList<>(list.size());
             for (Object entry : list) {
-                result.add(applyTemplate(entry, scope));
+                result.add(applyTemplate(entry, scope, keepUnknown));
             }
             return result;
         }
@@ -530,6 +544,11 @@ public final class PageLoader {
     }
 
     private static String interpolate(String text, Map<String, Object> scope) {
+        return interpolate(text, scope, false);
+    }
+
+    private static String interpolate(String text, Map<String, Object> scope,
+            boolean keepUnknown) {
         StringBuilder result = new StringBuilder();
         int cursor = 0;
         while (true) {
@@ -544,8 +563,13 @@ public final class PageLoader {
                 break;
             }
             result.append(text, cursor, start);
-            Object value = lookup(text.substring(start + 2, end), scope);
-            result.append(value == null ? "" : String.valueOf(value));
+            String expression = text.substring(start + 2, end);
+            Object value = lookup(expression, scope);
+            if (value == null && keepUnknown) {
+                result.append("${").append(expression).append('}');
+            } else {
+                result.append(value == null ? "" : String.valueOf(value));
+            }
             cursor = end + 1;
         }
         return result.toString();

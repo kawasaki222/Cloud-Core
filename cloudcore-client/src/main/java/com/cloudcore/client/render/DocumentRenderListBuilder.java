@@ -145,7 +145,12 @@ public final class DocumentRenderListBuilder {
                 childHeight = h;
             }
             case "checkbox" -> {
-                addFill(commands, x, y, 9, 9, 0xAA303030);
+                boolean checked = truthy(attribute(element, "checked"));
+                addFill(commands, x, y, 9, 9, checked ? 0xFF4FA3E8 : 0xAA303030);
+                addFill(commands, x + 1, y + 1, 7, 7, checked ? 0xFF1B3F63 : 0xFF1A1A1A);
+                if (checked) {
+                    addFill(commands, x + 2, y + 2, 5, 5, 0xFFFFFFFF);
+                }
                 addText(commands, text(element), x + 13, y,
                         color(styleText(element), DEFAULT_TEXT), fontPath(element, fonts));
             }
@@ -291,6 +296,11 @@ public final class DocumentRenderListBuilder {
         boolean loop = !Boolean.FALSE.equals(attribute(element, "loop"));
         float speed = (float) number(attribute(element, "speed"), 1.0);
         return new RenderCommand.Image.Animation(enabled, loop, speed);
+    }
+
+    /** Accepts both real booleans and the strings templates produce. */
+    private static boolean truthy(Object value) {
+        return Boolean.TRUE.equals(value) || "true".equalsIgnoreCase(String.valueOf(value));
     }
 
     /** Reads a {@code [a, b, c, d]} attribute array; anything else becomes {@code null}. */

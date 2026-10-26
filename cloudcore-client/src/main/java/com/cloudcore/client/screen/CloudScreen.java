@@ -201,6 +201,21 @@ public final class CloudScreen extends Screen {
                 return true;
             }
         }
+        // Checkboxes toggle locally and report the new value; the server owns the state.
+        com.cloudcore.api.document.UiElement checkbox =
+                com.cloudcore.client.render.ElementHitTester.findWithEvent(document, width,
+                        height, (int) event.x(), (int) event.y(),
+                        id -> localScroll.getOrDefault(id, 0), "change");
+        if (checkbox != null && "checkbox".equals(checkbox.type())) {
+            Integer actionId = checkbox.events().get("change");
+            boolean checked = Boolean.TRUE.equals(checkbox.attributes().get("checked"));
+            if (actionId != null) {
+                com.cloudcore.client.CloudCoreClient.sendEvent(document.id(), checkbox.id(),
+                        actionId, java.util.Map.of("checked",
+                                new com.cloudcore.protocol.WireValue.BoolValue(!checked)));
+                return true;
+            }
+        }
         return super.mouseClicked(event, doubleClick);
     }
 

@@ -228,6 +228,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **复选框与状态优先级已核实**：示例页点击“接收通知”后服务端 `Updated page 'example'
+  revision=2 state={notify=true}`，界面上的复选框变为选中态（`checkbox4.png`）。
+  过程中修正了 `PageLoader` 忽略调用方状态的缺陷（现在玩家状态覆盖文档默认值），
+  `PageLoaderTest.callerStateOverridesDocumentDefaults` 覆盖。
 - **输入框已核实**：示例页的 `text_field` 渲染为原版 `EditBox`（点击出现光标），
   通过字符输入写入 `abc`，ENTER 后服务端记录 `EVENT ui=example element=name_input`；
   动作 `${value}` 用事件载荷替换（`textfield8.png`、`textfield-submit.png`）。

@@ -5,10 +5,11 @@ id: example
 surface: custom_screen
 title: "Cloud Core Example"
 theme: dark
-size: [320, 180]
+size: [320, 200]
 state:
   title: "示例页面"
   clicks: 0
+  notify: false
   entries:
     - { id: sword, name: "铁剑", price: 120 }
     - { id: shield, name: "盾牌", price: 80 }
@@ -62,6 +63,19 @@ elements:
           click:
             - action: message
               value: "选择了 ${entry.name}（${entry.price} 金）"
+  - type: checkbox
+    id: notify_toggle
+    x: 16
+    y: 186
+    width: 120
+    height: 12
+    text: "接收通知"
+    checked: "${state.notify}"
+    on:
+      change:
+        - action: set_state
+          key: notify
+          value: "${checked}"
   - type: text_field
     id: name_input
     x: 16

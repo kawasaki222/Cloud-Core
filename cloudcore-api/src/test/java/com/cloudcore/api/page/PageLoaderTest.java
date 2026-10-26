@@ -402,6 +402,63 @@ class PageLoaderTest {
         assertEquals(PageLoader.MAX_ELEMENTS, document.elements().size());
     }
 
+    @Test
+    void runtimePlaceholdersSurviveActionCompilation() throws Exception {
+        Path page = write("runtime.yml", """
+                schema: 1
+                id: runtime
+                surface: custom_screen
+                title: "Runtime"
+                size: [200, 100]
+                state:
+                  notify: false
+                elements:
+                  - type: checkbox
+                    id: toggle
+                    x: 0
+                    y: 0
+                    text: "t"
+                    checked: "${state.notify}"
+                    on:
+                      change:
+                        - action: set_state
+                          key: notify
+                          value: "${checked}"
+                """);
+
+        PageLoader.CompiledPage compiled = PageLoader.load(pages, page, Map.of());
+
+        UiElement checkbox = compiled.document().elements().get(0);
+        assertEquals("false", String.valueOf(checkbox.attributes().get("checked")));
+        int actionId = checkbox.events().get("change");
+        assertEquals("${checked}", compiled.actions().get(actionId).get(0).params().get("value"));
+    }
+
+    @Test
+    void callerStateOverridesDocumentDefaults() throws Exception {
+        Path page = write("override.yml", """
+                schema: 1
+                id: override
+                surface: custom_screen
+                title: "Override"
+                size: [100, 100]
+                state:
+                  notify: false
+                elements:
+                  - type: checkbox
+                    id: toggle
+                    x: 0
+                    y: 0
+                    text: "t"
+                    checked: "${state.notify}"
+                """);
+
+        UiDocument document = PageLoader.loadDocument(pages, page, Map.of("notify", true));
+
+        assertEquals("true", String.valueOf(document.elements().get(0).attributes()
+                .get("checked")));
+    }
+
     private static String manyLabels(int count) {
         StringBuilder yaml = new StringBuilder("schema: 1\nid: many\n"
                 + "surface: custom_screen\ntitle: \"Many\"\nsize: [200, 100]\nelements:\n");

@@ -363,6 +363,9 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
     click: []
 ```
 
+`checkbox` 已实现：`checked` 属性（"true"/布尔）决定绘制，点击发 `change` 事件载荷 `{checked}`，
+常用写法 `set_state key: notify value: "${checked}"`。
+
 状态：`normal`、`hover`、`pressed`、`disabled`。已实现 `hover`：元素声明
 `style.hover: { background: ... }` 时，客户端命中该元素就用悬停样式重绘（每帧只为变化的悬停目标重建一次列表）。
 
