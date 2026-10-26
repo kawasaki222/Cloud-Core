@@ -415,6 +415,9 @@ public final class CloudCoreClient implements ClientModInitializer {
     }
 
     public static void onScroll(double xOffset, double yOffset) {
+        if (com.cloudcore.client.surface.TooltipSurfaceAdapter.onScroll(yOffset)) {
+            return;
+        }
         Minecraft minecraft = Minecraft.getInstance();
         if (yOffset != 0.0
                 && minecraft.screen

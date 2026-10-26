@@ -122,6 +122,7 @@ docs/
 - [x] `image` 的 `local:`/`pack:`/`builtin:` 贴图，以及 `item_icon`（原生物品、数量、缩放）（真机截图验证）
 - [x] HUD 面板：Fabric `HudElementRegistry` + 持久文档 + UI_CLOSE 清除（真机截图验证）
 - [x] Tooltip 面板：自定义背景 + 原生文本/图片（真机截图验证）
+- [x] Tooltip 滚动：`max_height` 裁剪 + 滚轮偏移 + 滚动条（真机验证）
 - [x] BossBar 面板：自定义条 + 进度/颜色 + 哨兵标题剥离（真机截图验证）
 - [x] Container 面板：NEXT_CONTAINER 绑定的箱子换背景，原版槽位保留（真机截图验证）
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）

@@ -92,8 +92,12 @@
 - **绑定**：持久；全局一份样式文档，`surfaceKey=default`。
 - **内容来源**：客户端原版物品提示 + `ItemTooltipCallback` 追加行。
 - **样式来源**：服务端文档（外框、字体、颜色、内边距、行距、最大高度、滚动）。
-- **绘制**：NanoVG 画外框/背景/滚动条，原版画文本内容。当前已实现自定义背景 + 原生文本/
-  图片的最小 Tooltip 适配器；滚动条与九宫格待做。
+- **绘制**：客户端画外框/背景/滚动条与裁剪，文本与图片仍用原版
+  `ClientTooltipComponent#renderText/#renderImage` 绘制。
+- 已实现：`surface_options.max_height`（默认 160）限制高度；超出时按 `line_gap` 裁剪并用
+  `MouseHandler#onScroll` 的滚轮改变偏移（步长 12，悬停内容变化时归零）；右侧滚动条
+  可用 `scrollbar.track_color`/`thumb_color`、`scrollbar_width` 配色。
+  `tooltip_scroll` 事件回传服务端仍待动作引擎；九宫格外框尚未接入。
 - **滚动条样式**：轨道、滑块、悬停态贴图、九宫格、宽度、间距、最小滑块高度、颜色、是否可拖动，
   全部来自 `surface_options.tooltip.scrollbar`。
 - **滚动**：

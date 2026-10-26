@@ -227,6 +227,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **Tooltip 滚动已核实**：把示例 Tooltip 的 `max_height` 设为 12 后，悬停物品的自定义提示框
+  被裁剪成 12px（日志 `scrollable=true`），右侧出现滚动条；滚轮一格后文本整体上移
+  （`tooltip-small1.png`、`tooltip-small2.png`）。正常文档用默认 160 高度不受影响。
 - **事件限流已核实**：对示例页“+1”按钮连发 120 次点击后，服务端记录 14 条
   `Rate limited EVENT`，其余正常执行；`EventRateLimiterTest` 覆盖突发、补充速率、按玩家隔离与空闲上限。
 - **GIF 动画已核实**：`local:test/anim.gif`（3 帧、400 ms/帧）在 `/cloudcore demo-assets` 中

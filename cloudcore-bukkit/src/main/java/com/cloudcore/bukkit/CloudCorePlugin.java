@@ -782,6 +782,11 @@ public final class CloudCorePlugin extends JavaPlugin
                   "surface": "tooltip",
                   "title": { "runs": [ { "text": "Tooltip" } ] },
                   "size": [320, 180],
+                  "surface_options": {
+                    "max_height": 160,
+                    "scrollbar_width": 3,
+                    "scrollbar": { "track_color": "#60000000", "thumb_color": "#FF9AD0FF" }
+                  },
                   "elements": [
                     { "id": "tooltip_panel", "type": "panel", "x": 0, "y": 0,
                       "width": 320, "height": 180,
