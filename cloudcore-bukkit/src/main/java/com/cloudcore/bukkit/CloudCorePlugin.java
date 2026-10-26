@@ -429,6 +429,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 sendDiagnostic(target);
             } else if (args[0].equalsIgnoreCase("demo-hud")) {
                 sendHudOpen(target);
+            } else if (args[0].equalsIgnoreCase("demo-hud-bg")) {
+                sendHudBackground(target);
             } else if (args[0].equalsIgnoreCase("demo-tooltip")) {
                 sendTooltipOpen(target);
             } else if (args[0].equalsIgnoreCase("demo-container")) {
@@ -493,6 +495,11 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core HUD demo sent."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("demo-hud-bg")) {
+            sendHudBackground(player);
+            sender.sendMessage(Component.text("Cloud Core HUD background demo sent."));
+            return true;
+        }
         if (args.length == 1 && args[0].equalsIgnoreCase("demo-tooltip")) {
             sendTooltipOpen(player);
             sender.sendMessage(Component.text("Cloud Core tooltip demo sent."));
@@ -549,6 +556,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("diagnostic")
                 || action.equalsIgnoreCase("demo-hud")
                 || action.equalsIgnoreCase("demo-tooltip")
+                || action.equalsIgnoreCase("demo-hud-bg")
                 || action.equalsIgnoreCase("demo-container")
                 || action.equalsIgnoreCase("demo-readonly")
                 || action.equalsIgnoreCase("demo-inventory")
@@ -677,6 +685,42 @@ public final class CloudCorePlugin extends JavaPlugin
         }
     }
 
+    /** Background-layer HUD: a red band behind the hotbar, proving addFirst ordering. */
+    private void sendHudBackground(Player player) {
+        String uiId = "cloudcore_demo_hud_bg";
+        int token = random.nextInt();
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        session.lastUiId = uiId;
+        UiOpen open = new UiOpen(uiId, 1, SurfaceType.HUD, BindMode.PERSISTENT,
+                token, RenderMode.SURFACE_NATIVE, 0, "background");
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
+                UiCodec.encodeOpen(open, Limits.S2C)));
+        String json = """
+                {
+                  "schema": 1,
+                  "id": "cloudcore_demo_hud_bg",
+                  "surface": "hud",
+                  "title": { "runs": [ { "text": "HUD background" } ] },
+                  "size": [200, 40],
+                  "surface_options": { "anchor": "bottom_center", "offset_y": -6 },
+                  "elements": [
+                    { "id": "band", "type": "panel", "x": 0, "y": 0,
+                      "width": 200, "height": 40,
+                      "style": { "background": "#66FF3040" } }
+                  ]
+                }
+                """;
+        UiDefinition definition = new UiDefinition(uiId, 1, 0,
+                json.getBytes(StandardCharsets.UTF_8));
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (player.isOnline()) {
+                sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
+                        UiCodec.encodeDefinition(definition, Limits.S2C)));
+            }
+        }, 1L);
+        getLogger().info("Sent HUD background demo to " + player.getName());
+    }
+
     private void sendTooltipOpen(Player player) {
         String uiId = "cloudcore_demo_tooltip";
         int token = random.nextInt();
@@ -727,6 +771,7 @@ public final class CloudCorePlugin extends JavaPlugin
                   "surface": "hud",
                   "title": { "runs": [ { "text": "Cloud Core HUD" } ] },
                   "size": [320, 180],
+                  "surface_options": { "anchor": "top_center", "offset_y": 20 },
                   "elements": [
                     { "id": "hud_panel", "type": "panel", "x": 0, "y": 0,
                       "width": 180, "height": 44,

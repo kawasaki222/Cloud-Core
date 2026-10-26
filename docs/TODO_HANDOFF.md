@@ -130,6 +130,7 @@ docs/
 - [ ] 代理模式：`TEXTURE_REQUEST`/`TEXTURE_PUT`
 - [ ] M2 渲染剩余：GIF、文本 shaping、`scroll` 事件回传
 - [x] HUD / Tooltip / BossBar / Container 面板最小闭环
+- [x] HUD 三层（background/foreground/overlay）与锚点/偏移（真机验证）
 - [x] PlayerInventory 面板：持久皮肤、`CloudInventoryScreen`、`UI_CLOSE` 还原原版（真机截图验证）
 - [x] 容器点击策略：`managed`/`readonly` 的 `InventoryClickEvent` 取消与日志（真机验证，服务端解析文档槽位）
 - [x] 容器槽位布局：`inventory_grid` 的 origin/cell/columns 重排容器槽位（真机验证，含点击）

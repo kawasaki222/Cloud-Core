@@ -78,7 +78,10 @@
 
 - **绑定**：持久；`UI_OPEN(surface=HUD, bindMode=PERSISTENT, surfaceKey=layer)`。
 - **客户端**：`HudElementRegistry` 注册一次，之后由会话状态驱动。
-- **层**：背景、前景、最高层；映射到 `VanillaHudElements` 锚点。
+- **层**：`surfaceKey` 取 `background` / `foreground` / `overlay`；实现用 Fabric
+  `HudElementRegistry.addFirst`（背景，排在原版元素之前）与 `addLast`（前景、覆盖层，依次在前一个之后）。
+- **锚点**：`surface_options.anchor`（`top_left`/`top_center`/`top_right`/`center*`/`bottom*`，
+  默认 `top_left`）加 `offset_x`/`offset_y`；文档声明自己的尺寸，锚点是相对该尺寸计算。
 - **限制**：只读；无槽位、无输入、无 Tooltip 滚动。
 - **绘制**：整层由 NanoVG 渲染到 FBO 后合成；物品图标由原生桥绘制。
 - **更新**：`ELEMENT_UPDATE`；没有可见元素时不重绘 FBO。

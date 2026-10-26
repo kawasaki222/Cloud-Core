@@ -78,10 +78,22 @@ public final class CloudCoreClient implements ClientModInitializer {
         PayloadTypeRegistry.playS2C().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
         PayloadTypeRegistry.playC2S().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
 
-        net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(
-                net.minecraft.resources.Identifier.fromNamespaceAndPath(MOD_ID, "hud"),
+        // Three HUD layers: background below vanilla elements, foreground and overlay on top.
+        net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addFirst(
+                net.minecraft.resources.Identifier.fromNamespaceAndPath(MOD_ID, "hud_background"),
                 (graphics, tickCounter) -> com.cloudcore.client.surface.HudSurfaceAdapter
-                        .render(graphics));
+                        .render(graphics,
+                                com.cloudcore.client.surface.HudSurfaceAdapter.LAYER_BACKGROUND));
+        net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(
+                net.minecraft.resources.Identifier.fromNamespaceAndPath(MOD_ID, "hud_foreground"),
+                (graphics, tickCounter) -> com.cloudcore.client.surface.HudSurfaceAdapter
+                        .render(graphics,
+                                com.cloudcore.client.surface.HudSurfaceAdapter.LAYER_FOREGROUND));
+        net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(
+                net.minecraft.resources.Identifier.fromNamespaceAndPath(MOD_ID, "hud_overlay"),
+                (graphics, tickCounter) -> com.cloudcore.client.surface.HudSurfaceAdapter
+                        .render(graphics,
+                                com.cloudcore.client.surface.HudSurfaceAdapter.LAYER_OVERLAY));
 
         ClientPlayNetworking.registerGlobalReceiver(CloudFramePayload.TYPE,
                 (payload, context) -> handlePayload(payload));

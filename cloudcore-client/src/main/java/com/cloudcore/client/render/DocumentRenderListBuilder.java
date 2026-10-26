@@ -28,6 +28,31 @@ public final class DocumentRenderListBuilder {
         return build(document, screenWidth, screenHeight, id -> 0);
     }
 
+    /** Same as {@link #build} but with an explicit document origin (HUD anchors). */
+    public static RenderList buildAt(UiDocument document, int screenWidth, int screenHeight,
+            int originX, int originY) {
+        return buildAt(document, screenWidth, screenHeight, originX, originY, id -> 0);
+    }
+
+    public static RenderList buildAt(UiDocument document, int screenWidth, int screenHeight,
+            int originX, int originY,
+            java.util.function.ToIntFunction<String> localScroll) {
+        Objects.requireNonNull(document, "document");
+        Objects.requireNonNull(localScroll, "localScroll");
+        if (screenWidth <= 0 || screenHeight <= 0) {
+            return RenderList.EMPTY;
+        }
+        int documentWidth = Math.max(1, Math.round(document.width() * document.scale()));
+        int documentHeight = Math.max(1, Math.round(document.height() * document.scale()));
+        List<RenderCommand> commands = new ArrayList<>();
+        Map<String, FontSpec> fonts = document.fonts();
+        for (UiElement element : document.elements()) {
+            append(element, originX, originY, documentWidth, documentHeight,
+                    commands, 1, fonts, localScroll);
+        }
+        return commands.isEmpty() ? RenderList.EMPTY : new RenderList(commands);
+    }
+
     /**
      * @param localScroll extra offset per scroll element id, added to the document's
      *                    {@code scroll_y}; the client uses it for wheel input
