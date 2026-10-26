@@ -90,6 +90,19 @@ elements:
           key: clicks
           value: 1
   - type: button
+    id: say_button
+    x: 232
+    y: 84
+    width: 72
+    height: 20
+    text: "喊话"
+    style:
+      background: "#FF3C9F9F"
+    on:
+      click:
+        - action: command
+          command: "say 来自 Cloud Core 页面"
+  - type: button
     id: close_button
     x: 232
     y: 96

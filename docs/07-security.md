@@ -3,6 +3,13 @@
 Cloud Core 把界面权威移到服务端。服务端必须把每个入站字节都当作敌意输入，客户端必须把每个入站文档
 当作"来自可信权威、但仍需限制"的数据。
 
+## 0. command 动作的闸门（已实现）
+
+- 默认 `actions.commands.enabled: false`，页面里的 `command` 一律拒绝。
+- 开启后按**第一个词**精确匹配 `actions.commands.allowlist`（忽略大小写、允许前导斜杠）。
+- 拒绝时回 `EVENT_RESULT(REJECTED)` 并记录 `Blocked command action ...` 日志。
+- 执行走 `Bukkit#dispatchCommand`，`as: console` 需要显式声明。
+
 ## 1. 资产与信任边界
 
 | 资产 | 威胁 | 边界 |

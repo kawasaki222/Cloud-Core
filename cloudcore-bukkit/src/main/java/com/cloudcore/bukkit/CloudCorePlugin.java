@@ -85,6 +85,7 @@ public final class CloudCorePlugin extends JavaPlugin
         } else {
             getLogger().warning("Command 'cloudcore' is missing from plugin.yml");
         }
+        saveDefaultConfig();
         preparePagesDirectory();
         getLogger().info("Cloud Core transport online on " + CHANNEL
                 + " (protocol " + ProtocolVersion.MAJOR + "." + ProtocolVersion.MINOR + ")");
@@ -216,6 +217,23 @@ public final class CloudCorePlugin extends JavaPlugin
                         action.params().getOrDefault("text", ""));
                 player.sendMessage(Component.text(resolveState(String.valueOf(text), state)));
             }
+            case "command" -> {
+                Object raw = action.params().getOrDefault("command",
+                        action.params().getOrDefault("value", ""));
+                String command = resolveState(String.valueOf(raw), state);
+                if (!commandAllowed(command)) {
+                    getLogger().warning("Blocked command action '" + command + "' from page "
+                            + page.document().id() + " for " + player.getName());
+                    return false;
+                }
+                boolean asConsole = "console".equalsIgnoreCase(
+                        String.valueOf(action.params().getOrDefault("as", "player")));
+                String line = command.startsWith("/") ? command.substring(1) : command;
+                getServer().getScheduler().runTask(this, () -> getServer().dispatchCommand(
+                        asConsole ? getServer().getConsoleSender() : player, line));
+                getLogger().info("Ran action command '" + line + "' as "
+                        + (asConsole ? "console" : player.getName()));
+            }
             case "set_state" -> {
                 Object key = action.params().get("key");
                 if (key == null) {
@@ -234,6 +252,25 @@ public final class CloudCorePlugin extends JavaPlugin
             }
         }
         return true;
+    }
+
+    /**
+     * Command actions are off unless {@code actions.commands.enabled} is set; the first word
+     * must appear in {@code actions.commands.allowlist}. This keeps an authored page from
+     * escalating to arbitrary server commands.
+     */
+    private boolean commandAllowed(String command) {
+        if (!getConfig().getBoolean("actions.commands.enabled", false)) {
+            return false;
+        }
+        String line = command.startsWith("/") ? command.substring(1) : command;
+        String verb = line.trim().split("\\s+")[0].toLowerCase(java.util.Locale.ROOT);
+        for (String allowed : getConfig().getStringList("actions.commands.allowlist")) {
+            if (allowed.trim().toLowerCase(java.util.Locale.ROOT).equals(verb)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Recompiles the page with the current state and sends it as a document update. */

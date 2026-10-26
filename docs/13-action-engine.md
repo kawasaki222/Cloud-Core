@@ -24,7 +24,10 @@
   `set_state`（写会话状态 → 重新编译页面 → 以更高 revision 重发 `UI_DEFINITION`）已可执行；
   客户端收到同一 `uiId` 的更高 revision 会替换界面。
 - `EVENT_RESULT`：执行完成回 `OK`；未知 actionId 回 `UNKNOWN_ELEMENT`；动作类型不支持回 `REJECTED`。
-- 尚未支持：`command`、条件、等待、表达式求值（`${state.clicks + 1}` 仍是字面量）。
+- `command`：`command: "say hi"`（可带前导斜杠），`as: player|console`（默认 player）。
+  默认关闭：`config.yml` 的 `actions.commands.enabled: false`；开启后只有
+  `actions.commands.allowlist` 里的第一个词能执行，其余回 `REJECTED` 并写警告日志。
+- 尚未支持：条件、等待、表达式求值（`${state.clicks + 1}` 仍是字面量）。
 
 ## 1. 目标与非目标
 

@@ -1,0 +1,12 @@
+# Cloud Core 插件配置
+# 文档：docs/04-server.md、docs/07-security.md
+
+# 为方便排查容器时序，打开后会为每次 InventoryOpenEvent 发一个 PING
+inventory-probe: false
+
+actions:
+  commands:
+    # 关闭时，页面里的 command 动作一律拒绝（返回 EVENT_RESULT=REJECTED）
+    enabled: false
+    # 只允许这些命令（不含前导斜杠），按第一个词精确匹配、忽略大小写
+    allowlist: []

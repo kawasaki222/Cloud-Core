@@ -247,6 +247,18 @@ public record UiSession(
 - 同类型临时面板每玩家最多一个；持久面板每类型最多一个。
 - 关闭会话发送 `UI_CLOSE(reason)`；容器由 Bukkit 关闭。
 
+### 6.4 配置
+
+`plugins/CloudCore/config.yml`：
+
+```yaml
+inventory-probe: false      # 打开后每次 InventoryOpenEvent 发一个 PING（排查容器时序）
+actions:
+  commands:
+    enabled: false          # command 动作总开关
+    allowlist: []           # 允许的命令首个词
+```
+
 ### 6.5 页面命令
 
 `/cloudcore validate`：遍历 `pages/`（`<目录>/page.yml` 与顶层 `*.yml`），逐页编译并报告
