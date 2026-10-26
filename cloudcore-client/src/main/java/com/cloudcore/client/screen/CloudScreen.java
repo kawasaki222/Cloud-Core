@@ -22,6 +22,9 @@ public final class CloudScreen extends Screen {
     private final UiDocument document;
     private final NativeBackend backend = new NativeBackend();
     private final Runnable onCloseAction;
+    private RenderList cachedList = RenderList.EMPTY;
+    private int cachedWidth = -1;
+    private int cachedHeight = -1;
     private boolean closed;
 
     public CloudScreen(UiDocument document) {
@@ -50,11 +53,15 @@ public final class CloudScreen extends Screen {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, width, height, BACKGROUND);
-        RenderList list = DocumentRenderListBuilder.build(document, width, height);
+        if (width != cachedWidth || height != cachedHeight) {
+            cachedList = DocumentRenderListBuilder.build(document, width, height);
+            cachedWidth = width;
+            cachedHeight = height;
+        }
         backend.beginFrame(new FrameContext(graphics, width, height,
                 minecraft.getWindow().getGuiScale(), partialTick));
         try {
-            backend.draw(list, Layer.BACKGROUND);
+            backend.draw(cachedList, Layer.BACKGROUND);
         } finally {
             backend.endFrame();
         }
