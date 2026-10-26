@@ -9,6 +9,7 @@
   "entrypoints": {
     "client": ["com.cloudcore.client.CloudCoreClient"]
   },
+  "mixins": ["cloudcore.mixins.json"],
   "depends": {
     "fabricloader": ">=0.19.5",
     "fabric-api": "*",

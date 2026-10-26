@@ -100,7 +100,7 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 | 编号 | 假设 | 为何重要 | 验证方式 | 兜底 |
 | --- | --- | --- | --- | --- |
 | U1 | Paper `DiscardedPayload` 字节能到达 Fabric 注册的 payload 类型 | 整个传输依赖 | `PING`/`PONG` 真客户端 | 无理想兜底；需重新设计传输 |
-| U2 | `InventoryOpenEvent` 中的插件消息早于 `OpenScreen` | 容器预绑定 | 100 次顺序日志 | 标题哨兵 |
+| U2 | `InventoryOpenEvent` 中的插件消息早于 `OpenScreen` | 容器预绑定 | 2026-10-26 真实 Paper/Fabric 顺序日志已核实（PING 先于 `ContainerScreen`） | 标题哨兵 |
 | U3 | 1.21.11 `GuiGraphics#blit` / `renderTooltip` 的确切重载 | 渲染器 | 编译期读映射源码 | 只改 `FboCompositor` / `NativeBackend` |
 | U3a | 已核实：`blit(RenderPipeline, Identifier, int, int, float, float, int, int, int, int, int)` 等重载；`renderTooltip(Font, List<ClientTooltipComponent>, int, int, ClientTooltipPositioner, Identifier)` | 渲染器 | 2026-10-26 `javap` 静态核对 | 混入仍需运行验证 |
 | U4 | `HudElementRegistry` 在 0.141.x 的包名与锚点 | HUD | 编译 + 运行 | 单锚点 `addLast` |
@@ -160,6 +160,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **真机分片与压缩已核实**：`/cloudcore demo-big` 发送 64,776 字节文档，压缩后拆成 3 个
   FRAGMENT（24,018 + 24,018 + 1,002 字节），客户端重组并回 `UI_READY`。
 - **原生 RenderList 已核实**：demo 页面实际显示 panel、label、button；截图与客户端日志一致。
+- **U2 已核实**：`InventoryOpenEvent` 中发送的 PING 先到达客户端，随后才出现
+  `Screen changed: net.minecraft.client.gui.screens.inventory.ContainerScreen`；容器预绑定顺序成立。
+- **Minecraft#setScreen 混入已核实**：客户端日志实际打印 `ContainerScreen` 切换，未发生 mixin 错误。
 - **U20 已核实**：Fabric API 0.141.3 能在 officialMojangMappings 下编译并启动。
 - **U10 已核实并规避**：Fabric `canSend()` 只反映服务端声明的通道；Paper 不保证声明，
   发送路径不再用 `canSend()` 作为门控。
@@ -174,8 +177,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 
 仍未验证：
 
-- U2：`InventoryOpenEvent` 与 `OpenScreen` 的先后顺序；需要容器 spike。
-- U3/U3a、U12、U13：签名已用 `javap` 静态核对；混入/运行时行为仍未验证。
+- U3/U3a、U12、U13：签名已用 `javap` 静态核对；Tooltip/Boss 混入的运行时行为仍未验证。
 - U28–U31：NanoVG 三平台原生库、FBO 合成、预乘 alpha、1.21.6 提取/绘制状态。
 - NanoVG/FBO：`NanoVgBackend.available()` 仍为 `false`，`FboCompositor` 未实现。
 - UI_DEFINITION 已能解码/校验并打开 `CloudScreen`；原生 RenderList 已支持 panel/label/button/

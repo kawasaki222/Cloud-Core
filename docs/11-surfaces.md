@@ -34,7 +34,8 @@
 ## 3. 箱子/容器
 
 - **绑定**：先发 `UI_OPEN(surface=CONTAINER, bindMode=NEXT_CONTAINER, token)`，再
-  `player.openInventory(...)`。
+  `player.openInventory(...)`。U2 已在真实客户端核实：`InventoryOpenEvent` 中的插件消息先于
+  `ContainerScreen` 的 `setScreen` 到达。
 - **客户端**：`Minecraft#setScreen(ContainerScreen)` 被 `@ModifyVariable` 替换为
   `CloudContainerScreen`。
 - **槽位**：来自原版 `AbstractContainerMenu`；`SlotLayout` 覆盖 `slot.x/y`；未声明槽位移出屏幕。

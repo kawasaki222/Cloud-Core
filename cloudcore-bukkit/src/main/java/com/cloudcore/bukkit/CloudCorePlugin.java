@@ -32,13 +32,16 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
@@ -220,26 +223,28 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("No permission."));
             return true;
         }
-        if (args.length == 2 && isDemoOrPing(args[0])) {
+        if (args.length == 2 && isKnownAction(args[0])) {
             Player target = getServer().getPlayerExact(args[1]);
             if (target == null) {
                 sender.sendMessage(Component.text("Player not found: " + args[1]));
                 return true;
             }
-            boolean big = args[0].equalsIgnoreCase("demo-big");
             if (args[0].equalsIgnoreCase("ping")) {
                 Session session = sessions.computeIfAbsent(target.getUniqueId(),
                         ignored -> new Session());
                 sendPing(target, session);
+            } else if (args[0].equalsIgnoreCase("probe")) {
+                sendProbe(target);
             } else {
-                sendDemoOpen(target, big);
+                sendDemoOpen(target, args[0].equalsIgnoreCase("demo-big"));
             }
             sender.sendMessage(Component.text("Cloud Core " + args[0] + " sent to "
                     + target.getName()));
             return true;
         }
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("Usage: /cloudcore <ping|demo|demo-big> <player>"));
+            sender.sendMessage(Component.text(
+                    "Usage: /cloudcore <ping|demo|demo-big|probe> <player>"));
             return true;
         }
         if (args.length == 1 && (args[0].equalsIgnoreCase("demo")
@@ -248,8 +253,14 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core demo page sent."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("probe")) {
+            sendProbe(player);
+            sender.sendMessage(Component.text("Cloud Core probe inventory opened."));
+            return true;
+        }
         if (args.length != 1 || !args[0].equalsIgnoreCase("ping")) {
-            sender.sendMessage(Component.text("Usage: /" + label + " <ping|demo|demo-big>"));
+            sender.sendMessage(Component.text(
+                    "Usage: /" + label + " <ping|demo|demo-big|probe>"));
             return true;
         }
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
@@ -258,10 +269,29 @@ public final class CloudCorePlugin extends JavaPlugin
         return true;
     }
 
-    private static boolean isDemoOrPing(String action) {
+    private static boolean isKnownAction(String action) {
         return action.equalsIgnoreCase("ping")
                 || action.equalsIgnoreCase("demo")
-                || action.equalsIgnoreCase("demo-big");
+                || action.equalsIgnoreCase("demo-big")
+                || action.equalsIgnoreCase("probe");
+    }
+
+    private void sendProbe(Player player) {
+        Inventory inventory = Bukkit.createInventory(null, 27,
+                Component.text("Cloud Core Probe"));
+        player.openInventory(inventory);
+    }
+
+    @EventHandler
+    public void onInventoryOpen(InventoryOpenEvent event) {
+        if (!getConfig().getBoolean("inventory-probe", false)
+                || !(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        sendPing(player, session);
+        getLogger().info("PROBE InventoryOpenEvent -> PING " + player.getName()
+                + " inventory=" + event.getInventory().getType());
     }
 
     private void sendDemoOpen(Player player, boolean big) {

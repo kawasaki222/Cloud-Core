@@ -287,7 +287,18 @@ public final class CloudCoreClient implements ClientModInitializer {
         Frame response = new Frame(ProtocolVersion.MAJOR, 0, Opcode.PONG,
                 HandshakeCodec.encodePong(pong));
         sendFrame(response);
-        LOGGER.debug("Answered PING nonce=0x{}", Integer.toHexString(ping.nonce()));
+        LOGGER.info("Received PING nonce=0x{}", Integer.toHexString(ping.nonce()));
+    }
+
+    public static void onScreenChanged(net.minecraft.client.gui.screens.Screen screen) {
+        if (screen == null) {
+            LOGGER.debug("Screen changed: null");
+        } else if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>
+                || screen instanceof com.cloudcore.client.screen.CloudScreen) {
+            LOGGER.info("Screen changed: {}", screen.getClass().getName());
+        } else {
+            LOGGER.debug("Screen changed: {}", screen.getClass().getName());
+        }
     }
 
     private void sendHello(Minecraft client) {
