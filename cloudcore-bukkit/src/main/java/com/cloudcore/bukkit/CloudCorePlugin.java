@@ -180,16 +180,29 @@ public final class CloudCorePlugin extends JavaPlugin
             getLogger().warning("EVENT for unknown action ui=" + event.uiId()
                     + " element=" + event.elementId() + " action=" + event.actionId()
                     + " player=" + player.getName());
+            sendEventResult(player, event.requestId(),
+                    com.cloudcore.protocol.EventResult.UNKNOWN_ELEMENT);
             return;
         }
         getLogger().info("EVENT ui=" + event.uiId() + " element=" + event.elementId()
                 + " actions=" + actions.size() + " player=" + player.getName());
+        int status = com.cloudcore.protocol.EventResult.OK;
         for (com.cloudcore.api.page.PageLoader.PageAction action : actions) {
-            executeAction(player, page, action);
+            if (!executeAction(player, page, action)) {
+                status = com.cloudcore.protocol.EventResult.REJECTED;
+            }
         }
+        sendEventResult(player, event.requestId(), status);
     }
 
-    private void executeAction(Player player,
+    private void sendEventResult(Player player, int requestId, int status) {
+        com.cloudcore.protocol.EventResult result = new com.cloudcore.protocol.EventResult(
+                requestId, status, com.cloudcore.protocol.EventResult.nameOf(status));
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.EVENT_RESULT,
+                com.cloudcore.protocol.EventResultCodec.encode(result, Limits.S2C)));
+    }
+
+    private boolean executeAction(Player player,
             com.cloudcore.api.page.PageLoader.CompiledPage page,
             com.cloudcore.api.page.PageLoader.PageAction action) {
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
@@ -207,15 +220,20 @@ public final class CloudCorePlugin extends JavaPlugin
                 Object key = action.params().get("key");
                 if (key == null) {
                     getLogger().warning("set_state without key in page " + page.document().id());
-                    return;
+                    return false;
                 }
                 Object value = action.params().get("value");
                 state.put(String.valueOf(key), value);
                 refreshPage(player, session, page);
             }
-            default -> getLogger().warning("Unsupported action '" + action.type()
-                    + "' from page " + page.document().id() + " (planned for the action engine)");
+            default -> {
+                getLogger().warning("Unsupported action '" + action.type()
+                        + "' from page " + page.document().id()
+                        + " (planned for the action engine)");
+                return false;
+            }
         }
+        return true;
     }
 
     /** Recompiles the page with the current state and sends it as a document update. */

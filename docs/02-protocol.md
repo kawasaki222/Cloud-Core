@@ -205,7 +205,7 @@ state=4)` 中回传；`cloudcore-api` 内部用 `SurfaceType.UNKNOWN` 表示，�
 | `0x11` | `UI_CLOSE` | `string uiId, u8 reason` |
 | `0x12` | `UI_DEFINITION` | `string uiId, varint revision, u8 encoding, bytes data` |
 | `0x14` | `ELEMENT_UPDATE` | `string uiId, varint revision, varint count, entry[count]` |
-| `0x15` | `EVENT_RESULT` | `varint requestId, u8 status, string message` |
+| `0x15` | `EVENT_RESULT` | `varint requestId, u8 status, string message`（已实现，`EventResultCodec`） |
 | `0x16` | `NOTIFICATION` | `u8 kind, string title, string body, varint durationMs` |
 | `0x17` | `DIAGNOSTIC` | `u8 severity, string code, u32 traceId, string scope, string message, string detail` |
 | `0x28` | `TEXTURE_PUT` | `string key, u16 width, u16 height, u8 format, u32 crc32, bytes data, u16 frameCount, u8 loop, u16[] frameDelaysMs` |
@@ -432,7 +432,8 @@ u16    ttlSeconds   # 0 表示按内容哈希永久缓存
 实现：`PageLoader` 用 `hash(pageId|elementId|event) mod 65534 + 1` 生成，冲突时顺延；动作体只留在服务端
 （`CompiledPage.actions()`），文档里只有 `events: {click: actionId}`。
 客户端点击命中元素后用文档里的 actionId 发 `EVENT`，payload 至少含 `button`、`shift`。
-服务端当前执行 `message`、`close_ui` 两种动作；`EVENT_RESULT` 尚未下发（动作引擎 v1 一并补）。
+服务端当前执行 `message`、`close_ui`、`set_state`；执行后回 `EVENT_RESULT`
+（未知 action 回 `UNKNOWN_ELEMENT`，动作不支持回 `REJECTED`），`message` 只用固定枚举名。
 
 `requestId` 客户端单调递增，每条连接从 1 开始。1 秒内重复的 `requestId` 返回缓存结果。
 

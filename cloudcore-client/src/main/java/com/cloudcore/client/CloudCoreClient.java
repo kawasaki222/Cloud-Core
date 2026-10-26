@@ -145,6 +145,7 @@ public final class CloudCoreClient implements ClientModInitializer {
             case Opcode.UI_CLOSE -> handleUiClose(frame);
             case Opcode.DIAGNOSTIC -> handleDiagnostic(frame);
             case Opcode.TEXTURE_REF -> handleTextureRef(frame);
+            case Opcode.EVENT_RESULT -> handleEventResult(frame);
             default -> LOGGER.info("Unhandled S2C opcode=0x{} bytes={}",
                     Integer.toHexString(frame.opcode()), frame.bodyLength());
         }
@@ -278,6 +279,18 @@ public final class CloudCoreClient implements ClientModInitializer {
             failOpen(request, definition.revision(), UiReadyState.BIND_FAILED,
                     exception.getMessage());
             LOGGER.error("Failed to open ui=" + definition.uiId(), exception);
+        }
+    }
+
+    private void handleEventResult(Frame frame) {
+        com.cloudcore.protocol.EventResult result =
+                com.cloudcore.protocol.EventResultCodec.decode(frame.body(), Limits.S2C);
+        if (result.status() == com.cloudcore.protocol.EventResult.OK) {
+            LOGGER.debug("EVENT_RESULT request={} status={}", result.requestId(),
+                    result.message());
+        } else {
+            LOGGER.warn("EVENT_RESULT request={} status={} ({})", result.requestId(),
+                    result.status(), result.message());
         }
     }
 

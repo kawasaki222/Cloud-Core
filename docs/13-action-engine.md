@@ -23,7 +23,8 @@
 - 服务端：`message`（聊天消息，含编译期模板 + 运行期 `${state.x}` 替换）、`close_ui`、
   `set_state`（写会话状态 → 重新编译页面 → 以更高 revision 重发 `UI_DEFINITION`）已可执行；
   客户端收到同一 `uiId` 的更高 revision 会替换界面。
-- 尚未支持：`command`、条件、等待、表达式求值（`${state.clicks + 1}` 仍是字面量）、`EVENT_RESULT`。
+- `EVENT_RESULT`：执行完成回 `OK`；未知 actionId 回 `UNKNOWN_ELEMENT`；动作类型不支持回 `REJECTED`。
+- 尚未支持：`command`、条件、等待、表达式求值（`${state.clicks + 1}` 仍是字面量）。
 
 ## 1. 目标与非目标
 
