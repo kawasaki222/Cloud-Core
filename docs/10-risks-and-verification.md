@@ -338,6 +338,12 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **右键事件已核实**：`actions_demo` 的“右键试试”按钮右键后服务端记录
   `EVENT ... element=right_click_demo`（走 `right_click`）；对只声明了 `click` 的商店“购买”按钮
   右键同样触发 `EVENT ... element=goods[0].line.buy`（回退到 `click`，载荷 `button=1`）。
+- **首次安装与缩放已核实**：删掉 `plugins/CloudCore/` 后重启，插件重新生成 `config.yml` 并写出
+  六张示例页（`example`、`shop`、`progress_demo`、`scroll_demo`、`actions_demo`、`papi_demo`，
+  日志逐条 `Wrote demo page ...`），状态持久化目录同时创建。商店页在 GUI 缩放 2（854×480 窗口）
+  与自动缩放 5（2884×1336 全屏）下都能正确命中购买按钮：缩放 5 点击后
+  `EVENT ... element=goods[0].line.buy`、`state={balance=180.0}`，余额条从满格缩到 60%
+  （`scale5-buy2.png`）——命中测试与渲染共用同一套布局，不依赖缩放值。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
