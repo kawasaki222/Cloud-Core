@@ -3,7 +3,14 @@
 Cloud Core 把界面权威移到服务端。服务端必须把每个入站字节都当作敌意输入，客户端必须把每个入站文档
 当作"来自可信权威、但仍需限制"的数据。
 
-## 0. command 动作的闸门（已实现）
+## 0. 事件限流（已实现）
+
+- 每个玩家一个令牌桶：默认 20 次/秒、突发 40（`EventRateLimiter`）。
+- 超限不执行动作，回 `EVENT_RESULT(RATE_LIMITED)` 并写 `Rate limited EVENT` 日志。
+- 玩家退出时丢弃该玩家的桶；时钟可注入，规则有单元测试。
+- 真机验证：对“+1”按钮连发 120 次点击，服务端记录 14 条 `Rate limited EVENT`。
+
+## 0.1 command 动作的闸门（已实现）
 
 - 默认 `actions.commands.enabled: false`，页面里的 `command` 一律拒绝。
 - 开启后按**第一个词**精确匹配 `actions.commands.allowlist`（忽略大小写、允许前导斜杠）。

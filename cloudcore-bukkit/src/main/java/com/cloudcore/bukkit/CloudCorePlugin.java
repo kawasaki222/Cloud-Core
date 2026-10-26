@@ -74,6 +74,8 @@ public final class CloudCorePlugin extends JavaPlugin
     private java.nio.file.Path pagesRoot;
     private final Map<String, com.cloudcore.api.page.PageLoader.CompiledPage> compiledPages =
             new ConcurrentHashMap<>();
+    private final com.cloudcore.server.surface.EventRateLimiter eventLimiter =
+            new com.cloudcore.server.surface.EventRateLimiter();
 
     @Override
     public void onEnable() {
@@ -183,6 +185,12 @@ public final class CloudCorePlugin extends JavaPlugin
                     + " player=" + player.getName());
             sendEventResult(player, event.requestId(),
                     com.cloudcore.protocol.EventResult.UNKNOWN_ELEMENT);
+            return;
+        }
+        if (!eventLimiter.tryAcquire(player.getUniqueId())) {
+            getLogger().warning("Rate limited EVENT from " + player.getName());
+            sendEventResult(player, event.requestId(),
+                    com.cloudcore.protocol.EventResult.RATE_LIMITED);
             return;
         }
         getLogger().info("EVENT ui=" + event.uiId() + " element=" + event.elementId()
@@ -1354,6 +1362,7 @@ public final class CloudCorePlugin extends JavaPlugin
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
+        eventLimiter.forget(event.getPlayer().getUniqueId());
         Session removed = sessions.remove(event.getPlayer().getUniqueId());
         if (removed != null) {
             removed.assembler.clear();

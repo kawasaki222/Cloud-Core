@@ -114,6 +114,7 @@ docs/
 - [x] 事件链路：`EVENT` 编解码、点击命中、服务端动作表（`message`/`close_ui`，真机验证）
 - [x] 状态更新：`set_state` → 重编译 → 更高 revision 的 `UI_DEFINITION`，客户端替换界面（真机验证）
 - [x] `/cloudcore validate` 与 `/cloudcore reload`（重编译 + 推送更新，真机验证）
+- [x] 事件限流：每玩家令牌桶（20/s、突发 40），超限回 `RATE_LIMITED`（真机验证）
 - [x] `EVENT_RESULT` 下发（OK/UNKNOWN_ELEMENT/REJECTED，固定枚举名）
 - [x] `command` 动作 + 配置闸门（默认拒绝，按首个词 allowlist；单测）
 - [ ] M3 剩余：WatchService 自动重载/依赖图增量、条件、表达式

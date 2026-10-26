@@ -227,6 +227,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **事件限流已核实**：对示例页“+1”按钮连发 120 次点击后，服务端记录 14 条
+  `Rate limited EVENT`，其余正常执行；`EventRateLimiterTest` 覆盖突发、补充速率、按玩家隔离与空闲上限。
 - **GIF 动画已核实**：`local:test/anim.gif`（3 帧、400 ms/帧）在 `/cloudcore demo-assets` 中
   连续截图显示颜色从绿变蓝，日志 `Decoded GIF ... frames=3 total=1200ms`；
   `AnimatedTexturesTest` 覆盖 GIF 识别与标识符净化（本地路径含中文/冒号也不会生成非法 Identifier）。
