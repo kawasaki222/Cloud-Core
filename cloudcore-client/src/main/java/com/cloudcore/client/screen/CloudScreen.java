@@ -209,7 +209,7 @@ public final class CloudScreen extends Screen {
             if (event.isConfirmation() || event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE) {
                 LayoutBoxes.Box box = focusedBox();
                 if (box != null) {
-                    activate(box.element(), 0, event.hasShiftDown());
+                    activate(box.element(), 0, event.hasShiftDown(), "click");
                     return true;
                 }
             }
@@ -258,8 +258,8 @@ public final class CloudScreen extends Screen {
         LOGGER.debug("Keyboard focus ui={} element={}", document.id(), focusId);
     }
 
-    private void activate(UiElement element, int button, boolean shift) {
-        Integer actionId = element.events().get("click");
+    private void activate(UiElement element, int button, boolean shift, String event) {
+        Integer actionId = element.events().get(event);
         if (actionId == null) {
             return;
         }
@@ -453,10 +453,19 @@ public final class CloudScreen extends Screen {
 
     @Override
     public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+        // Right click prefers an element that declares right_click and falls back to click,
+        // so a button can offer a secondary action without losing its primary one.
+        boolean rightClick = event.button() == 1;
+        String eventName = rightClick ? "right_click" : "click";
         UiElement hit = ElementHitTester.findWithEvent(document, width, height, (int) event.x(),
-                (int) event.y(), this::scrolled, "click");
+                (int) event.y(), this::scrolled, eventName);
+        if (hit == null && rightClick) {
+            eventName = "click";
+            hit = ElementHitTester.findWithEvent(document, width, height, (int) event.x(),
+                    (int) event.y(), this::scrolled, eventName);
+        }
         if (hit != null) {
-            activate(hit, event.button(), event.hasShiftDown());
+            activate(hit, event.button(), event.hasShiftDown(), eventName);
             return true;
         }
         // Sliders report the clicked fraction; the server decides what it means.

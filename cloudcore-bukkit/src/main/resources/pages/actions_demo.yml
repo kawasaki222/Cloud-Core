@@ -5,7 +5,7 @@ id: actions_demo
 surface: custom_screen
 title: "Actions Demo"
 theme: dark
-size: [220, 126]
+size: [220, 150]
 state: {}
 includes: []
 elements:
@@ -92,3 +92,23 @@ elements:
       click:
         - action: message
           value: "不应该收到这条消息"
+
+  # 右键优先走 right_click，没有该事件时回退到 click
+  - type: button
+    id: right_click_demo
+    x: 12
+    y: 124
+    width: 196
+    height: 16
+    text: "右键试试（right_click）"
+    style:
+      background: "#FF3C6F9F"
+      hover:
+        background: "#FF5C8FBF"
+    on:
+      right_click:
+        - action: message
+          value: "右键生效"
+      click:
+        - action: message
+          value: "左键生效"

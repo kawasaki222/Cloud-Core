@@ -127,6 +127,7 @@ docs/
 - [x] `progress`：四种方向、贴图背景/填充按进度裁剪、状态驱动（真机验证 + 单测）
 - [ ] `progress` 剩余：九宫格背景、圆角、分段（segments）
 - [x] `disabled` 态：变暗、禁用悬停样式、不触发事件、跳过键盘焦点、输入框不可编辑（真机验证 + 单测）
+- [x] `right_click`：优先 `right_click`，无则回退 `click`（真机验证）
 - [ ] `button`/`icon_button` 剩余：`pressed` 态
 - [x] PlaceholderAPI（软依赖）：发送/刷新时展开 `text`/`placeholder`/富文本/标题里的 `%token%`
       （真机验证 + `DocumentTextTest`），`placeholders.enabled` 开关

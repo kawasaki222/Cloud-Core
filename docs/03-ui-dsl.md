@@ -809,6 +809,9 @@ placeholders:
 （文档像素）；服务端通常 `set_state` 保存它，文档再用 `scroll_y: "${state.offset}"` 渲染回去。
 `tooltip_scroll` 默认不上报，Tooltip 的滚轮只改本地偏移。
 
+`right_click` 已实现：右键优先找声明了 `right_click` 的元素，没有就回退到同一个元素的 `click`
+（载荷 `button=1`），所以一个按钮可以同时有主/次动作。
+
 ### 8.2 动作
 
 ```yaml

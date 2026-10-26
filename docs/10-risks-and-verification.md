@@ -335,6 +335,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   画面上整体变暗（背景 `#FF6E3C3C` 以一半 alpha 绘制，编辑框不可编辑），点击不产生 `EVENT`
   （服务端日志无记录），同页“关闭”按钮点击正常（`disabled-demo.png`）。
   `ElementHitTesterTest` 覆盖禁用元素不接收事件，`DocumentRenderListBuilderTest` 覆盖变暗与不使用悬停样式。
+- **右键事件已核实**：`actions_demo` 的“右键试试”按钮右键后服务端记录
+  `EVENT ... element=right_click_demo`（走 `right_click`）；对只声明了 `click` 的商店“购买”按钮
+  右键同样触发 `EVENT ... element=goods[0].line.buy`（回退到 `click`，载荷 `button=1`）。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
