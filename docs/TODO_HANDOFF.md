@@ -20,6 +20,8 @@
   绘制 panel/label/button/text_field/checkbox/progress，图片、物品图标、裁剪/滚动和混入未实现。
 - 客户端 jar 已合并 `api` + `protocol` 类，插件 jar 已合并 `api` + `protocol` + `server-core` 类；
   两者仍是独立可部署 jar，Gson 由 Minecraft/Paper 提供。
+- 客户端文件日志已启用：`logs/cloudcore-client.log`，只收 `cloudcore` logger，10 MiB × 5 轮转；
+  安装失败只回退控制台。
 - 已联调（2026-10-26，Paper 1.21.11 build 132 + Fabric 开发客户端，离线模式）：
   `HELLO`/`HELLO_ACK`、`/cloudcore ping`（RTT 9ms）、`UI_OPEN`/`UI_DEFINITION`/`UI_READY`、
   Escape 关闭后的 `UI_CLOSED`，以及 demo 页面 panel/label/button 的实际显示。
@@ -106,6 +108,7 @@ docs/
 - [x] M2 骨架：SurfaceRegistry/SurfaceAdapter/SurfaceProvider、UiDocument、RenderBackend、CloudScreen
 - [x] M2 文档链路：UI_DEFINITION 解码、校验、`CloudScreen` 打开
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
+- [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
 - [ ] M2 完整渲染：NanoVG/FBO、image/item_icon、裁剪/滚动、混入
 - [ ] 协议前向兼容：未知 surface/bind/render id 保留原始值并回 UI_READY(state=4)
 - [ ] M0 渲染 spike：NanoVG 三平台/FBO 合成/预乘 alpha

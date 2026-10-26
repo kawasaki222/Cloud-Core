@@ -66,6 +66,7 @@ public final class CloudCoreClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        ClientLogFile.install();
         surfaceRegistry = SurfaceRegistry.createDefault(this::sendPlayerClosed);
         PayloadTypeRegistry.playS2C().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
         PayloadTypeRegistry.playC2S().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
