@@ -122,6 +122,30 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
+    void scrollClipsItsChildrenAndAppliesTheOffset() {
+        UiElement child = new UiElement("row", "panel", 0, 10, "100", "10",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("style", Map.of("background", "#FF00FF00")));
+        UiElement scroll = new UiElement("scroller", "scroll", 5, 5, "100", "40",
+                true, true, 0, Map.of(), List.of(child),
+                Map.of("scroll_y", 15));
+        UiDocument document = new UiDocument(1, "scroll", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(scroll));
+
+        List<RenderCommand> commands = DocumentRenderListBuilder.build(document, 200, 100)
+                .commands();
+        RenderCommand.ClipPush clip = (RenderCommand.ClipPush) commands.get(1);
+        assertEquals(5, clip.x());
+        assertEquals(5, clip.y());
+        assertEquals(100, clip.width());
+        assertEquals(40, clip.height());
+        RenderCommand.FillRect childFill = (RenderCommand.FillRect) commands.get(2);
+        assertEquals(0, childFill.y(), "child is scrolled up by 15px");
+        assertTrue(commands.get(commands.size() - 1) instanceof RenderCommand.ClipPop);
+    }
+
+    @Test
     void resolvesPercentAndFillDimensions() {
         UiElement panel = new UiElement("root", "panel", 0, 0, "50%", "fill",
                 true, true, 0, Map.of(), List.of(), Map.of());

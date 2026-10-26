@@ -56,6 +56,7 @@ public final class DocumentRenderListBuilder {
         int childY = y;
         int childWidth = width > 0 ? width : parentWidth;
         int childHeight = height > 0 ? height : parentHeight;
+        boolean clipChildren = false;
 
         switch (element.type()) {
             case "panel" -> {
@@ -125,6 +126,17 @@ public final class DocumentRenderListBuilder {
                     addItem(commands, itemId, count, showCount, x, y, scale);
                 }
             }
+            case "scroll" -> {
+                int w = width > 0 ? width : parentWidth;
+                int h = height > 0 ? height : parentHeight;
+                addFill(commands, x, y, w, h, color(style(element, "background"), 0x00000000));
+                childWidth = w;
+                childHeight = h;
+                clipChildren = true;
+                // Server-provided offset; local wheel scrolling arrives with input routing.
+                childY = y - (int) Math.round(number(attribute(element, "scroll_y"), 0.0));
+                childX = x - (int) Math.round(number(attribute(element, "scroll_x"), 0.0));
+            }
             case "inventory_grid", "spacer" -> {
                 // Slots are drawn by the owning screen; the grid only publishes its geometry.
             }
@@ -134,9 +146,15 @@ public final class DocumentRenderListBuilder {
             }
         }
 
+        if (clipChildren && commands.size() < MAX_COMMANDS) {
+            commands.add(new RenderCommand.ClipPush(x, y, childWidth, childHeight));
+        }
         for (UiElement child : element.children()) {
             append(child, childX, childY, childWidth, childHeight, commands, depth + 1,
                     fonts);
+        }
+        if (clipChildren && commands.size() < MAX_COMMANDS) {
+            commands.add(new RenderCommand.ClipPop());
         }
     }
 

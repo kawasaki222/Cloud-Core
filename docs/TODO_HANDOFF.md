@@ -117,7 +117,8 @@ docs/
 - [x] BossBar 面板：自定义条 + 进度/颜色 + 哨兵标题剥离（真机截图验证）
 - [x] Container 面板：NEXT_CONTAINER 绑定的箱子换背景，原版槽位保留（真机截图验证）
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
-- [ ] M2 完整渲染：NanoVG/FBO、裁剪/滚动、混入
+- [x] M2 渲染：NanoVG 后端、裁剪/滚动偏移（原生 + NanoVG 真机验证）
+- [ ] M2 渲染剩余：滚轮输入、九宫格、GIF、文本 shaping
 - [x] HUD / Tooltip / BossBar / Container 面板最小闭环
 - [x] PlayerInventory 面板：持久皮肤、`CloudInventoryScreen`、`UI_CLOSE` 还原原版（真机截图验证）
 - [x] 容器点击策略：`managed`/`readonly` 的 `InventoryClickEvent` 取消与日志（真机验证，服务端解析文档槽位）

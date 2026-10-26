@@ -120,6 +120,12 @@ public final class NanoVgBackend implements RenderBackend {
                 switch (command) {
                     case RenderCommand.FillRect rect -> fill(rect);
                     case RenderCommand.Image image -> image(image);
+                    case RenderCommand.ClipPush clip -> {
+                        NanoVG.nvgSave(context);
+                        NanoVG.nvgScissor(context, clip.x(), clip.y(), clip.width(),
+                                clip.height());
+                    }
+                    case RenderCommand.ClipPop ignored -> NanoVG.nvgRestore(context);
                     case RenderCommand.Text text -> text(text);
                     case RenderCommand.ItemIcon ignored -> {
                         // Item models are drawn by the native bridge.

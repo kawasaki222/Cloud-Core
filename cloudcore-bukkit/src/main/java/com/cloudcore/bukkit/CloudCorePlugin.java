@@ -270,6 +270,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 sendDemoInventory(target);
             } else if (args[0].equalsIgnoreCase("demo-assets")) {
                 sendDemoAssets(target);
+            } else if (args[0].equalsIgnoreCase("demo-scroll")) {
+                sendDemoScroll(target);
             } else {
                 if (args[0].equalsIgnoreCase("demo-huge")) {
                     sendDemoHuge(target);
@@ -347,6 +349,11 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core asset demo sent."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("demo-scroll")) {
+            sendDemoScroll(player);
+            sender.sendMessage(Component.text("Cloud Core scroll demo sent."));
+            return true;
+        }
         if (args.length != 1 || !args[0].equalsIgnoreCase("ping")) {
             sender.sendMessage(Component.text(
                     "Usage: /" + label
@@ -374,7 +381,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("demo-container")
                 || action.equalsIgnoreCase("demo-readonly")
                 || action.equalsIgnoreCase("demo-inventory")
-                || action.equalsIgnoreCase("demo-assets");
+                || action.equalsIgnoreCase("demo-assets")
+                || action.equalsIgnoreCase("demo-scroll");
     }
 
     private void sendDemoInventory(Player player) {        String uiId = "cloudcore_demo_inventory";
@@ -767,6 +775,71 @@ public final class CloudCorePlugin extends JavaPlugin
         }, 1L);
         getLogger().info("Sent demo UI_OPEN/UI_DEFINITION to " + player.getName()
                 + " bytes=" + json.length());
+    }
+
+    /**
+     * Demonstrates {@code scroll}: children are clipped to the box and offset by
+     * {@code scroll_y}. Rows outside the box must be cut in both render backends.
+     */
+    private void sendDemoScroll(Player player) {
+        String uiId = "cloudcore_demo_scroll";
+        int token = random.nextInt();
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        session.lastUiId = uiId;
+        UiOpen open = new UiOpen(uiId, 1, SurfaceType.CUSTOM_SCREEN,
+                BindMode.NONE, token, RenderMode.SCREEN, 0, "demo-scroll");
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
+                UiCodec.encodeOpen(open, Limits.S2C)));
+        String json = """
+                {
+                  "schema": 1,
+                  "id": "cloudcore_demo_scroll",
+                  "surface": "custom_screen",
+                  "title": { "runs": [ { "text": "Cloud Core Scroll" } ] },
+                  "size": [320, 180],
+                  "elements": [
+                    { "id": "root", "type": "panel", "x": 0, "y": 0,
+                      "width": "fill", "height": "fill",
+                      "style": { "background": "#CC202830" } },
+                    { "id": "title", "type": "label", "x": 16, "y": 12,
+                      "text": "scroll clip + offset", "color": "#FFFFFFFF" },
+                    { "id": "scroller", "type": "scroll", "x": 16, "y": 36,
+                      "width": 200, "height": 80, "scroll_y": 26,
+                      "style": { "background": "#66101820" },
+                      "children": [
+                        { "id": "row0", "type": "panel", "x": 0, "y": 0,
+                          "width": 200, "height": 18,
+                          "style": { "background": "#FF3C6E9F" } },
+                        { "id": "row1", "type": "panel", "x": 0, "y": 20,
+                          "width": 200, "height": 18,
+                          "style": { "background": "#FF4A9F6E" } },
+                        { "id": "row2", "type": "panel", "x": 0, "y": 40,
+                          "width": 200, "height": 18,
+                          "style": { "background": "#FF9F6E3C" } },
+                        { "id": "row3", "type": "panel", "x": 0, "y": 60,
+                          "width": 200, "height": 18,
+                          "style": { "background": "#FF9F3C6E" } },
+                        { "id": "row4", "type": "panel", "x": 0, "y": 80,
+                          "width": 200, "height": 18,
+                          "style": { "background": "#FF6E3C9F" } },
+                        { "id": "row5", "type": "panel", "x": 0, "y": 100,
+                          "width": 200, "height": 18,
+                          "style": { "background": "#FF3C9F9F" } }
+                      ] },
+                    { "id": "outside", "type": "label", "x": 240, "y": 40,
+                      "text": "outside clip", "color": "#FFFF8080" }
+                  ]
+                }
+                """;
+        UiDefinition definition = new UiDefinition(uiId, 1, 0,
+                json.getBytes(StandardCharsets.UTF_8));
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (player.isOnline()) {
+                sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
+                        UiCodec.encodeDefinition(definition, Limits.S2C)));
+            }
+        }, 1L);
+        getLogger().info("Sent scroll demo UI_OPEN/UI_DEFINITION to " + player.getName());
     }
 
     private void sendDemoAssets(Player player) {

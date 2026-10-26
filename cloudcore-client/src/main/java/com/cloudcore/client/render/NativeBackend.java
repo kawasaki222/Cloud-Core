@@ -19,6 +19,8 @@ public final class NativeBackend implements RenderBackend {
     private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
 
     private FrameContext context;
+    private final java.util.ArrayList<int[]> clips = new java.util.ArrayList<>();
+    private int[] activeClip;
 
     @Override
     public BackendId id() {
@@ -53,6 +55,8 @@ public final class NativeBackend implements RenderBackend {
                         text.argb(), text.shadow());
                 case RenderCommand.Image image -> drawImage(frame, image);
                 case RenderCommand.ItemIcon icon -> drawItem(frame, icon);
+                case RenderCommand.ClipPush clip -> pushClip(frame, clip);
+                case RenderCommand.ClipPop ignored -> popClip(frame);
             }
         }
     }
@@ -104,8 +108,43 @@ public final class NativeBackend implements RenderBackend {
         }
     }
 
+    private void pushClip(FrameContext frame, RenderCommand.ClipPush clip) {
+        int[] rect = {clip.x(), clip.y(), clip.x() + clip.width(), clip.y() + clip.height()};
+        if (activeClip != null) {
+            rect[0] = Math.max(rect[0], activeClip[0]);
+            rect[1] = Math.max(rect[1], activeClip[1]);
+            rect[2] = Math.min(rect[2], activeClip[2]);
+            rect[3] = Math.min(rect[3], activeClip[3]);
+        }
+        clips.add(activeClip);
+        activeClip = rect;
+        applyClip(frame);
+    }
+
+    private void popClip(FrameContext frame) {
+        activeClip = clips.isEmpty() ? null : clips.remove(clips.size() - 1);
+        applyClip(frame);
+    }
+
+    private void applyClip(FrameContext frame) {
+        if (activeClip == null) {
+            frame.graphics().disableScissor();
+            return;
+        }
+        int x1 = activeClip[0];
+        int y1 = activeClip[1];
+        int x2 = Math.max(x1, activeClip[2]);
+        int y2 = Math.max(y1, activeClip[3]);
+        frame.graphics().enableScissor(x1, y1, x2, y2);
+    }
+
     @Override
     public void endFrame() {
+        if (context != null && (activeClip != null || !clips.isEmpty())) {
+            context.graphics().disableScissor();
+        }
+        clips.clear();
+        activeClip = null;
         context = null;
     }
 }

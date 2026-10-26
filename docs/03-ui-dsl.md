@@ -176,8 +176,14 @@ offset: [0, 0]
   id: scroller
   axis: vertical
   scrollbar: auto
+  scroll_x: 0        # 服务端下发的初始偏移（v1 已实现）
+  scroll_y: 26
   children: []
 ```
+
+v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框；两个渲染后端都支持嵌套裁剪
+（原生用 `enableScissor` 求交，NanoVG 用 `nvgSave`/`nvgScissor`/`nvgRestore`）。
+本地滚轮输入与 `scroll` 事件尚待输入路由。
 
 ### 4.5 `overlay`
 

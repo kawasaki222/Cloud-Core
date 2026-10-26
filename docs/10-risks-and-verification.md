@@ -224,6 +224,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **滚动裁剪已核实**：`/cloudcore demo-scroll` 的 `scroll` 元素按 `scroll_y: 26` 偏移并把
+  子元素裁剪到 200×80 的框内；原生后端（`scroll-native.png`）与 NanoVG 后端
+  （`scroll-nanovg.png`）显示一致。嵌套裁剪由 `ClipPush`/`ClipPop` 的交集实现。
+  本地滚轮滚动尚未接入。
 - **NanoVG 字体已核实（Windows x64，opt-in）**：`FontRegistry` 从
   `resourcepacks/CloudCore/公共/字体/body.ttf` 读取 TTF，`nvgCreateFontMem` 后
   `/cloudcore demo-assets` 的 `font: body` 标签由 NanoVG 绘制，未声明字体的文本仍由原版绘制。

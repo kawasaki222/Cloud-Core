@@ -19,6 +19,14 @@ public sealed interface RenderCommand {
     record Image(String texture, int x, int y, int width, int height) implements RenderCommand {
     }
 
+    /** Starts a clipping rectangle; nested clips intersect with their parent. */
+    record ClipPush(int x, int y, int width, int height) implements RenderCommand {
+    }
+
+    /** Ends the most recent {@link ClipPush}. */
+    record ClipPop() implements RenderCommand {
+    }
+
     /**
      * A decorative vanilla item drawn by the native bridge; {@code itemId} is the registry id
      * and {@code count} is only drawn when {@code showCount} is set.
