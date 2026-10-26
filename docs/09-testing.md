@@ -44,6 +44,10 @@
 - 解压炸弹：1 MiB 帧声称 1 GiB，必须在上限处拒绝。
 - 分片模糊：重复、缺失、乱序、255 片、count 0。
 - 特性位模糊：未知特性位不得导致崩溃。
+- 表达式模糊：2 万条随机表达式只允许 `ExpressionException`（`ExpressionEvaluatorFuzzTest`；
+  这一项抓到过 `1.2.3` 抛 `NumberFormatException` 的缺陷）。
+- 文档 JSON 模糊：2 万条随机 JSON 与合法文档的每一种截断只允许 `PageLoadException`
+  （`UiDocumentJsonFuzzTest`），保证渲染线程不会收到未检查异常。
 
 ### 2.4 限额测试
 
