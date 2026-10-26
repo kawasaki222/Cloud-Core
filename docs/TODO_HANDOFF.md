@@ -98,6 +98,7 @@ docs/
 - [x] M1 接线：Paper 与 Fabric 的 HELLO/PING/PONG/分片/UI_OPEN 处理
 - [x] M1 真实联调：Paper + Fabric 握手、`/cloudcore ping`（RTT 9ms）、UI 打开/关闭
 - [x] 服务端主动 `UI_CLOSE`：客户端关闭 CloudScreen 并写日志
+- [x] `DIAGNOSTIC` 下发链路：服务端测试码进入客户端文件日志
 - [x] U2：容器打开事件中的 PING 先于 `ContainerScreen#setScreen`（真实客户端验证）
 - [x] U12：`MouseHandler#onScroll` 在 ContainerScreen 上收到滚轮（真实客户端验证）
 - [x] U3：`GuiGraphics#renderTooltip` 混入在悬停石头时实际命中（lines=1）

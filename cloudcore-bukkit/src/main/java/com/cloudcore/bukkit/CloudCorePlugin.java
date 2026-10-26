@@ -3,6 +3,9 @@ package com.cloudcore.bukkit;
 import com.cloudcore.api.BindMode;
 import com.cloudcore.api.RenderMode;
 import com.cloudcore.api.SurfaceType;
+import com.cloudcore.protocol.Diagnostic;
+import com.cloudcore.protocol.DiagnosticCodec;
+import com.cloudcore.protocol.DiagnosticSeverity;
 import com.cloudcore.protocol.FeatureFlags;
 import com.cloudcore.protocol.Frame;
 import com.cloudcore.protocol.FrameCodec;
@@ -243,6 +246,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 sendBoss(target);
             } else if (args[0].equalsIgnoreCase("close")) {
                 sendClose(target);
+            } else if (args[0].equalsIgnoreCase("diagnostic")) {
+                sendDiagnostic(target);
             } else {
                 sendDemoOpen(target, args[0].equalsIgnoreCase("demo-big"));
             }
@@ -276,9 +281,14 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core probe close sent."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("diagnostic")) {
+            sendDiagnostic(player);
+            sender.sendMessage(Component.text("Cloud Core diagnostic probe sent."));
+            return true;
+        }
         if (args.length != 1 || !args[0].equalsIgnoreCase("ping")) {
             sender.sendMessage(Component.text(
-                    "Usage: /" + label + " <ping|demo|demo-big|probe|boss|close>"));
+                    "Usage: /" + label + " <ping|demo|demo-big|probe|boss|close|diagnostic>"));
             return true;
         }
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
@@ -293,7 +303,16 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("demo-big")
                 || action.equalsIgnoreCase("probe")
                 || action.equalsIgnoreCase("boss")
-                || action.equalsIgnoreCase("close");
+                || action.equalsIgnoreCase("close")
+                || action.equalsIgnoreCase("diagnostic");
+    }
+
+    private void sendDiagnostic(Player player) {
+        Diagnostic diagnostic = new Diagnostic(DiagnosticSeverity.ERROR, "CC-PROBE-001",
+                random.nextInt(), "probe", "Cloud Core diagnostic probe", "test detail");
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.DIAGNOSTIC,
+                DiagnosticCodec.encode(diagnostic, Limits.S2C)));
+        getLogger().info("Sent DIAGNOSTIC to " + player.getName());
     }
 
     private void sendClose(Player player) {

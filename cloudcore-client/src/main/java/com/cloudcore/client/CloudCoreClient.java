@@ -12,6 +12,9 @@ import com.cloudcore.client.surface.OpenRequest;
 import com.cloudcore.client.surface.SurfaceAdapter;
 import com.cloudcore.client.surface.SurfaceRegistry;
 import com.cloudcore.client.surface.UiRuntime;
+import com.cloudcore.protocol.Diagnostic;
+import com.cloudcore.protocol.DiagnosticCodec;
+import com.cloudcore.protocol.DiagnosticSeverity;
 import com.cloudcore.protocol.FeatureFlags;
 import com.cloudcore.protocol.Frame;
 import com.cloudcore.protocol.FrameCodec;
@@ -122,8 +125,7 @@ public final class CloudCoreClient implements ClientModInitializer {
             case Opcode.UI_OPEN -> handleUiOpen(frame);
             case Opcode.UI_DEFINITION -> handleUiDefinition(frame);
             case Opcode.UI_CLOSE -> handleUiClose(frame);
-            case Opcode.DIAGNOSTIC -> LOGGER.warn("Server diagnostic at opcode 0x{} ({} bytes)",
-                    Integer.toHexString(frame.opcode()), frame.bodyLength());
+            case Opcode.DIAGNOSTIC -> handleDiagnostic(frame);
             default -> LOGGER.info("Unhandled S2C opcode=0x{} bytes={}",
                     Integer.toHexString(frame.opcode()), frame.bodyLength());
         }
@@ -231,6 +233,22 @@ public final class CloudCoreClient implements ClientModInitializer {
             failOpen(request, definition.revision(), UiReadyState.BIND_FAILED,
                     exception.getMessage());
             LOGGER.error("Failed to open ui=" + definition.uiId(), exception);
+        }
+    }
+
+    private void handleDiagnostic(Frame frame) {
+        Diagnostic diagnostic = DiagnosticCodec.decode(frame.body(), Limits.S2C);
+        String line = "[{}] scope={} trace=0x{} {} | {}";
+        String trace = Integer.toHexString(diagnostic.traceId());
+        if (diagnostic.severity() >= DiagnosticSeverity.ERROR) {
+            LOGGER.error(line, diagnostic.code(), diagnostic.scope(), trace,
+                    diagnostic.message(), diagnostic.detail());
+        } else if (diagnostic.severity() == DiagnosticSeverity.WARN) {
+            LOGGER.warn(line, diagnostic.code(), diagnostic.scope(), trace,
+                    diagnostic.message(), diagnostic.detail());
+        } else {
+            LOGGER.info(line, diagnostic.code(), diagnostic.scope(), trace,
+                    diagnostic.message(), diagnostic.detail());
         }
     }
 

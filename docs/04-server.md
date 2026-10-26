@@ -131,6 +131,7 @@ debug: false
 /cloudcore probe [player]               打开测试箱子，验证 InventoryOpenEvent 时序（需配置）
 /cloudcore boss [player]                发送带哨兵的测试 BossBar，验证客户端匹配
 /cloudcore close [player]               关闭最近发送的测试 UI，验证服务端主动关闭
+/cloudcore diagnostic [player]          下发一条测试 DIAGNOSTIC，验证客户端日志链路
 /cloudcore reload                       重载主题、字体索引与页面（计划）
 /cloudcore open <player> <page>         为玩家打开页面（计划）
 /cloudcore close <player> [surface]     关闭某个面板或全部面板（计划）

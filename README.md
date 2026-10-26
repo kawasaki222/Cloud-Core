@@ -14,7 +14,7 @@ M2 的面板注册表、最小 `UiDocument`、`UI_DEFINITION` 解码/校验、`C
 + Fabric 开发客户端上验证握手、PING/PONG、UI 打开/关闭、64 KiB 文档压缩分片重组、demo 页面显示，
   以及 `InventoryOpenEvent` 早于 `ContainerScreen#setScreen` 的容器时序、`MouseHandler#onScroll` 全局滚轮钩子、
   私有 `BossHealthOverlay#drawBar` 的 `@WrapOperation` 与 Paper BossBar 哨兵标题、
-  `GuiGraphics#renderTooltip` 命中、服务端主动 `UI_CLOSE`；
+  `GuiGraphics#renderTooltip` 命中、服务端主动 `UI_CLOSE`、`DIAGNOSTIC` 下发链路；
 NanoVG/FBO 合成、
 图片/物品图标、混入和压力测试尚未验证，见 `docs/TODO_HANDOFF.md`。
 
