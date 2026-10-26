@@ -72,6 +72,7 @@ public final class BossBarSurfaceAdapter implements SurfaceAdapter {
                 com.cloudcore.client.render.Colors.parse(bar.get("border"), 0xE0000000));
         Object background = bar.get("background");
         if (!(background instanceof String backgroundRef
+                && com.cloudcore.client.render.NativeBackend.isTextureReference(backgroundRef)
                 && com.cloudcore.client.render.NativeBackend.drawTexture(graphics, backgroundRef,
                 x, y, width, height, nineSlice(bar.get("nine_slice"))))) {
             graphics.fill(x, y, x + width, y + height,

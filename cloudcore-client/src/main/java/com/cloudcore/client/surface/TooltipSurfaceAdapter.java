@@ -220,6 +220,7 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
             }
             Object background = style.get("background");
             if (background instanceof String reference
+                    && com.cloudcore.client.render.NativeBackend.isTextureReference(reference)
                     && com.cloudcore.client.render.NativeBackend.drawTexture(graphics, reference,
                     x, y, width, height, nineSlice(style.get("nine_slice")))) {
                 return;

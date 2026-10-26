@@ -73,6 +73,16 @@ public final class NativeBackend implements RenderBackend {
     }
 
     /**
+     * @return true for the reference prefixes the client can resolve; callers use it to tell a
+     *         texture apart from a colour before asking for a blit (a colour would otherwise be
+     *         reported as an unsupported reference)
+     */
+    public static boolean isTextureReference(String value) {
+        return value != null && (value.startsWith("local:") || value.startsWith("pack:")
+                || value.startsWith("builtin:") || value.startsWith("inline:"));
+    }
+
+    /**
      * Draws one textured rectangle with an optional nine-slice border.
      *
      * @return false when the reference is not a supported texture (the caller keeps its colour)
