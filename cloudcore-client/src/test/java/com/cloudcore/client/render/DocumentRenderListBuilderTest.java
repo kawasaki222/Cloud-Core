@@ -322,6 +322,35 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
+    void textFieldDrawsItsConfiguredBorderAndTheInvalidOne() {
+        UiElement normal = new UiElement("a", "text_field", 10, 10, "100", "20",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("placeholder", "type",
+                        "style", Map.of("background", "#FF202020",
+                                "border", Map.of("normal", "#FF3A3A3A", "invalid", "#FFFF5555"))));
+        UiElement invalid = new UiElement("b", "text_field", 10, 40, "100", "20",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("invalid", true,
+                        "style", Map.of("border", Map.of("normal", "#FF3A3A3A",
+                                "invalid", "#FFFF5555"))));
+        UiDocument document = new UiDocument(1, "fields", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(normal, invalid));
+
+        List<RenderCommand> commands = DocumentRenderListBuilder.build(document, 200, 100)
+                .commands();
+        // Each field is a background plus a four-piece 1px frame.
+        assertTrue(commands.get(0) instanceof RenderCommand.FillRect);
+        RenderCommand.FillRect normalTop = (RenderCommand.FillRect) commands.get(1);
+        RenderCommand.FillRect invalidTop = (RenderCommand.FillRect) commands.get(6);
+        assertEquals(0xFF3A3A3A, normalTop.argb());
+        assertEquals(10, normalTop.x());
+        assertEquals(1, normalTop.height());
+        assertEquals(0xFFFF5555, invalidTop.argb(), "invalid: true wins over the normal border");
+        assertEquals(40, invalidTop.y());
+    }
+
+    @Test
     void resolvesPercentAndFillDimensions() {
         UiElement panel = new UiElement("root", "panel", 0, 0, "50%", "fill",
                 true, true, 0, Map.of(), List.of(), Map.of());

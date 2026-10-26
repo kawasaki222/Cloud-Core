@@ -429,18 +429,26 @@ YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范�
 控件本身用原版绘制（剪贴板/IME 行为保持原版）。`change` 事件载荷 `{value}`，ENTER 触发 `submit`，
 动作里的 `${value}` 会替换成输入内容。
 
-可配置：
+已实现：
 
-- 背景、九宫格、边框（normal / focused / invalid）、内边距。
-- 字体、文字颜色、阴影、占位符颜色。
-- 清除按钮、错误态、焦点态。
-- `sensitive: true` 时客户端掩码显示；服务端仍收到原文用于校验，日志绝不记录内容。
+- 背景：颜色，或 `local:`/`pack:`/`builtin:`/`inline:` 贴图加 `style.nine_slice`。
+- 边框：`style.border.normal` 常显；元素带 `invalid: true` 时改用 `style.border.invalid`；
+  获得焦点时客户端按 `style.border.focused`（默认 `#FF4FA3E8`）叠画 1px 焦点框——
+  焦点是控件实时状态，不经过文档。
+- 文字颜色：`style.text.color`（`EditBox#setTextColor`）。
+- `max_length`（1..256，默认 32）。
+- `filter`：`printable`（缺省；放行所有非控制字符，中文/输入法可用）、`digits`/`numeric`、
+  `alnum`、`none`，或 `regex:<pattern>`（编译失败记 `CC-INPUT-001` 并放行）。
+- `sensitive: true`：客户端用 `EditBox` formatter 把显示替换成 `*`；**服务端仍收到原文**用于校验，
+  日志与诊断包绝不记录内容。掩码按等长字符渲染，光标宽度可能与原字不完全一致（尽力支持）。
+
+尚未实现：`padding` 补偿、`cursor_color` / `selection_color`、清除按钮。
+输入法候选窗位置由 GLFW/原版处理，不能完全自定义。
 
 边界：
 
 - `cursor_color` / `selection_color` 需要覆盖 `EditBox` 的渲染；标记为尽力支持，不支持时回退原版并记录。
 - `padding` 通过外层布局补偿 `EditBox` 内建的文本偏移。
-- 输入法候选窗口位置由 GLFW/原版处理，不能完全自定义。
 - 不要自己实现文本编辑；IME、选区、剪贴板、键盘重复都是长期坑。
 
 `change` 客户端 250 ms 防抖。服务端仍会重新校验长度、过滤器和权限。

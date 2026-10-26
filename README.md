@@ -9,7 +9,7 @@
 
 **M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集已完成并在真机联调。**
 
-- 构建：`./gradlew build` 通过（JDK 21，163 个测试 / 34 个测试类，0 失败）。
+- 构建：`./gradlew build` 通过（JDK 21，168 个测试 / 35 个测试类，0 失败）。
 - 协议：信封、DEFLATE、分片/重组、HELLO/HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED、
   `EVENT`/`EVENT_RESULT`、`TEXTURE_REF`、`DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
   真机验证：830 KB 文档拆成 27 片重组、断线/重连清理、1,000,000 随机帧解码。
@@ -22,7 +22,8 @@
 - 客户端：六类面板（自定义页面、容器、玩家背包、HUD 三层带锚点、Tooltip 裁剪与滚轮、Boss 血条）；
   RenderList 支持文字/富文本、图片（`local:`/`pack:`/`builtin:`/`inline:`）、九宫格、背景贴图、
   裁剪/滚动（回传 `scroll` 绝对偏移）、悬停样式与 `hover_enter`/`hover_leave` 事件、`item_icon`、
-  滑块、复选框、文本输入框（原版 `EditBox` 换皮）；
+  滑块、复选框、文本输入框（原版 `EditBox` 换皮：背景/九宫格、normal/invalid/focused 边框、
+  `filter`、`sensitive` 掩码）；
   GIF 逐帧播放；`url:` 贴图客户端直连下载（https/限额/sha256）；
   NanoVG 后端（`-PcloudcoreNanoVg=true`，填充/图片/自定义字体 + 原生叠层）与 FBO 合成已通过；
   客户端日志 `logs/cloudcore-client.log` 带 `CC-*` 码。

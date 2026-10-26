@@ -14,7 +14,7 @@
   `set_state` 重编译后推送更高 revision。
 - 客户端：六类面板 + RenderList（文字/富文本/图片/九宫格/背景贴图/裁剪/滚动/悬停/物品图标/GIF/URL 贴图）；
   NanoVG 后端与 FBO 合成（opt-in）；客户端日志与诊断码。
-- 构建：`./gradlew build` 通过，163 个测试 / 34 个类，0 失败。
+- 构建：`./gradlew build` 通过，168 个测试 / 35 个类，0 失败。
 
 ## 已有内容
 
@@ -104,6 +104,9 @@ docs/
 - [x] `panel`/`button` 的背景贴图与九宫格；标签富文本按段着色
 - [x] 按钮 `style.hover` 悬停样式（真机验证）
 - [x] `text_field`：原版 EditBox 控件 + `change`/`submit` 事件与 `${value}` 替换（真机验证）
+- [x] `text_field` 外观状态：背景贴图/九宫格、normal/invalid/focused 边框、文字颜色、
+      `filter`（含 `regex:`）、`sensitive` 掩码（真机验证 + 单测）
+- [ ] `text_field` 剩余：`padding` 补偿、光标/选区颜色、清除按钮
 - [x] `checkbox`：`checked` 绘制 + `change{checked}` → `set_state` 往返（真机验证）
 - [x] `slider`：`value` 填充 + 点击比例 `change{amount}` → `set_state` 往返（真机验证）
 - [x] `scroll` 事件回传：滚轮后上报绝对偏移，`scroll_y` 由状态驱动（真机验证 + 单测 `UiElementsTest`）

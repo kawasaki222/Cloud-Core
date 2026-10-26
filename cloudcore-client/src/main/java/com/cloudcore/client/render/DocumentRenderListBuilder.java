@@ -18,6 +18,7 @@ public final class DocumentRenderListBuilder {
     private static final int DEFAULT_BUTTON = 0xAA4A4A4A;
     private static final int DEFAULT_BUTTON_HOVER = 0xCC6E6E6E;
     private static final int DEFAULT_FIELD = 0xAA202020;
+    private static final int DEFAULT_INVALID_BORDER = 0xFFFF5555;
     private static final int DEFAULT_TEXT = 0xFFFFFFFF;
     private static final int MAX_COMMANDS = 20_000;
     private static final int MAX_DEPTH = 64;
@@ -136,11 +137,21 @@ public final class DocumentRenderListBuilder {
                 }
             }
             case "text_field" -> {
-                // Only the background: the vanilla EditBox widget (added by CloudScreen)
-                // draws the hint, value, selection and caret.
+                // Only the background and border: the vanilla EditBox widget (added by
+                // CloudScreen) draws the hint, value, selection and caret; the screen adds the
+                // focused border on top.
                 int w = width > 0 ? width : parentWidth;
                 int h = height > 0 ? height : 18;
-                addFill(commands, x, y, w, h, color(style(element, "background"), DEFAULT_FIELD));
+                Object background = style(element, "background");
+                if (background instanceof String reference && isSupportedTexture(reference)) {
+                    addImage(commands, reference, x, y, w, h,
+                            intArray(style(element, "nine_slice")));
+                } else {
+                    addFill(commands, x, y, w, h, color(background, DEFAULT_FIELD));
+                }
+                addFrame(commands, x, y, w, h, truthy(attribute(element, "invalid"))
+                        ? color(styleBorder(element, "invalid"), DEFAULT_INVALID_BORDER)
+                        : color(styleBorder(element, "normal"), 0));
                 childWidth = w;
                 childHeight = h;
             }
@@ -307,6 +318,18 @@ public final class DocumentRenderListBuilder {
         if (width > 0 && height > 0 && commands.size() < MAX_COMMANDS) {
             commands.add(new RenderCommand.FillRect(x, y, width, height, argb));
         }
+    }
+
+    /** A 1px outline; skipped entirely when the colour is fully transparent. */
+    private static void addFrame(List<RenderCommand> commands, int x, int y, int width, int height,
+            int argb) {
+        if ((argb >>> 24) == 0 || width <= 0 || height <= 0) {
+            return;
+        }
+        addFill(commands, x, y, width, 1, argb);
+        addFill(commands, x, y + height - 1, width, 1, argb);
+        addFill(commands, x, y + 1, 1, height - 2, argb);
+        addFill(commands, x + width - 1, y + 1, 1, height - 2, argb);
     }
 
     private static void addText(List<RenderCommand> commands, String text, int x, int y,
@@ -493,21 +516,14 @@ public final class DocumentRenderListBuilder {
         return null;
     }
 
+    /** Reads {@code style.border.<key>} ({@code normal}/{@code focused}/{@code invalid}). */
+    private static Object styleBorder(UiElement element, String key) {
+        Object border = style(element, "border");
+        return border instanceof Map<?, ?> map ? map.get(key) : null;
+    }
+
     private static int color(Object value, int fallback) {
-        if (value instanceof String string && string.startsWith("#")) {
-            String hex = string.substring(1);
-            try {
-                if (hex.length() == 8) {
-                    return Integer.parseUnsignedInt(hex, 16);
-                }
-                if (hex.length() == 6) {
-                    return 0xFF000000 | Integer.parseUnsignedInt(hex, 16);
-                }
-            } catch (NumberFormatException ignored) {
-                return fallback;
-            }
-        }
-        return fallback;
+        return Colors.parse(value, fallback);
     }
 
     private static double number(Object value, double fallback) {

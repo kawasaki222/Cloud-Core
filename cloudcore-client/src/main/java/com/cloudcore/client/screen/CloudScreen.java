@@ -80,6 +80,7 @@ public final class CloudScreen extends Screen {
                     Math.max(12, box.height()), Component.empty());
             edit.setBordered(false);
             edit.setMaxLength(maxLength(element));
+            edit.setFilter(filterPredicate(stringAttribute(element, "filter")));
             Object hint = element.attributes().get("placeholder");
             if (hint instanceof String text && !text.isEmpty()) {
                 edit.setHint(Component.literal(text));
@@ -87,6 +88,13 @@ public final class CloudScreen extends Screen {
             Object value = element.attributes().get("value");
             if (value instanceof String text) {
                 edit.setValue(text);
+            }
+            edit.setTextColor(com.cloudcore.client.render.Colors.parse(styleText(element, "color"),
+                    0xFFE0E0E0));
+            if (truthy(element.attributes().get("sensitive"))) {
+                // Display-only mask: the server still receives and validates the plain text.
+                edit.addFormatter((text, cursor) -> net.minecraft.util.FormattedCharSequence
+                        .forward("*".repeat(text.length()), net.minecraft.network.chat.Style.EMPTY));
             }
             Integer changeId = element.events().get("change");
             if (changeId != null) {
@@ -102,6 +110,73 @@ public final class CloudScreen extends Screen {
     private static int maxLength(UiElement element) {
         Object value = element.attributes().get("max_length");
         return value instanceof Number number ? Math.max(1, Math.min(256, number.intValue())) : 32;
+    }
+
+    private static boolean truthy(Object value) {
+        if (value instanceof Boolean flag) {
+            return flag;
+        }
+        if (value instanceof String text) {
+            return !text.isEmpty() && !"false".equalsIgnoreCase(text);
+        }
+        return value != null;
+    }
+
+    private static String stringAttribute(UiElement element, String key) {
+        Object value = element.attributes().get(key);
+        return value instanceof String text ? text.trim() : null;
+    }
+
+    /** Reads {@code style.<group>.<key>} (e.g. {@code style.text.color}). */
+    private static Object styleText(UiElement element, String key) {
+        Object style = element.attributes().get("style");
+        if (style instanceof Map<?, ?> map && map.get("text") instanceof Map<?, ?> text) {
+            return text.get(key);
+        }
+        return null;
+    }
+
+    /** Reads {@code style.border.<state>}. */
+    private static Object styleBorder(UiElement element, String state) {
+        Object style = element.attributes().get("style");
+        if (style instanceof Map<?, ?> map && map.get("border") instanceof Map<?, ?> border) {
+            return border.get(state);
+        }
+        return null;
+    }
+
+    /**
+     * Input filter for a text field: {@code printable} (default when absent),
+     * {@code digits}/{@code numeric}, {@code alnum}, {@code none}, or {@code regex:<pattern>}.
+     * Unknown values allow input and log {@code CC-INPUT-002} rather than locking a field.
+     */
+    private static java.util.function.Predicate<String> filterPredicate(String filter) {
+        if (filter == null || filter.isBlank()) {
+            return value -> true;
+        }
+        String normalised = filter.toLowerCase(java.util.Locale.ROOT);
+        if (normalised.startsWith("regex:")) {
+            String source = filter.substring(6).trim();
+            try {
+                java.util.regex.Pattern compiled = java.util.regex.Pattern.compile(source);
+                return value -> compiled.matcher(value).matches();
+            } catch (java.util.regex.PatternSyntaxException exception) {
+                LOGGER.warn("[CC-INPUT-001] Invalid text_field filter '{}': {}", source,
+                        exception.getDescription());
+                return value -> true;
+            }
+        }
+        return switch (normalised) {
+            case "digits", "numeric" -> value -> value.chars().allMatch(Character::isDigit);
+            case "alnum" -> value -> value.chars().allMatch(Character::isLetterOrDigit);
+            case "printable" -> value -> value.chars().noneMatch(ch -> ch < 0x20 || ch == 0x7F);
+            case "none", "any" -> value -> true;
+            default -> {
+                LOGGER.warn("[CC-INPUT-002] Unknown text_field filter '{}'; allowing input",
+                        filter);
+                yield value -> true;
+            }
+        };
     }
 
     @Override
@@ -144,6 +219,33 @@ public final class CloudScreen extends Screen {
         // Widgets (EditBox) draw themselves; the render list only paints their background.
         for (EditBox field : textFields) {
             field.render(graphics, mouseX, mouseY, partialTick);
+        }
+        drawFieldFocus(graphics);
+    }
+
+    /**
+     * Focus lives on the widget, not in the document, so the focused border is drawn per frame
+     * instead of inside the cached render list.
+     */
+    private void drawFieldFocus(GuiGraphics graphics) {
+        if (!(getFocused() instanceof EditBox focused)) {
+            return;
+        }
+        for (LayoutBoxes.Box box : LayoutBoxes.ofType(document, width, height, "text_field")) {
+            if (box.x() != focused.getX() || box.y() != focused.getY()) {
+                continue;
+            }
+            int argb = com.cloudcore.client.render.Colors.parse(styleBorder(box.element(),
+                    "focused"), 0xFF4FA3E8);
+            int x = box.x();
+            int y = box.y();
+            int w = box.width();
+            int h = box.height();
+            graphics.fill(x, y, x + w, y + 1, argb);
+            graphics.fill(x, y + h - 1, x + w, y + h, argb);
+            graphics.fill(x, y + 1, x + 1, y + h - 1, argb);
+            graphics.fill(x + w - 1, y + 1, x + w, y + h - 1, argb);
+            return;
         }
     }
 
