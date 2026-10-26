@@ -111,7 +111,7 @@
 | `icon_button` | `icon`、`events` |
 | `text_field` | `placeholder`、`max_length`、`filter`、`sensitive`、`invalid`、`style`、`events` |
 | `checkbox` | `text`(TextRuns)、`checked`、`events` |
-| `slider` | `min`、`max`、`step`、`value`、`live`、`events` |
+| `slider` | `value`（`0..1`，已实现）、`min`/`max`/`step`/`live`（计划）、`events` |
 | `progress` | `value`、`texture_bg`、`texture_fill`、`direction` |
 | `inventory_grid` | `slots`、`origin`、`cell`、`gap`、`columns`、`render_slots`、`render_items` |
 | `item_icon` | `item`（id/count/components）、`scale`、`show_count`、`show_durability` |

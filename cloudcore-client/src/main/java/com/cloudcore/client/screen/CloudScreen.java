@@ -201,6 +201,23 @@ public final class CloudScreen extends Screen {
                 return true;
             }
         }
+        // Sliders report the clicked fraction; the server decides what it means.
+        for (com.cloudcore.client.screen.LayoutBoxes.Box box
+                : com.cloudcore.client.screen.LayoutBoxes.ofType(document, width, height,
+                        "slider")) {
+            if (event.x() >= box.x() && event.x() < box.x() + box.width()
+                    && event.y() >= box.y() - 2 && event.y() < box.y() + box.height() + 2) {
+                Integer actionId = box.element().events().get("change");
+                if (actionId != null) {
+                    double amount = Math.max(0.0, Math.min(1.0,
+                            (event.x() - box.x()) / Math.max(1, box.width())));
+                    com.cloudcore.client.CloudCoreClient.sendEvent(document.id(),
+                            box.element().id(), actionId, java.util.Map.of("amount",
+                                    new com.cloudcore.protocol.WireValue.DoubleValue(amount)));
+                    return true;
+                }
+            }
+        }
         // Checkboxes toggle locally and report the new value; the server owns the state.
         com.cloudcore.api.document.UiElement checkbox =
                 com.cloudcore.client.render.ElementHitTester.findWithEvent(document, width,

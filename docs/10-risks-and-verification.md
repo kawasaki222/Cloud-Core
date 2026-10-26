@@ -156,7 +156,7 @@ U1: 已核实 2026-xx-xx — PingPongTest，客户端日志第 42 行
 U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 ```
 
-### 2.1 本轮实现记录（2026-10-26）
+### 2.1 本轮实现记录（2026-10-26 至 10-27）
 
 已通过编译、单元测试，并在**真实 Paper + Fabric 开发客户端**上完成一次本地联调
 （Paper 1.21.11 build 132，Fabric Loader 0.19.5，Fabric API 0.141.3+1.21.11，离线模式）。
@@ -243,6 +243,14 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   通过字符输入写入 `abc`，ENTER 后服务端记录 `EVENT ui=example element=name_input`；
   动作 `${value}` 用事件载荷替换（`textfield8.png`、`textfield-submit.png`）。
   外观只换了背景，输入法/剪贴板仍走原版。
+- **滑块已核实**：示例页的 `slider` 画轨道 + 按 `value` 填充 + 滑块钮（`slider-fixed.png`）；
+  点击轨道 75% 处后服务端记录 `EVENT ui=example element=volume_slider actions=1` 与
+  `Updated page 'example' revision=2 state={volume=0.75}`，填充与“音量：0.75”同步更新
+  （`slider-clicked.png`）。过程中修正了属性模板一律被转成字符串的问题：整串 `${...}` 现在
+  保留解析结果类型（`value` 以数字下发），未解析的占位符下发空串；
+  `PageLoaderTest.attributesKeepTheTypeOfAWholePlaceholder` 覆盖。客户端 `number()` 同时接受
+  字符串数字，`DocumentRenderListBuilderTest` 覆盖数字与带引号两种输入。
+  拖动、`min`/`max`/`step`、`live` 未实现。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
@@ -327,17 +335,17 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，147 个测试 / 32 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，161 个测试 / 33 个测试类，0 失败）。
 
 仍未验证：
 
 - NanoVG：填充/图片/合成已在 Windows 验证（opt-in）；文字仍走原版 `Font`，未接 NanoVG 字体；
   U30 预乘 alpha、U31 状态隔离、Linux/macOS 未测；默认后端仍是 `NativeBackend`。
 - U28–U31：Linux/macOS、FBO 屏幕合成、预乘 alpha、1.21.6 提取/绘制状态。
-- `inline:`/`pack:` 图片、GIF、item_icon、文本整形、裁剪/滚动、真实布局容器、其余五类面板的实际替换。
-- 当前 screen/scroll/tooltip/boss 混入只是诊断探针，尚未替换绘制或输入。
-- `BindMode` / `RenderMode` 的未知值仍会拒绝整帧；`surfaceId` 已改为保留原始 id 并回
-  `UI_READY(state=4)`。
+- 文本整形（shaping）、`scroll` 事件回传、Tooltip 九宫格背景、Boss 样式字段数据化。
+- `TEXTURE_REQUEST`/`TEXTURE_PUT` 代理路径、远端 GIF 真机、`ELEMENT_UPDATE`。
+- 玩家背包配方书、SQLite 持久化、PlaceholderAPI 解析。
+- `allow_player_inventory: true` 与 `InventoryDragEvent` 真机验证。
 
 ## 3. 风险登记
 

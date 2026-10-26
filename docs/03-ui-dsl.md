@@ -460,19 +460,31 @@ YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范�
 
 ### 5.7 `slider`
 
+已实现（M2）：`value` 取 `0..1` 的小数，客户端画轨道 + 填充 + 滑块钮。点击轨道任意位置时，
+点击横坐标在轨道内的比例作为 `amount`（`0..1`）随 `change` 事件上报；服务端动作可据此
+`set_state`，重编译后的文档把新 `value` 推回客户端。
+
 ```yaml
 - type: slider
-  id: volume
-  width: 120
-  height: 16
-  min: 0
-  max: 100
-  step: 1
-  value: 50
-  live: false
+  id: volume_slider
+  x: 16
+  y: 152
+  width: 140
+  height: 6
+  value: "${state.volume}"
   on:
-    change: []
+    change:
+      - action: set_state
+        key: volume
+        value: "${amount}"
 ```
+
+- 整串占位符（`"${state.volume}"`）保留被解析值的类型，所以 `value` 以数字而非字符串下发；
+  客户端对字符串数字也做解析，兼容旧文档与 YAML 里加了引号的数字。
+- 未解析的占位符下发为空串，不把 `${...}` 原文写进文档。
+
+尚未实现（计划）：`min`/`max`/`step` 数值区间、拖动滑块（当前只响应点击）、`live`（拖动过程中
+连续上报）。在这些补齐前，页面按 `0..1` 使用 `value` 与 `amount`。
 
 ### 5.8 `progress`
 

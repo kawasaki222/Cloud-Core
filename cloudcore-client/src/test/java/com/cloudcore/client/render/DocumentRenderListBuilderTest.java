@@ -297,6 +297,31 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
+    void sliderFillsItsTrackFromNumericAndTextValues() {
+        List<RenderCommand> numeric = sliderCommands(0.4);
+        List<RenderCommand> text = sliderCommands("0.4");
+        List<RenderCommand> empty = sliderCommands(0.0);
+
+        assertEquals(140, ((RenderCommand.FillRect) numeric.get(0)).width(), "track width");
+        assertEquals(56, ((RenderCommand.FillRect) numeric.get(1)).width(), "40% of 140px");
+        assertEquals(56, ((RenderCommand.FillRect) text.get(1)).width(),
+                "a quoted number still fills 40% of 140px");
+        assertEquals(52, ((RenderCommand.FillRect) text.get(2)).x(),
+                "knob is centred on the fill end (56 - knob/2)");
+        assertEquals(2, empty.size(), "value 0 draws only the track and the knob");
+    }
+
+    private static List<RenderCommand> sliderCommands(Object value) {
+        UiElement slider = new UiElement("volume", "slider", 0, 0, "140", "6",
+                true, true, 0, Map.of(), List.of(),
+                new java.util.HashMap<>(Map.of("value", value)));
+        UiDocument document = new UiDocument(1, "slider", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(slider));
+        return DocumentRenderListBuilder.build(document, 200, 100).commands();
+    }
+
+    @Test
     void resolvesPercentAndFillDimensions() {
         UiElement panel = new UiElement("root", "panel", 0, 0, "50%", "fill",
                 true, true, 0, Map.of(), List.of(), Map.of());

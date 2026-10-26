@@ -678,7 +678,11 @@ public final class CloudCorePlugin extends JavaPlugin
         }
         if (!(sender instanceof Player player)) {
             sender.sendMessage(Component.text(
-                    "Usage: /cloudcore <ping|demo|demo-big|demo-huge|probe> <player>"));
+                    "Usage: /cloudcore <validate|reload|page <name> [player]> or "
+                    + "/cloudcore <demo|demo-big|demo-huge|demo-hud|demo-hud-bg"
+                    + "|demo-tooltip|demo-container|demo-readonly|demo-passthrough"
+                    + "|demo-inventory|demo-layout|demo-assets|demo-scroll"
+                    + "|ping|probe|boss|close|diagnostic> [player]"));
             return true;
         }
         if (args.length == 1 && (args[0].equalsIgnoreCase("demo")

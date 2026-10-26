@@ -7,24 +7,28 @@
 
 ## 当前状态
 
-**M1 协议核心与 M2 面板链路已完成并在真机联调，M3 页面加载与基础动作已落地。**
+**M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集已完成并在真机联调。**
 
-- 构建：`./gradlew build` 通过（JDK 21，147 个测试 / 32 个测试类，0 失败）。
+- 构建：`./gradlew build` 通过（JDK 21，161 个测试 / 33 个测试类，0 失败）。
 - 协议：信封、DEFLATE、分片/重组、HELLO/HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED、
   `EVENT`/`EVENT_RESULT`、`TEXTURE_REF`、`DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
   真机验证：830 KB 文档拆成 27 片重组、断线/重连清理、1,000,000 随机帧解码。
 - 服务端：Paper 插件（自包含 jar）、`managed`/`readonly`/`passthrough` 点击策略、
-  `inventory_grid` 槽位重排、事件限流、`command` 动作闸门、`/cloudcore validate|reload|page`。
+  `inventory_grid` 槽位重排、事件限流、`command` 动作闸门、
+  `/cloudcore validate|reload|page|demo-*`；WatchService 热重载。
 - 页面：YAML 单文件或 `includes` 组合、`repeat`（含嵌套）、`${...}` 模板、动作编译成 actionId；
+  动作引擎子集（`message`/`close_ui`/`set_state`/`if`/`delay`/`command`）与表达式求值；
   `set_state` 触发重编译并推送更高 revision 的文档更新。
 - 客户端：六类面板（自定义页面、容器、玩家背包、HUD 三层带锚点、Tooltip 裁剪与滚轮、Boss 血条）；
   RenderList 支持文字/富文本、图片（`local:`/`pack:`/`builtin:`/`inline:`）、九宫格、背景贴图、
-  裁剪/滚动、悬停样式、`item_icon`；GIF 逐帧播放；`url:` 贴图客户端直连下载（https/限额/sha256）；
+  裁剪/滚动、悬停样式、`item_icon`、滑块、复选框、文本输入框（原版 `EditBox` 换皮）；
+  GIF 逐帧播放；`url:` 贴图客户端直连下载（https/限额/sha256）；
   NanoVG 后端（`-PcloudcoreNanoVg=true`，填充/图片/自定义字体 + 原生叠层）与 FBO 合成已通过；
   客户端日志 `logs/cloudcore-client.log` 带 `CC-*` 码。
 - 尚未验证/未实现：Linux/macOS 运行、NanoVG 默认化与设备分辨率清晰文字、代理贴图
-  （`TEXTURE_REQUEST`/`TEXTURE_PUT`）、`command` 以外的条件/等待/表达式、配方书与玩家背包槽位重排、
-  WatchService 热重载。详见 `docs/TODO_HANDOFF.md` 与 `docs/10-risks-and-verification.md`。
+  （`TEXTURE_REQUEST`/`TEXTURE_PUT`）、远端 GIF 真机、`ELEMENT_UPDATE`、配方书、SQLite 持久化、
+  PlaceholderAPI、滑块拖动与 `min`/`max`/`step`、文本 shaping。详见 `docs/TODO_HANDOFF.md`
+  与 `docs/10-risks-and-verification.md`。
 
 ## 目标技术栈
 

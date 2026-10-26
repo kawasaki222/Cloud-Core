@@ -154,6 +154,22 @@ public final class DocumentRenderListBuilder {
                 addText(commands, text(element), x + 13, y,
                         color(styleText(element), DEFAULT_TEXT), fontPath(element, fonts));
             }
+            case "slider" -> {
+                int w = width > 0 ? width : parentWidth;
+                int h = height > 0 ? height : 8;
+                addFill(commands, x, y, w, h, 0xFF202020);
+                double value = Math.max(0.0, Math.min(1.0, number(attribute(element, "value"), 0.0)));
+                int filled = (int) Math.round(w * value);
+                if (filled > 0) {
+                    addFill(commands, x, y, filled, h, 0xFF4FA3E8);
+                }
+                int knob = Math.max(4, Math.min(8, h + 2));
+                int knobX = Math.max(x, Math.min(x + w - knob,
+                        x + filled - knob / 2));
+                addFill(commands, knobX, y - 1, knob, h + 2, 0xFFE8E8E8);
+                childWidth = w;
+                childHeight = h;
+            }
             case "progress" -> {
                 int w = width > 0 ? width : parentWidth;
                 int h = height > 0 ? height : 8;
@@ -495,7 +511,18 @@ public final class DocumentRenderListBuilder {
     }
 
     private static double number(Object value, double fallback) {
-        return value instanceof Number number ? number.doubleValue() : fallback;
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        // Older documents and quoted YAML numbers arrive as text; parse rather than drop.
+        if (value instanceof String text) {
+            try {
+                return Double.parseDouble(text.trim());
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
     }
 
     private static int resolve(String value, int parent, int fallback) {
