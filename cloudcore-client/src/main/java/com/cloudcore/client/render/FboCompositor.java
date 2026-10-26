@@ -124,8 +124,10 @@ public final class FboCompositor implements AutoCloseable {
         }
         // NanoVG writes premultiplied alpha; the straight-alpha GUI pipeline would multiply
         // coverage twice and dim text and translucent fills.
+        // Destination size and source size differ when the FBO uses device pixels.
         graphics.blit(RenderPipelines.GUI_TEXTURED_PREMULTIPLIED_ALPHA, TEXTURE_ID, x, y,
-                0.0f, 0.0f, width, height, this.width, this.height);
+                0.0f, 0.0f, width, height, this.width, this.height,
+                this.width, this.height);
     }
 
     @Override

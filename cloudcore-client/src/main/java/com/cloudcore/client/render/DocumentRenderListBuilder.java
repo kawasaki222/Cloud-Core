@@ -119,7 +119,8 @@ public final class DocumentRenderListBuilder {
                 Object texture = attribute(element, "texture");
                 if (texture instanceof String reference && isSupportedTexture(reference)) {
                     addImage(commands, reference, x, y,
-                            width > 0 ? width : 64, height > 0 ? height : 64);
+                            width > 0 ? width : 64, height > 0 ? height : 64,
+                            intArray(attribute(element, "nine_slice")));
                 }
             }
             case "item_icon" -> {
@@ -220,9 +221,26 @@ public final class DocumentRenderListBuilder {
 
     private static void addImage(List<RenderCommand> commands, String texture, int x, int y,
             int width, int height) {
+        addImage(commands, texture, x, y, width, height, null);
+    }
+
+    private static void addImage(List<RenderCommand> commands, String texture, int x, int y,
+            int width, int height, int[] nineSlice) {
         if (width > 0 && height > 0 && commands.size() < MAX_COMMANDS) {
-            commands.add(new RenderCommand.Image(texture, x, y, width, height));
+            commands.add(new RenderCommand.Image(texture, x, y, width, height, nineSlice));
         }
+    }
+
+    /** Reads a {@code [a, b, c, d]} attribute array; anything else becomes {@code null}. */
+    private static int[] intArray(Object value) {
+        if (!(value instanceof List<?> list) || list.size() != 4) {
+            return null;
+        }
+        int[] result = new int[4];
+        for (int index = 0; index < 4; index++) {
+            result[index] = (int) Math.round(number(list.get(index), 0.0));
+        }
+        return result;
     }
 
     private static void addItem(List<RenderCommand> commands, String itemId, int count,

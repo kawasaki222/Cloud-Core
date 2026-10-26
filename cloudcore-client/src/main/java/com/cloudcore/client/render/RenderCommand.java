@@ -16,7 +16,27 @@ public sealed interface RenderCommand {
         }
     }
 
-    record Image(String texture, int x, int y, int width, int height) implements RenderCommand {
+    /**
+     * @param nineSlice optional {@code [left, top, right, bottom]} borders in source-texture
+     *                  pixels; the backends keep them unscaled and stretch the middle
+     */
+    record Image(String texture, int x, int y, int width, int height, int[] nineSlice)
+            implements RenderCommand {
+
+        public Image(String texture, int x, int y, int width, int height) {
+            this(texture, x, y, width, height, null);
+        }
+
+        public Image {
+            nineSlice = nineSlice == null || nineSlice.length != 4
+                    ? null
+                    : nineSlice.clone();
+        }
+
+        @Override
+        public int[] nineSlice() {
+            return nineSlice == null ? null : nineSlice.clone();
+        }
     }
 
     /** Starts a clipping rectangle; nested clips intersect with their parent. */

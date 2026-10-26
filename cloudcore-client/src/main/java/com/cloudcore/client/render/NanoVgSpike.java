@@ -138,7 +138,7 @@ public final class NanoVgSpike {
         // 1.21.11 requires the explicit texture size; the normalized-UV overload draws nothing
         // for FBO-backed textures.
         graphics.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, TEXTURE_ID,
-                x, y, 0.0f, 0.0f, size, size, 64, 64);
+                x, y, 0.0f, 0.0f, size, size, 64, 64, 64, 64);
         return true;
     }
 

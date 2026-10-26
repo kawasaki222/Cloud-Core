@@ -34,6 +34,7 @@ public final class NanoVgBackend implements RenderBackend {
     private final java.util.concurrent.atomic.AtomicBoolean textFailureLogged =
             new java.util.concurrent.atomic.AtomicBoolean();
     private final Map<String, Integer> imageHandles = new HashMap<>();
+    private final Map<String, int[]> imageSizes = new HashMap<>();
     private long context;
     private boolean attempted;
     private boolean available;
@@ -183,12 +184,26 @@ public final class NanoVgBackend implements RenderBackend {
         if (handle == null || handle == 0) {
             return;
         }
-        NanoVG.nvgImagePattern(context, image.x(), image.y(), image.width(), image.height(),
-                0.0f, handle, 1.0f, paint);
-        NanoVG.nvgBeginPath(context);
-        NanoVG.nvgRect(context, image.x(), image.y(), image.width(), image.height());
-        NanoVG.nvgFillPaint(context, paint);
-        NanoVG.nvgFill(context);
+        int[] size = imageSizes.getOrDefault(image.texture(), new int[]{1, 1});
+        for (NineSlice.Piece piece : NineSlice.split(image.x(), image.y(),
+                image.width(), image.height(), size[0], size[1], image.nineSlice())) {
+            if (piece.dstWidth() <= 0 || piece.dstHeight() <= 0) {
+                continue;
+            }
+            // NanoVG patterns map the whole image; scale it so the piece's source rect
+            // lands exactly on the destination rect.
+            float scaleX = (float) piece.dstWidth() / piece.srcWidth();
+            float scaleY = (float) piece.dstHeight() / piece.srcHeight();
+            float originX = piece.dstX() - piece.srcX() * scaleX;
+            float originY = piece.dstY() - piece.srcY() * scaleY;
+            NanoVG.nvgImagePattern(context, originX, originY,
+                    size[0] * scaleX, size[1] * scaleY, 0.0f, handle, 1.0f, paint);
+            NanoVG.nvgBeginPath(context);
+            NanoVG.nvgRect(context, piece.dstX(), piece.dstY(),
+                    piece.dstWidth(), piece.dstHeight());
+            NanoVG.nvgFillPaint(context, paint);
+            NanoVG.nvgFill(context);
+        }
     }
 
     private Integer imageHandle(String reference) {
@@ -211,6 +226,7 @@ public final class NanoVgBackend implements RenderBackend {
             int[] width = new int[1];
             int[] height = new int[1];
             NanoVG.nvgImageSize(context, handle, width, height);
+            imageSizes.put(reference, new int[]{width[0], height[0]});
             LOGGER.info("NanoVG image {} -> handle {} size {}x{}", reference, handle,
                     width[0], height[0]);
         }

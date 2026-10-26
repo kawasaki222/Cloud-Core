@@ -146,6 +146,24 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
+    void imageCarriesNineSliceBorders() {
+        UiElement image = new UiElement("frame", "image", 0, 0, "80", "40",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("texture", "pack:minecraft:block/diamond_block",
+                        "nine_slice", List.of(2, 2, 2, 2)));
+        UiDocument document = new UiDocument(1, "nine", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(image));
+
+        RenderCommand.Image command = (RenderCommand.Image)
+                DocumentRenderListBuilder.build(document, 200, 100).commands().get(0);
+        int[] borders = command.nineSlice();
+        org.junit.jupiter.api.Assertions.assertNotNull(borders);
+        assertEquals(2, borders[0]);
+        assertEquals(2, borders[3]);
+    }
+
+    @Test
     void resolvesPercentAndFillDimensions() {
         UiElement panel = new UiElement("root", "panel", 0, 0, "50%", "fill",
                 true, true, 0, Map.of(), List.of(), Map.of());

@@ -52,9 +52,12 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 `GuiGraphics#blit` 在 1.21.11 需要 `RenderPipeline` 参数（例如 `RenderPipelines.GUI_TEXTURED`），
 并使用 `Identifier` 作为贴图键。
 
-- 正确调用：
-  `blit(RenderPipelines.GUI_TEXTURED, id, x, y, 0f, 0f, width, height, textureWidth, textureHeight)`，
-  其中 `textureWidth/Height` 是贴图像素尺寸（从 `AbstractTexture#getTexture().getWidth(0)` 取）。
+- 两个重载含义不同（已用 `javap -c` 确认）：
+  - 10 参：`blit(pipeline, id, x, y, u, v, width, height, texW, texH)` 源区域和目标是
+    **1:1**（`uWidth=width`），放大贴图会变成边缘拉伸/重复；
+  - 12 参：`blit(pipeline, id, x, y, u, v, w, h, srcW, srcH, texW, texH)` 把源区域
+    `(u,v,srcW,srcH)` **拉伸**到 `(x,y,w,h)`，缩放图片和九宫格必须用这个。
+  `textureWidth/Height` 从 `AbstractTexture#getTexture().getWidth(0)` 取。
 - 旧的 `blit(Identifier, int, int, int, int, float, float, float, float)` 在 1.21.11 对未进图集的
   贴图（`DynamicTexture`、FBO 纹理）**不显示**：已实测本地 PNG 与 NanoVG FBO 都因此不可见，
   换成上面的重载后同时恢复。`local:`、`pack:`、`builtin:` 图片与 NanoVG 合成都走这一条。
@@ -224,6 +227,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **九宫格已核实**：`/cloudcore demo-assets` 的 `nine_slice: [4,4,4,4]` 图片按
+  `NineSlice.split` 拆成 9 块，角保持 4px、边单向拉伸、中心双向拉伸；同一页的 32×32
+  钻石块整图缩放也正常（`nine-slice2.png`）。同时修正了 blit 重载：放大贴图必须用 12 参重载，
+  10 参会按 1:1 采样导致平铺。
 - **滚轮滚动已核实**：`/cloudcore demo-scroll` 中把光标移到滚动框上滚动 4 格，
   内容从 `scroll_y=26` 继续上移到上限，编辑框下列被裁剪（`scroll-wheel.png`）。
   `ScrollTargets` 的命中与钳制有单元测试；事件回传服务端未实现。

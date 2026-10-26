@@ -78,9 +78,17 @@ public final class NativeBackend implements RenderBackend {
             LOGGER.warn("[CC-RENDER-002] texture has no GPU image: {}", image.texture());
             return;
         }
-        frame.graphics().blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,
-                texture, image.x(), image.y(), 0.0f, 0.0f,
-                image.width(), image.height(), textureWidth, textureHeight);
+        for (NineSlice.Piece piece : NineSlice.split(image.x(), image.y(),
+                image.width(), image.height(), textureWidth, textureHeight,
+                image.nineSlice())) {
+            if (piece.dstWidth() <= 0 || piece.dstHeight() <= 0) {
+                continue;
+            }
+            frame.graphics().blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,
+                    texture, piece.dstX(), piece.dstY(), piece.srcX(), piece.srcY(),
+                    piece.dstWidth(), piece.dstHeight(),
+                    piece.srcWidth(), piece.srcHeight(), textureWidth, textureHeight);
+        }
     }
 
     private static void drawItem(FrameContext frame, RenderCommand.ItemIcon icon) {

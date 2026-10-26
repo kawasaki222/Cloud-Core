@@ -280,7 +280,7 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
   height: 48
   fit: stretch
   tint: "#FFFFFFFF"
-  nine_slice: [4, 4, 4, 4]
+  nine_slice: [4, 4, 4, 4]   # 源贴图像素；已实现（NineSlice.split 生成 9 块）
   animated: auto       # auto | off
   loop: true
   speed: 1.0
@@ -858,7 +858,7 @@ elements:
     height: "100%"
     style:
       background: "tx:tooltip_bg"
-      nine_slice: [4, 4, 4, 4]
+      nine_slice: [4, 4, 4, 4]   # 源贴图像素；已实现（NineSlice.split 生成 9 块）
       padding: [4, 4, 4, 4]
 ```
 
