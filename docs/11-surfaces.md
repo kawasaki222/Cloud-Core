@@ -97,7 +97,9 @@
 - 已实现：`surface_options.max_height`（默认 160）限制高度；超出时按 `line_gap` 裁剪并用
   `MouseHandler#onScroll` 的滚轮改变偏移（步长 12，悬停内容变化时归零）；右侧滚动条
   可用 `scrollbar.track_color`/`thumb_color`、`scrollbar_width` 配色。
-  `tooltip_scroll` 事件回传服务端仍待动作引擎；九宫格外框尚未接入。
+  背景取文档里第一个带 `style.background` 的元素：贴图引用（可加 `style.nine_slice`）按提示框
+  尺寸九宫格拉伸，颜色引用则直接填充；都没有时用默认深色。
+  `tooltip_scroll` 事件回传服务端仍待动作引擎。
 - **滚动条样式**：轨道、滑块、悬停态贴图、九宫格、宽度、间距、最小滑块高度、颜色、是否可拖动，
   全部来自 `surface_options.tooltip.scrollbar`。
 - **滚动**：

@@ -115,7 +115,7 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
         int top = position.y();
 
         graphics.fill(left - 1, top - 1, left + width + 1, top + height + 1, 0xE0000000);
-        graphics.fill(left, top, left + width, top + height, background(document));
+        drawBackground(graphics, document, left, top, width, height);
 
         int innerLeft = left + PADDING;
         int innerTop = top + PADDING;
@@ -174,8 +174,8 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
         int thumb = 0xFF9AD0FF;
         Map<String, Object> options = document.surfaceOptions();
         if (options.get("scrollbar") instanceof Map<?, ?> bar) {
-            track = color(bar.get("track_color"), track);
-            thumb = color(bar.get("thumb_color"), thumb);
+            track = com.cloudcore.client.render.Colors.parse(bar.get("track_color"), track);
+            thumb = com.cloudcore.client.render.Colors.parse(bar.get("thumb_color"), thumb);
         }
         graphics.fill(x, y, x + width, y + viewport, track);
         int thumbHeight = Math.max(8, viewport * viewport / Math.max(1, contentHeight));
@@ -208,33 +208,40 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
         return Math.max(min, Math.min(max, value));
     }
 
-    private static int color(Object value, int fallback) {
-        if (value instanceof String text && text.startsWith("#")) {
-            String hex = text.substring(1);
-            try {
-                if (hex.length() == 8) {
-                    return Integer.parseUnsignedInt(hex, 16);
-                }
-                if (hex.length() == 6) {
-                    return 0xFF000000 | Integer.parseUnsignedInt(hex, 16);
-                }
-            } catch (NumberFormatException ignored) {
-                return fallback;
+    /**
+     * The first element carrying a style background wins: a texture reference (with optional
+     * {@code nine_slice}) is blitted over the tooltip box, otherwise its colour fills the box.
+     */
+    private static void drawBackground(GuiGraphics graphics, UiDocument document, int x, int y,
+            int width, int height) {
+        for (UiElement element : document.elements()) {
+            if (!(element.attributes().get("style") instanceof Map<?, ?> style)) {
+                continue;
+            }
+            Object background = style.get("background");
+            if (background instanceof String reference
+                    && com.cloudcore.client.render.NativeBackend.drawTexture(graphics, reference,
+                    x, y, width, height, nineSlice(style.get("nine_slice")))) {
+                return;
+            }
+            int color = com.cloudcore.client.render.Colors.parse(background, 0);
+            if (color != 0) {
+                graphics.fill(x, y, x + width, y + height, color);
+                return;
             }
         }
-        return fallback;
+        graphics.fill(x, y, x + width, y + height, 0xF0101828);
     }
 
-    private static int background(UiDocument document) {
-        for (UiElement element : document.elements()) {
-            Object style = element.attributes().get("style");
-            if (style instanceof Map<?, ?> map) {
-                int value = color(map.get("background"), 0);
-                if (value != 0) {
-                    return value;
-                }
-            }
+    private static int[] nineSlice(Object value) {
+        if (!(value instanceof List<?> list) || list.size() != 4) {
+            return null;
         }
-        return 0xF0101828;
+        int[] borders = new int[4];
+        for (int index = 0; index < 4; index++) {
+            borders[index] = list.get(index) instanceof Number number
+                    ? Math.max(0, number.intValue()) : 0;
+        }
+        return borders;
     }
 }

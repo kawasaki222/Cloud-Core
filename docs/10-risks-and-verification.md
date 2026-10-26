@@ -282,6 +282,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   绿宝石块的进度条按 50% 裁剪，纹理没有被拉伸（`progress-demo1.png`）。把滑块点到 80% 后
   服务端 `state={hp=0.8025}`，`value: "${state.hp}"` 的进度条与 `hp = ...` 标签同步更新
   （`progress-demo2.png`）。`DocumentRenderListBuilderTest` 覆盖四种方向的填充矩形与裁剪命令。
+- **Tooltip 九宫格背景已核实**：把 `/cloudcore demo-tooltip` 的文档背景临时换成
+  `pack:minecraft:block/diamond_block` 加 `nine_slice: [3,3,3,3]` 后，悬停石头时提示框背景
+  是拉伸后的钻石块九宫格、文本仍由原版绘制（`tooltip-nine-slice2.png`、放大图 `tooltip-crop.png`）；
+  服务端日志 `Custom tooltip rendered lines=1 size=34x16`。演示文档随后还原为颜色背景，
+  贴图路径由同一段代码处理（`NativeBackend.drawTexture` 被渲染列表与提示框共用）。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。

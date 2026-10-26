@@ -2,6 +2,7 @@ package com.cloudcore.client.render;
 
 import java.util.Objects;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
@@ -53,7 +54,7 @@ public final class NativeBackend implements RenderBackend {
                 case RenderCommand.Text text -> frame.graphics().drawString(
                         Minecraft.getInstance().font, text.text(), text.x(), text.y(),
                         text.argb(), text.shadow());
-                case RenderCommand.Image image -> drawImage(frame, image);
+                case RenderCommand.Image image -> drawImage(frame.graphics(), image);
                 case RenderCommand.ItemIcon icon -> drawItem(frame, icon);
                 case RenderCommand.RichText rich -> drawRichText(frame, rich);
                 case RenderCommand.ClipPush clip -> pushClip(frame, clip);
@@ -71,7 +72,23 @@ public final class NativeBackend implements RenderBackend {
         }
     }
 
-    private static void drawImage(FrameContext frame, RenderCommand.Image image) {
+    /**
+     * Draws one textured rectangle with an optional nine-slice border.
+     *
+     * @return false when the reference is not a supported texture (the caller keeps its colour)
+     */
+    public static boolean drawTexture(GuiGraphics graphics, String texture, int x, int y,
+            int width, int height, int[] nineSlice) {
+        RenderCommand.Image image = new RenderCommand.Image(texture, x, y, width, height,
+                nineSlice, RenderCommand.Image.Animation.DEFAULT);
+        if (TextureReferences.resolve(texture) == null) {
+            return false;
+        }
+        drawImage(graphics, image);
+        return true;
+    }
+
+    private static void drawImage(GuiGraphics graphics, RenderCommand.Image image) {
         Identifier texture = TextureReferences.resolve(image.texture(), image.animation());
         if (texture == null) {
             return;
@@ -94,7 +111,7 @@ public final class NativeBackend implements RenderBackend {
             if (piece.dstWidth() <= 0 || piece.dstHeight() <= 0) {
                 continue;
             }
-            frame.graphics().blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,
+            graphics.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,
                     texture, piece.dstX(), piece.dstY(), piece.srcX(), piece.srcY(),
                     piece.dstWidth(), piece.dstHeight(),
                     piece.srcWidth(), piece.srcHeight(), textureWidth, textureHeight);
