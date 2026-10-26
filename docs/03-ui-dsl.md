@@ -158,6 +158,18 @@ offset: [0, 0]
   children: []
 ```
 
+### 4.2b `row` / `column`
+
+```yaml
+- type: row        # 或 column
+  id: actions
+  gap: 4
+  children: []     # 子元素按自身 width/height 依次排列
+```
+
+已实现：`row` 沿 X 轴、`column` 沿 Y 轴依次排布子元素（子元素自身的 `x/y` 仍然叠加），`gap` 为间距。
+单位是文档坐标；未声明尺寸的子元素不占位，需要作者显式给出。
+
 ### 4.3 `grid`
 
 ```yaml
@@ -165,9 +177,11 @@ offset: [0, 0]
   id: grid
   columns: 9
   cell: [18, 18]
-  gap: [0, 0]
+  gap: 2          # v1 用单个数值（X/Y 相同）
   children: []
 ```
+
+已实现：按 `columns` 换行、`cell` 决定步进、`gap` 为间距；`cell` 缺省时按宽度均分。
 
 ### 4.4 `scroll`
 

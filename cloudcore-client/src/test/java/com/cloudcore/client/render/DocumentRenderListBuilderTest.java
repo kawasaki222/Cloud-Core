@@ -238,6 +238,65 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
+    void rowAdvancesChildrenHorizontally() {
+        UiElement first = new UiElement("a", "panel", 0, 0, "40", "10",
+                true, true, 0, Map.of(), List.of(), Map.of());
+        UiElement second = new UiElement("b", "panel", 0, 0, "40", "10",
+                true, true, 0, Map.of(), List.of(), Map.of());
+        UiElement row = new UiElement("row", "row", 10, 10, "100", "10",
+                true, true, 0, Map.of(), List.of(first, second), Map.of("gap", 5));
+        UiDocument document = new UiDocument(1, "row", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(row));
+
+        java.util.List<RenderCommand> commands =
+                DocumentRenderListBuilder.build(document, 200, 100).commands();
+        assertEquals(10, ((RenderCommand.FillRect) commands.get(0)).x());
+        assertEquals(55, ((RenderCommand.FillRect) commands.get(1)).x());
+    }
+
+    @Test
+    void columnAdvancesChildrenVertically() {
+        UiElement first = new UiElement("a", "panel", 0, 0, "10", "10",
+                true, true, 0, Map.of(), List.of(), Map.of());
+        UiElement second = new UiElement("b", "panel", 0, 0, "10", "10",
+                true, true, 0, Map.of(), List.of(), Map.of());
+        UiElement column = new UiElement("col", "column", 5, 5, "10", "40",
+                true, true, 0, Map.of(), List.of(first, second), Map.of("gap", 4));
+        UiDocument document = new UiDocument(1, "column", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(column));
+
+        java.util.List<RenderCommand> commands =
+                DocumentRenderListBuilder.build(document, 200, 100).commands();
+        assertEquals(5, ((RenderCommand.FillRect) commands.get(0)).y());
+        assertEquals(19, ((RenderCommand.FillRect) commands.get(1)).y());
+    }
+
+    @Test
+    void gridWrapsEveryColumnsChildren() {
+        UiElement child = new UiElement("c", "panel", 0, 0, "10", "10",
+                true, true, 0, Map.of(), List.of(), Map.of());
+        UiElement first = new UiElement("a", "panel", 0, 0, "10", "10",
+                true, true, 0, Map.of(), List.of(), Map.of());
+        UiElement second = new UiElement("b", "panel", 0, 0, "10", "10",
+                true, true, 0, Map.of(), List.of(), Map.of());
+        UiElement grid = new UiElement("g", "grid", 0, 0, "100", "100",
+                true, true, 0, Map.of(), List.of(first, second, child),
+                Map.of("columns", 2, "cell", List.of(20, 12), "gap", 2));
+        UiDocument document = new UiDocument(1, "grid", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(grid));
+
+        java.util.List<RenderCommand> commands =
+                DocumentRenderListBuilder.build(document, 200, 100).commands();
+        assertEquals(0, ((RenderCommand.FillRect) commands.get(0)).x());
+        assertEquals(22, ((RenderCommand.FillRect) commands.get(1)).x());
+        assertEquals(0, ((RenderCommand.FillRect) commands.get(2)).x());
+        assertEquals(14, ((RenderCommand.FillRect) commands.get(2)).y());
+    }
+
+    @Test
     void resolvesPercentAndFillDimensions() {
         UiElement panel = new UiElement("root", "panel", 0, 0, "50%", "fill",
                 true, true, 0, Map.of(), List.of(), Map.of());

@@ -228,6 +228,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **row/column/grid 布局已核实**：`/cloudcore demo-layout` 中三个横向面板、两个纵向面板与
+  2×2 网格按 `gap`/`cell` 正确排布（`layout-demo2.png`）；`DocumentRenderListBuilderTest`
+  覆盖三种容器的坐标推算（期间修掉了 row/column 未叠加父级原点的问题）。
 - **复选框与状态优先级已核实**：示例页点击“接收通知”后服务端 `Updated page 'example'
   revision=2 state={notify=true}`，界面上的复选框变为选中态（`checkbox4.png`）。
   过程中修正了 `PageLoader` 忽略调用方状态的缺陷（现在玩家状态覆盖文档默认值），

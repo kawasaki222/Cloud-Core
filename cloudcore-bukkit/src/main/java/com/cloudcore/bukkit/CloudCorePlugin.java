@@ -546,6 +546,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 openDemoChest(target, ContainerClickPolicy.Interaction.PASSTHROUGH);
             } else if (args[0].equalsIgnoreCase("demo-inventory")) {
                 sendDemoInventory(target);
+            } else if (args[0].equalsIgnoreCase("demo-layout")) {
+                sendDemoLayout(target);
             } else if (args[0].equalsIgnoreCase("demo-assets")) {
                 sendDemoAssets(target);
             } else if (args[0].equalsIgnoreCase("demo-scroll")) {
@@ -632,6 +634,11 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core inventory demo sent."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("demo-layout")) {
+            sendDemoLayout(player);
+            sender.sendMessage(Component.text("Cloud Core layout demo sent."));
+            return true;
+        }
         if (args.length == 1 && args[0].equalsIgnoreCase("demo-assets")) {
             sendDemoAssets(player);
             sender.sendMessage(Component.text("Cloud Core asset demo sent."));
@@ -674,6 +681,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("demo-passthrough")
                 || action.equalsIgnoreCase("demo-inventory")
                 || action.equalsIgnoreCase("demo-assets")
+                || action.equalsIgnoreCase("demo-layout")
                 || action.equalsIgnoreCase("demo-scroll");
     }
 
@@ -1356,6 +1364,83 @@ public final class CloudCorePlugin extends JavaPlugin
             }
         }, 1L);
         getLogger().info("Sent scroll demo UI_OPEN/UI_DEFINITION to " + player.getName());
+    }
+
+    /** Row/column/grid layout demo: children are placed by their own sizes plus gap. */
+    private void sendDemoLayout(Player player) {
+        String uiId = "cloudcore_demo_layout";
+        int token = random.nextInt();
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        session.lastUiId = uiId;
+        UiOpen open = new UiOpen(uiId, 1, SurfaceType.CUSTOM_SCREEN, BindMode.NONE, token,
+                RenderMode.SCREEN, 0, "demo-layout");
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
+                UiCodec.encodeOpen(open, Limits.S2C)));
+        String json = """
+                {
+                  "schema": 1,
+                  "id": "cloudcore_demo_layout",
+                  "surface": "custom_screen",
+                  "title": { "runs": [ { "text": "Cloud Core Layout" } ] },
+                  "size": [320, 200],
+                  "elements": [
+                    { "id": "root", "type": "panel", "x": 0, "y": 0,
+                      "width": "fill", "height": "fill",
+                      "style": { "background": "#CC202830" } },
+                    { "id": "title", "type": "label", "x": 16, "y": 12,
+                      "text": "row / column / grid", "color": "#FFFFFFFF" },
+                    { "id": "row", "type": "row", "x": 16, "y": 36, "gap": 6,
+                      "width": 200, "height": 20,
+                      "children": [
+                        { "id": "r1", "type": "panel", "x": 0, "y": 0,
+                          "width": 40, "height": 20,
+                          "style": { "background": "#FF3C6E9F" } },
+                        { "id": "r2", "type": "panel", "x": 0, "y": 0,
+                          "width": 40, "height": 20,
+                          "style": { "background": "#FF4A9F6E" } },
+                        { "id": "r3", "type": "panel", "x": 0, "y": 0,
+                          "width": 40, "height": 20,
+                          "style": { "background": "#FF9F6E3C" } }
+                      ] },
+                    { "id": "column", "type": "column", "x": 16, "y": 70, "gap": 4,
+                      "width": 120, "height": 60,
+                      "children": [
+                        { "id": "c1", "type": "panel", "x": 0, "y": 0,
+                          "width": 120, "height": 16,
+                          "style": { "background": "#FF9F3C6E" } },
+                        { "id": "c2", "type": "panel", "x": 0, "y": 0,
+                          "width": 80, "height": 16,
+                          "style": { "background": "#FF6E3C9F" } }
+                      ] },
+                    { "id": "grid", "type": "grid", "x": 200, "y": 70,
+                      "columns": 2, "cell": [28, 28], "gap": 4,
+                      "width": 100, "height": 100,
+                      "children": [
+                        { "id": "g1", "type": "panel", "x": 0, "y": 0,
+                          "width": 24, "height": 24,
+                          "style": { "background": "#FF3C9F9F" } },
+                        { "id": "g2", "type": "panel", "x": 0, "y": 0,
+                          "width": 24, "height": 24,
+                          "style": { "background": "#FF9F9F3C" } },
+                        { "id": "g3", "type": "panel", "x": 0, "y": 0,
+                          "width": 24, "height": 24,
+                          "style": { "background": "#FF7F3C9F" } },
+                        { "id": "g4", "type": "panel", "x": 0, "y": 0,
+                          "width": 24, "height": 24,
+                          "style": { "background": "#FF3C3C9F" } }
+                      ] }
+                  ]
+                }
+                """;
+        UiDefinition definition = new UiDefinition(uiId, 1, 0,
+                json.getBytes(StandardCharsets.UTF_8));
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (player.isOnline()) {
+                sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
+                        UiCodec.encodeDefinition(definition, Limits.S2C)));
+            }
+        }, 1L);
+        getLogger().info("Sent layout demo to " + player.getName());
     }
 
     private void sendDemoAssets(Player player) {
