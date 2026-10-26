@@ -76,6 +76,41 @@ public final class UiCodec {
         return new UiReady(uiId, revision, token, surface, state, detail);
     }
 
+    public static byte[] encodeDefinition(UiDefinition definition, Limits limits) {
+        Objects.requireNonNull(definition, "definition");
+        Objects.requireNonNull(limits, "limits");
+        byte[] data = definition.data();
+        if (data.length > limits.maxDecompressedBytes()) {
+            throw new ProtocolException("UI_DEFINITION data exceeds limit: " + data.length);
+        }
+        ArrayByteSink sink = new ArrayByteSink();
+        ProtocolText.write(sink, definition.uiId(), limits);
+        sink.writeVarInt(definition.revision());
+        sink.writeByte(definition.encoding());
+        sink.writeVarInt(data.length);
+        sink.writeBytes(data);
+        return sink.toByteArray();
+    }
+
+    public static UiDefinition decodeDefinition(byte[] data, Limits limits) {
+        Objects.requireNonNull(data, "data");
+        Objects.requireNonNull(limits, "limits");
+        ArrayByteSource source = new ArrayByteSource(data);
+        String uiId = ProtocolText.read(source, limits);
+        int revision = source.readVarInt();
+        if (revision < 0) {
+            throw new ProtocolException("Invalid revision: " + revision);
+        }
+        int encoding = source.readUnsignedByte();
+        int length = source.readVarInt();
+        if (length < 0 || length > limits.maxDecompressedBytes()) {
+            throw new ProtocolException("Invalid UI_DEFINITION data length: " + length);
+        }
+        byte[] document = source.readBytes(length);
+        requireFullyConsumed(source, "UI_DEFINITION");
+        return new UiDefinition(uiId, revision, encoding, document);
+    }
+
     private static SurfaceType surface(int id) {
         try {
             return SurfaceType.fromId(id);

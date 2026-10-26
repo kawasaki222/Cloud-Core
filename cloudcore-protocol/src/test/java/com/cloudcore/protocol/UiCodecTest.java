@@ -36,6 +36,18 @@ class UiCodecTest {
     }
 
     @Test
+    void definitionRoundTrips() {
+        UiDefinition definition = new UiDefinition("shop", 2, 0,
+                "{\"schema\":1}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        byte[] body = UiCodec.encodeDefinition(definition, Limits.S2C);
+        UiDefinition decoded = UiCodec.decodeDefinition(body, Limits.S2C);
+        assertEquals(definition.uiId(), decoded.uiId());
+        assertEquals(definition.revision(), decoded.revision());
+        assertEquals(definition.encoding(), decoded.encoding());
+        org.junit.jupiter.api.Assertions.assertArrayEquals(definition.data(), decoded.data());
+    }
+
+    @Test
     void rejectsUnknownSurfaceId() {
         byte[] body = UiCodec.encodeOpen(new UiOpen("a", 1, SurfaceType.CUSTOM_SCREEN,
                 BindMode.NONE, 1, RenderMode.SCREEN, 0, ""), Limits.S2C);

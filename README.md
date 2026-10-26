@@ -9,8 +9,8 @@
 
 **实现阶段。** 文档基线已完成；Gradle 多模块、协议信封/WireValue、分片/重组、HELLO/HELLO_ACK、
 PING/PONG、UI_OPEN/UI_READY 编解码与黄金向量、Paper/Fabric 接线已落地，`./gradlew build` 通过。
-M2 的面板注册表、最小 `UiDocument`、`CloudScreen`、渲染后端骨架也已存在。真实 Paper + Fabric
-联调、NanoVG/FBO 合成和元素渲染尚未验证，见 `docs/TODO_HANDOFF.md`。
+M2 的面板注册表、最小 `UiDocument`、`UI_DEFINITION` 解码/校验、`CloudScreen`、渲染后端骨架也已存在。
+真实 Paper + Fabric 联调、NanoVG/FBO 合成和元素渲染尚未验证，见 `docs/TODO_HANDOFF.md`。
 
 ## 目标技术栈
 

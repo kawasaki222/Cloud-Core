@@ -1,8 +1,16 @@
 package com.cloudcore.client;
 
+import com.cloudcore.api.document.UiDocument;
+import com.cloudcore.api.document.UiDocumentJson;
+import com.cloudcore.api.document.UiDocumentValidator;
+import com.cloudcore.api.document.ValidationIssue;
+import com.cloudcore.api.document.ValidationResult;
+import com.cloudcore.api.page.PageLoadException;
 import com.cloudcore.client.net.CloudFramePayload;
 import com.cloudcore.client.surface.OpenRequest;
+import com.cloudcore.client.surface.SurfaceAdapter;
 import com.cloudcore.client.surface.SurfaceRegistry;
+import com.cloudcore.client.surface.UiRuntime;
 import com.cloudcore.protocol.FeatureFlags;
 import com.cloudcore.protocol.Frame;
 import com.cloudcore.protocol.FrameCodec;
@@ -18,6 +26,7 @@ import com.cloudcore.protocol.Pong;
 import com.cloudcore.protocol.ProtocolException;
 import com.cloudcore.protocol.ProtocolVersion;
 import com.cloudcore.protocol.UiCodec;
+import com.cloudcore.protocol.UiDefinition;
 import com.cloudcore.protocol.UiOpen;
 import com.cloudcore.protocol.UiReady;
 import com.cloudcore.protocol.UiReadyState;
@@ -93,9 +102,7 @@ public final class CloudCoreClient implements ClientModInitializer {
             case Opcode.HELLO_ACK -> handleHelloAck(frame);
             case Opcode.PING -> handlePing(frame);
             case Opcode.UI_OPEN -> handleUiOpen(frame);
-            case Opcode.UI_DEFINITION -> LOGGER.debug(
-                    "UI_DEFINITION received ({} bytes); document decoding is not implemented yet",
-                    frame.bodyLength());
+            case Opcode.UI_DEFINITION -> handleUiDefinition(frame);
             case Opcode.DIAGNOSTIC -> LOGGER.warn("Server diagnostic at opcode 0x{} ({} bytes)",
                     Integer.toHexString(frame.opcode()), frame.bodyLength());
             default -> LOGGER.info("Unhandled S2C opcode=0x{} bytes={}",
@@ -128,6 +135,91 @@ public final class CloudCoreClient implements ClientModInitializer {
         pendingOpens.put(open.uiId(), request);
         LOGGER.info("UI_OPEN queued for {} ui={} revision={} surfaceKey={}",
                 open.surface(), open.uiId(), open.revision(), open.surfaceKey());
+    }
+
+    private void handleUiDefinition(Frame frame) {
+        UiDefinition definition = UiCodec.decodeDefinition(frame.body(), Limits.S2C);
+        OpenRequest request = pendingOpens.get(definition.uiId());
+        if (request == null) {
+            LOGGER.warn("UI_DEFINITION for unknown ui={} revision={}",
+                    definition.uiId(), definition.revision());
+            return;
+        }
+        if (definition.revision() < request.revision()) {
+            LOGGER.warn("Ignoring stale UI_DEFINITION ui={} revision={} (current {})",
+                    definition.uiId(), definition.revision(), request.revision());
+            return;
+        }
+        if (definition.encoding() > 1) {
+            failOpen(request, definition.revision(), UiReadyState.DOCUMENT_INVALID,
+                    "Unsupported document encoding " + definition.encoding());
+            return;
+        }
+
+        UiDocument document;
+        try {
+            document = UiDocumentJson.parse(definition.data());
+        } catch (PageLoadException exception) {
+            failOpen(request, definition.revision(), UiReadyState.DOCUMENT_INVALID,
+                    exception.getMessage());
+            LOGGER.warn("UI_DEFINITION parse failed ui={} revision={}: {}",
+                    definition.uiId(), definition.revision(), exception.getMessage());
+            return;
+        }
+
+        ValidationResult validation = UiDocumentValidator.validate(document);
+        if (!validation.valid()) {
+            ValidationIssue issue = validation.errors().get(0);
+            failOpen(request, definition.revision(), UiReadyState.DOCUMENT_INVALID,
+                    issue.code() + " " + issue.path() + ": " + issue.message());
+            LOGGER.warn("UI_DEFINITION validation failed ui={} revision={} issues={}",
+                    definition.uiId(), definition.revision(), validation.errors());
+            return;
+        }
+        if (!document.id().equals(definition.uiId())
+                || document.surface() != request.surface()) {
+            failOpen(request, definition.revision(), UiReadyState.DOCUMENT_INVALID,
+                    "Document id/surface does not match UI_OPEN");
+            return;
+        }
+
+        Minecraft minecraft = Minecraft.getInstance();
+        SurfaceAdapter adapter = surfaceRegistry.get(request.surface());
+        if (!adapter.canHandle(request, minecraft)) {
+            failOpen(request, definition.revision(), UiReadyState.SURFACE_UNSUPPORTED,
+                    "Surface not implemented: " + request.surface());
+            return;
+        }
+        try {
+            adapter.open(request, new UiRuntime(minecraft, request, document));
+            pendingOpens.remove(definition.uiId());
+            sendReady(request, definition.revision(), UiReadyState.OK, "");
+            LOGGER.info("Opened ui={} surface={} revision={}",
+                    definition.uiId(), request.surface(), definition.revision());
+        } catch (RuntimeException exception) {
+            failOpen(request, definition.revision(), UiReadyState.BIND_FAILED,
+                    exception.getMessage());
+            LOGGER.error("Failed to open ui=" + definition.uiId(), exception);
+        }
+    }
+
+    private void failOpen(OpenRequest request, int revision, int state, String detail) {
+        pendingOpens.remove(request.uiId());
+        sendReady(request, revision, state, detail);
+    }
+
+    private void sendReady(OpenRequest request, int revision, int state, String detail) {
+        UiReady ready = new UiReady(request.uiId(), revision, request.token(),
+                request.surface(), state, truncate(detail));
+        sendFrame(new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_READY,
+                UiCodec.encodeReady(ready, Limits.C2S)));
+    }
+
+    private static String truncate(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.length() <= 512 ? value : value.substring(0, 512);
     }
 
     private void handleHelloAck(Frame frame) {

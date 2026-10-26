@@ -16,6 +16,7 @@
 - `cloudcore-api`：`UiDocument`/`UiElement`/`TextRuns` 最小模型、校验器、单文件页面载入接口。
 - M2 骨架：客户端 `SurfaceRegistry`/`SurfaceAdapter`/`CloudScreen`、`RenderBackend`/`NativeBackend`、
   `NanoVgBackend`/`FboCompositor` 空实现；服务端 `SurfaceProvider`/`SurfaceProviderRegistry`。
+- `UI_DEFINITION` JSON 已能解码、校验并打开最小 `CloudScreen`（仅标题/背景）；元素绘制与混入未实现。
 - 未验证：真实 Minecraft 客户端连接、Paper 服务端、NanoVG/FBO、混入签名、U1/U2/U3/U28–U31。
 
 - 客户端与服务端统一使用 **Mojang 映射**，不使用 Yarn。
@@ -88,7 +89,8 @@ docs/
 - [x] M1 接线：Paper 与 Fabric 的 HELLO/PING/PONG/分片/UI_OPEN 处理（仅编译与单元测试）
 - [ ] M1 真实联调：Paper + Fabric 客户端握手、`/cloudcore ping`、100 万随机帧压测
 - [x] M2 骨架：SurfaceRegistry/SurfaceAdapter/SurfaceProvider、UiDocument、RenderBackend、CloudScreen
-- [ ] M2 实际渲染：NanoVG/FBO、UI_DEFINITION 解码、元素绘制、混入
+- [x] M2 文档链路：UI_DEFINITION 解码、校验、`CloudScreen` 打开
+- [ ] M2 实际渲染：NanoVG/FBO、元素绘制、混入
 - [ ] M0 渲染 spike：NanoVG 三平台/FBO 合成/预乘 alpha
 
 剩余的是实现前的验证项和待决问题，不是文档缺口。
@@ -107,8 +109,7 @@ docs/
    - U28–U31：`lwjgl-nanovg` 三平台加载、FBO 包装合成、预乘 alpha、1.21.6 提取/绘制状态。
    - 先做一个纯色面板 + 一张 TTF 文本的 NanoVG 合成 spike，确认没有色差和状态泄漏。
 3. **M2 实际渲染**：
-   - 解码 `UI_DEFINITION` JSON，校验后交给 `UiRuntime`。
-   - `CustomScreenAdapter` 收到文档后打开 `CloudScreen`，用 `RenderList` 绘制最小元素。
+   - 用 `RenderList` 在 `CloudScreen` 绘制最小元素（panel/label/image/button）。
    - 接入 `NanoVgBackend`/`FboCompositor`；失败时整帧回退 `NativeBackend`。
    - 增加四个混入和客户端日志/诊断。
 4. 之后按 `08-roadmap.md` 的 M3–M10 推进。
