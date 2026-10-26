@@ -44,6 +44,7 @@ public final class CloudScreen extends Screen {
     private final Map<String, Integer> localScroll = new HashMap<>();
     private final List<EditBox> textFields = new ArrayList<>();
     private UiElement hoverEventElement;
+    private String focusId;
     private boolean closed;
 
     public CloudScreen(UiDocument document) {
@@ -193,7 +194,76 @@ public final class CloudScreen extends Screen {
                 }
             }
         }
+        // Keyboard focus for buttons: Tab (or the arrows) cycles, Enter/Space activates.
+        // A focused text field keeps Tab for the vanilla widget chain.
+        if (!(getFocused() instanceof EditBox)) {
+            if (event.isCycleFocus()) {
+                cycleFocus(event.hasShiftDown());
+                return true;
+            }
+            if (event.isUp() || event.isDown() || event.isLeft() || event.isRight()) {
+                cycleFocus(event.isUp() || event.isLeft());
+                return true;
+            }
+            if (event.isConfirmation() || event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE) {
+                LayoutBoxes.Box box = focusedBox();
+                if (box != null) {
+                    activate(box.element(), 0, event.hasShiftDown());
+                    return true;
+                }
+            }
+        }
         return super.keyPressed(event);
+    }
+
+    /** Clickable controls in document order; only elements that declare a click event. */
+    private List<LayoutBoxes.Box> focusables() {
+        List<LayoutBoxes.Box> boxes = LayoutBoxes.ofTypes(document, width, height,
+                java.util.Set.of("button", "icon_button"));
+        boxes.removeIf(box -> !box.element().events().containsKey("click"));
+        return boxes;
+    }
+
+    private LayoutBoxes.Box focusedBox() {
+        if (focusId == null) {
+            return null;
+        }
+        for (LayoutBoxes.Box box : focusables()) {
+            if (box.element().id().equals(focusId)) {
+                return box;
+            }
+        }
+        return null;
+    }
+
+    private void cycleFocus(boolean backwards) {
+        List<LayoutBoxes.Box> boxes = focusables();
+        if (boxes.isEmpty()) {
+            focusId = null;
+            return;
+        }
+        int current = -1;
+        for (int index = 0; index < boxes.size(); index++) {
+            if (boxes.get(index).element().id().equals(focusId)) {
+                current = index;
+                break;
+            }
+        }
+        int next = current < 0
+                ? (backwards ? boxes.size() - 1 : 0)
+                : Math.floorMod(current + (backwards ? -1 : 1), boxes.size());
+        focusId = boxes.get(next).element().id();
+        LOGGER.debug("Keyboard focus ui={} element={}", document.id(), focusId);
+    }
+
+    private void activate(UiElement element, int button, boolean shift) {
+        Integer actionId = element.events().get("click");
+        if (actionId == null) {
+            return;
+        }
+        com.cloudcore.client.CloudCoreClient.sendEvent(document.id(), element.id(), actionId,
+                Map.of("button", new WireValue.IntValue(button),
+                        "shift", new WireValue.BoolValue(shift)));
     }
 
     @Override
@@ -221,6 +291,32 @@ public final class CloudScreen extends Screen {
             field.render(graphics, mouseX, mouseY, partialTick);
         }
         drawFieldFocus(graphics);
+        drawKeyboardFocus(graphics);
+    }
+
+    /**
+     * A 1px ring around the keyboard-focused control, using {@code style.border.focused} when
+     * the page declares one. Drawn per frame: focus is client state, not document state.
+     */
+    private void drawKeyboardFocus(GuiGraphics graphics) {
+        LayoutBoxes.Box box = focusedBox();
+        if (box == null) {
+            return;
+        }
+        int argb = com.cloudcore.client.render.Colors.parse(styleBorder(box.element(),
+                "focused"), 0xFF4FA3E8);
+        // Two rings: a dark outer one keeps the focus visible on light backgrounds too.
+        drawRing(graphics, box.x() - 2, box.y() - 2, box.width() + 4, box.height() + 4,
+                0xFF101010);
+        drawRing(graphics, box.x() - 1, box.y() - 1, box.width() + 2, box.height() + 2, argb);
+    }
+
+    private static void drawRing(GuiGraphics graphics, int x, int y, int width, int height,
+            int argb) {
+        graphics.fill(x, y, x + width, y + 1, argb);
+        graphics.fill(x, y + height - 1, x + width, y + height, argb);
+        graphics.fill(x, y + 1, x + 1, y + height - 1, argb);
+        graphics.fill(x + width - 1, y + 1, x + width, y + height - 1, argb);
     }
 
     /**
@@ -358,13 +454,8 @@ public final class CloudScreen extends Screen {
         UiElement hit = ElementHitTester.findWithEvent(document, width, height, (int) event.x(),
                 (int) event.y(), this::scrolled, "click");
         if (hit != null) {
-            Integer actionId = hit.events().get("click");
-            if (actionId != null) {
-                com.cloudcore.client.CloudCoreClient.sendEvent(document.id(), hit.id(), actionId,
-                        Map.of("button", new WireValue.IntValue(event.button()),
-                                "shift", new WireValue.BoolValue(event.hasShiftDown())));
-                return true;
-            }
+            activate(hit, event.button(), event.hasShiftDown());
+            return true;
         }
         // Sliders report the clicked fraction; the server decides what it means.
         for (LayoutBoxes.Box box : LayoutBoxes.ofType(document, width, height, "slider")) {

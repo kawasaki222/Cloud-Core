@@ -89,6 +89,7 @@ docs/
 - [x] 事件限流：每玩家令牌桶（20/s、突发 40），超限回 `RATE_LIMITED`（真机验证）
 - [x] 动作引擎子集：表达式求值、`if`/`then`/`else`、`delay`（真机验证 if/表达式）
 - [x] 动作 `open_page`（关闭当前页并打开目标页）与 `sound`（音效/音量/音高）（真机验证）
+- [x] 键盘导航：`Tab`/方向键循环焦点、`Enter`/`Space` 触发 `click`、两色焦点框（真机验证）
 - [x] `EVENT_RESULT` 下发（OK/UNKNOWN_ELEMENT/REJECTED，固定枚举名）
 - [x] `command` 动作 + 配置闸门（默认拒绝，按首个词 allowlist；单测）
 - [ ] M3 剩余：依赖图增量编译/内容哈希去重、条件、表达式

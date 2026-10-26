@@ -21,19 +21,25 @@ public final class LayoutBoxes {
 
     public static List<Box> ofType(UiDocument document, int screenWidth, int screenHeight,
             String type) {
+        return ofTypes(document, screenWidth, screenHeight, java.util.Set.of(type));
+    }
+
+    /** Boxes for several element types in document order (used for keyboard focus). */
+    public static List<Box> ofTypes(UiDocument document, int screenWidth, int screenHeight,
+            java.util.Set<String> types) {
         int documentWidth = Math.max(1, Math.round(document.width() * document.scale()));
         int documentHeight = Math.max(1, Math.round(document.height() * document.scale()));
         int originX = (screenWidth - documentWidth) / 2;
         int originY = (screenHeight - documentHeight) / 2;
         List<Box> boxes = new ArrayList<>();
         for (UiElement element : document.elements()) {
-            collect(element, originX, originY, documentWidth, documentHeight, type, boxes);
+            collect(element, originX, originY, documentWidth, documentHeight, types, boxes);
         }
         return boxes;
     }
 
     private static void collect(UiElement element, int parentX, int parentY,
-            int parentWidth, int parentHeight, String type, List<Box> out) {
+            int parentWidth, int parentHeight, java.util.Set<String> types, List<Box> out) {
         if (!element.visible()) {
             return;
         }
@@ -43,11 +49,11 @@ public final class LayoutBoxes {
         int height = resolve(element.height(), parentHeight, 0);
         int boxWidth = width > 0 ? width : parentWidth;
         int boxHeight = height > 0 ? height : parentHeight;
-        if (type.equals(element.type())) {
+        if (types.contains(element.type())) {
             out.add(new Box(element, x, y, boxWidth, boxHeight));
         }
         for (UiElement child : element.children()) {
-            collect(child, x, y, boxWidth, boxHeight, type, out);
+            collect(child, x, y, boxWidth, boxHeight, types, out);
         }
     }
 

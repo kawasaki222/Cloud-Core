@@ -119,6 +119,11 @@ final class ClientSession {
   渲染时滚动量 = 文档属性 `scroll_y` + 本屏滚轮增量；`scroll_y` 通常由服务端状态驱动，
   所以新 revision 到达时本地增量归零、从服务端保存的偏移继续。命中测试用同一个合成值，
   滚动后点击仍落在正确的行上。未声明 `scroll` 事件的滚动元素只做本地滚动，不发包。
+- 键盘导航：`Tab` / `Shift+Tab`（以及方向键）在声明了 `click` 的 `button`、`icon_button` 之间
+  按文档顺序循环焦点，`Enter` / `Space` 触发该元素的 `click`（载荷与鼠标点击一致）。
+  焦点框每帧绘制：内圈取 `style.border.focused`（默认 `#FF4FA3E8`），外圈固定深色，
+  深浅背景都看得见。焦点是客户端状态，不经过文档；文本输入框获得焦点时 `Tab` 交给原版控件链。
+  焦点框用绝对坐标计算（与 `LayoutBoxes` 一致），滚动容器内的按钮会按未滚动位置绘制。
 - `text_field` 用原版 `EditBox` 控件：`CloudScreen.init` 按 `LayoutBoxes` 计算位置并 `addRenderableWidget`，
   `render` 里自行绘制控件；文档只画背景。输入法/选择/剪贴板沿用原版，`change` 事件带 `value`，
   ENTER 触发 `submit`。

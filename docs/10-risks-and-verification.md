@@ -314,6 +314,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `Sent page 'example'`，界面切换为示例页（`actions-demo2.png`、`open-page.png`）；
   点“播放按钮音效”记为 `EVENT ... element=play_sound actions=2` 且无失败警告
   （声音本身无法用截图证明，只验证了服务端执行与后续 `message` 的送达）。
+- **键盘导航已核实**：示例页按 `Tab` 后焦点依次落在 `rows[0].row`、`rows[1].row`、`rows[2].row`
+  （客户端日志 `Keyboard focus ... element=...`），焦点框为深色外圈 + `#FF4FA3E8` 内圈
+  （`focus-tab3.png`、放大图 `focus-crop.png`）；按 `Enter` 触发 `EVENT ui=example
+  element=rows[0].row`。文本输入框获得焦点时 `Tab` 仍走原版控件链。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
