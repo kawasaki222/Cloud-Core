@@ -165,6 +165,39 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
+    void panelBackgroundMayBeATextureWithNineSlice() {
+        UiElement panel = new UiElement("frame", "panel", 0, 0, "80", "40",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("style", Map.of("background", "pack:cloudcore:ui/frame",
+                        "nine_slice", List.of(4, 4, 4, 4))));
+        UiDocument document = new UiDocument(1, "tex", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(panel));
+
+        RenderCommand.Image image = (RenderCommand.Image)
+                DocumentRenderListBuilder.build(document, 200, 100).commands().get(0);
+        assertEquals("pack:cloudcore:ui/frame", image.texture());
+        org.junit.jupiter.api.Assertions.assertNotNull(image.nineSlice());
+    }
+
+    @Test
+    void labelTextRunsBecomeRichText() {
+        UiElement label = new UiElement("rich", "label", 4, 4, null, null,
+                true, true, 0, Map.of(), List.of(),
+                Map.of("text", Map.of("runs", List.of(
+                        Map.of("text", "a", "color", "#FFFFFFFF"),
+                        Map.of("text", "b", "color", "#FFFF0000")))));
+        UiDocument document = new UiDocument(1, "rich", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(label));
+
+        RenderCommand.RichText rich = (RenderCommand.RichText)
+                DocumentRenderListBuilder.build(document, 200, 100).commands().get(0);
+        assertEquals(2, rich.runs().size());
+        assertEquals(0xFFFF0000, rich.runs().get(1).argb());
+    }
+
+    @Test
     void resolvesPercentAndFillDimensions() {
         UiElement panel = new UiElement("root", "panel", 0, 0, "50%", "fill",
                 true, true, 0, Map.of(), List.of(), Map.of());

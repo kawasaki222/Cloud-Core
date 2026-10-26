@@ -55,9 +55,19 @@ public final class NativeBackend implements RenderBackend {
                         text.argb(), text.shadow());
                 case RenderCommand.Image image -> drawImage(frame, image);
                 case RenderCommand.ItemIcon icon -> drawItem(frame, icon);
+                case RenderCommand.RichText rich -> drawRichText(frame, rich);
                 case RenderCommand.ClipPush clip -> pushClip(frame, clip);
                 case RenderCommand.ClipPop ignored -> popClip(frame);
             }
+        }
+    }
+
+    private static void drawRichText(FrameContext frame, RenderCommand.RichText rich) {
+        int cursor = rich.x();
+        for (RenderCommand.RichText.Run run : rich.runs()) {
+            frame.graphics().drawString(Minecraft.getInstance().font, run.text(), cursor,
+                    rich.y(), run.argb(), rich.shadow());
+            cursor += Minecraft.getInstance().font.width(run.text());
         }
     }
 

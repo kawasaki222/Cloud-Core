@@ -128,6 +128,9 @@ public final class NanoVgBackend implements RenderBackend {
                     }
                     case RenderCommand.ClipPop ignored -> NanoVG.nvgRestore(context);
                     case RenderCommand.Text text -> text(text);
+                    case RenderCommand.RichText ignored -> {
+                        // Rich text stays native: it needs per-run widths in the vanilla font.
+                    }
                     case RenderCommand.ItemIcon ignored -> {
                         // Item models are drawn by the native bridge.
                     }

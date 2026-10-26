@@ -227,6 +227,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **背景贴图与富文本已核实**：`/cloudcore demo-assets` 的 `panel` 用
+  `style.background: pack:...` + `style.nine_slice` 画出与 `image` 九宫格一致的边框；
+  富文本标签“Rich text runs”按段着色（`panel-texture.png`、`rich-text.png`）。
+  字重/斜体等样式尚未映射。
 - **HUD 层与锚点已核实**：`/cloudcore demo-hud` 的 `anchor: top_center` + `offset_y: 20`
   把面板放到顶部居中；`/cloudcore demo-hud-bg` 的背景层红条与快捷栏重叠，快捷栏绘制在它上面
   （`hud-layers2.png`），证明 `addFirst` 的背景层确实排在原版 HUD 之前。

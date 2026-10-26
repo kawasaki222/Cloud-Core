@@ -98,21 +98,42 @@ public final class DocumentRenderListBuilder {
             case "panel" -> {
                 int w = width > 0 ? width : parentWidth;
                 int h = height > 0 ? height : parentHeight;
-                addFill(commands, x, y, w, h, color(style(element, "background"), DEFAULT_PANEL));
+                Object background = style(element, "background");
+                if (background instanceof String reference && isSupportedTexture(reference)) {
+                    // A texture background may stretch or use a nine-slice border.
+                    addImage(commands, reference, x, y, w, h,
+                            intArray(style(element, "nine_slice")));
+                } else {
+                    addFill(commands, x, y, w, h, color(background, DEFAULT_PANEL));
+                }
                 childWidth = w;
                 childHeight = h;
             }
             case "button" -> {
                 int w = width > 0 ? width : Math.max(40, text(element).length() * 6 + 12);
                 int h = height > 0 ? height : 20;
-                addFill(commands, x, y, w, h, color(style(element, "background"), DEFAULT_BUTTON));
+                Object background = style(element, "background");
+                if (background instanceof String reference && isSupportedTexture(reference)) {
+                    addImage(commands, reference, x, y, w, h,
+                            intArray(style(element, "nine_slice")));
+                } else {
+                    addFill(commands, x, y, w, h, color(background, DEFAULT_BUTTON));
+                }
                 addText(commands, text(element), x + 6, y + Math.max(2, (h - 8) / 2),
                         color(styleText(element), DEFAULT_TEXT), fontPath(element, fonts));
                 childWidth = w;
                 childHeight = h;
             }
-            case "label" -> addText(commands, text(element), x, y,
-                    color(attribute(element, "color"), DEFAULT_TEXT), fontPath(element, fonts));
+            case "label" -> {
+                java.util.List<RenderCommand.RichText.Run> runs = runs(element);
+                if (runs != null) {
+                    addRichText(commands, runs, x, y);
+                } else {
+                    addText(commands, text(element), x, y,
+                            color(attribute(element, "color"), DEFAULT_TEXT),
+                            fontPath(element, fonts));
+                }
+            }
             case "text_field" -> {
                 int w = width > 0 ? width : parentWidth;
                 int h = height > 0 ? height : 18;
@@ -281,6 +302,33 @@ public final class DocumentRenderListBuilder {
                 || reference.startsWith("pack:")
                 || reference.startsWith("builtin:")
                 || reference.startsWith("inline:");
+    }
+
+    /**
+     * Parses the {@code text: {runs: [...]}} form. Returns {@code null} when the element uses
+     * plain text, so the caller keeps the single-colour path.
+     */
+    private static java.util.List<RenderCommand.RichText.Run> runs(UiElement element) {
+        Object value = attribute(element, "text");
+        if (!(value instanceof Map<?, ?> map) || !(map.get("runs") instanceof List<?> list)) {
+            return null;
+        }
+        java.util.List<RenderCommand.RichText.Run> runs = new java.util.ArrayList<>();
+        for (Object entry : list) {
+            if (!(entry instanceof Map<?, ?> run) || !(run.get("text") instanceof String text)) {
+                continue;
+            }
+            int argb = color(run.get("color"), DEFAULT_TEXT);
+            runs.add(new RenderCommand.RichText.Run(text, argb));
+        }
+        return runs.isEmpty() ? null : runs;
+    }
+
+    private static void addRichText(List<RenderCommand> commands,
+            java.util.List<RenderCommand.RichText.Run> runs, int x, int y) {
+        if (commands.size() < MAX_COMMANDS) {
+            commands.add(new RenderCommand.RichText(runs, x, y, true));
+        }
     }
 
     private static String text(UiElement element) {

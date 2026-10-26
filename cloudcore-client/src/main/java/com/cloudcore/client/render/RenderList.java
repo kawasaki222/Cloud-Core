@@ -42,7 +42,8 @@ public record RenderList(List<RenderCommand> commands) {
                 if (vectorText.test(text)) {
                     continue;
                 }
-            } else if (!(command instanceof RenderCommand.ItemIcon)
+            } else if (!(command instanceof RenderCommand.RichText)
+                    && !(command instanceof RenderCommand.ItemIcon)
                     && !isNativeImage(command)) {
                 continue;
             }

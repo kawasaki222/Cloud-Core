@@ -459,6 +459,13 @@ YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范�
   texture_fill: "tx:bar_fill"
 ```
 
+### 5.8b 背景贴图与富文本
+
+- `panel`/`button` 的 `style.background` 可以是贴图引用（`local:`/`pack:`/`builtin:`/`inline:`），
+  也可同时给 `style.nine_slice`；颜色仍是默认路径。
+- 文本支持 `text: { runs: [ { text, color } ] }`，客户端按段绘制并保持原版字体；
+  bold/italic 等字体样式尚未生效（走原版字体时按普通字重绘制）。
+
 ### 5.9 `inventory_grid`
 
 ```yaml

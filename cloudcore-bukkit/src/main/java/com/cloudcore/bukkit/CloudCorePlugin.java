@@ -1258,6 +1258,12 @@ public final class CloudCorePlugin extends JavaPlugin
                       "style": { "background": "#CC202830" } },
                     { "id": "title", "type": "label", "x": 16, "y": 14,
                       "text": "item_icon / pack / builtin", "color": "#FFFFFFFF" },
+                    { "id": "rich_text", "type": "label", "x": 16, "y": 156,
+                      "text": { "runs": [
+                          { "text": "Rich ", "color": "#FFFFFFFF" },
+                          { "text": "text", "color": "#FFFFD479" },
+                          { "text": " runs", "color": "#FF8FD0A0" }
+                      ] } },
                     { "id": "custom_font", "type": "label", "x": 160, "y": 128,
                       "text": "NanoVG custom font", "color": "#FFFFD479",
                       "font": "body" },
@@ -1276,6 +1282,10 @@ public final class CloudCorePlugin extends JavaPlugin
                       "width": 140, "height": 34,
                       "texture": "pack:minecraft:block/diamond_block",
                       "nine_slice": [4, 4, 4, 4] },
+                    { "id": "tex_panel", "type": "panel", "x": 164, "y": 70,
+                      "width": 140, "height": 34,
+                      "style": { "background": "pack:minecraft:block/diamond_block",
+                                 "nine_slice": [4, 4, 4, 4] } },
                     { "id": "pack_block", "type": "image", "x": 16, "y": 120,
                       "width": 32, "height": 32,
                       "texture": "pack:minecraft:block/diamond_block" },

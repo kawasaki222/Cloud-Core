@@ -39,6 +39,21 @@ public sealed interface RenderCommand {
         }
     }
 
+    /** Coloured text segments drawn sequentially; used when a label declares text runs. */
+    record RichText(java.util.List<Run> runs, int x, int y, boolean shadow)
+            implements RenderCommand {
+
+        public RichText {
+            runs = java.util.List.copyOf(runs);
+        }
+
+        public record Run(String text, int argb) {
+            public Run {
+                java.util.Objects.requireNonNull(text, "text");
+            }
+        }
+    }
+
     /** Starts a clipping rectangle; nested clips intersect with their parent. */
     record ClipPush(int x, int y, int width, int height) implements RenderCommand {
     }
