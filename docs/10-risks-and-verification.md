@@ -227,6 +227,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **validate / reload 已核实**：`/cloudcore validate` 输出 `[OK] example`；编辑 `pages/example.yml`
+  标题后 `/cloudcore reload` 输出 `Reloaded 1 pages, refreshed 1 open views`，在线玩家页面
+  自动更新为“示例页面 v2”且 URL 贴图仍在（`reload-page.png`）。
 - **URL 贴图直连已核实**：示例页的 `url:https://httpbin.org/image/png` 被编译成
   `inline:8362b9a8b653ca04`，服务端发 `TEXTURE_REF`，客户端后台线程下载 8090 字节、渲染线程注册
   贴图，界面在页面已打开的情况下自动重建并显示图片（`url-image.png`）。非 https 在协议解码

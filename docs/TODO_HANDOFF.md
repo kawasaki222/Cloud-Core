@@ -113,7 +113,8 @@ docs/
 - [x] M3 核心：YAML 页面加载、`includes` 合并、`repeat` 展开、模板替换、JSON 回写（真机验证）
 - [x] 事件链路：`EVENT` 编解码、点击命中、服务端动作表（`message`/`close_ui`，真机验证）
 - [x] 状态更新：`set_state` → 重编译 → 更高 revision 的 `UI_DEFINITION`，客户端替换界面（真机验证）
-- [ ] M3 剩余：热重载/依赖图、`/cloudcore validate`、`command`/条件/表达式与 `EVENT_RESULT`
+- [x] `/cloudcore validate` 与 `/cloudcore reload`（重编译 + 推送更新，真机验证）
+- [ ] M3 剩余：WatchService 自动重载/依赖图增量、`command`/条件/表达式与 `EVENT_RESULT`
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
 - [x] `image` 的 `local:`/`pack:`/`builtin:` 贴图，以及 `item_icon`（原生物品、数量、缩放）（真机截图验证）
 - [x] HUD 面板：Fabric `HudElementRegistry` + 持久文档 + UI_CLOSE 清除（真机截图验证）

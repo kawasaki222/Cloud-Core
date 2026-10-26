@@ -369,6 +369,14 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("No permission."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("validate")) {
+            validatePages(sender);
+            return true;
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
+            reloadPages(sender);
+            return true;
+        }
         if (args.length >= 2 && args[0].equalsIgnoreCase("page")) {
             Player target = args.length >= 3
                     ? getServer().getPlayerExact(args[2])
@@ -1002,6 +1010,86 @@ public final class CloudCorePlugin extends JavaPlugin
             sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.TEXTURE_REF,
                     com.cloudcore.protocol.TextureRefCodec.encode(ref, Limits.S2C)));
         }
+    }
+
+    /** Compiles every page under the pages root and reports the first error per page. */
+    private void validatePages(CommandSender sender) {
+        java.util.List<String> names = listPageNames();
+        if (names.isEmpty()) {
+            sender.sendMessage(Component.text("No pages found under " + pagesRoot));
+            return;
+        }
+        int ok = 0;
+        for (String name : names) {
+            java.nio.file.Path file = resolvePageFile(name);
+            try {
+                com.cloudcore.api.page.PageLoader.load(pagesRoot, file, Map.of());
+                ok++;
+                sender.sendMessage(Component.text("[OK] " + name));
+            } catch (com.cloudcore.api.page.PageLoadException exception) {
+                sender.sendMessage(Component.text("[FAIL] " + name + ": "
+                        + exception.getMessage()));
+            }
+        }
+        sender.sendMessage(Component.text("Validated " + names.size() + " pages, " + ok + " ok"));
+        getLogger().info(sender.getName() + " validated " + names.size() + " pages, " + ok + " ok");
+    }
+
+    /** Recompiles every page and refreshes players that currently have one open. */
+    private void reloadPages(CommandSender sender) {
+        java.util.List<String> names = listPageNames();
+        int refreshed = 0;
+        for (String name : names) {
+            java.nio.file.Path file = resolvePageFile(name);
+            com.cloudcore.api.page.PageLoader.CompiledPage compiled;
+            try {
+                compiled = com.cloudcore.api.page.PageLoader.load(pagesRoot, file, Map.of());
+            } catch (com.cloudcore.api.page.PageLoadException exception) {
+                getLogger().warning("Reload skipped '" + name + "': " + exception.getMessage());
+                continue;
+            }
+            String uiId = compiled.document().id();
+            compiledPages.put(uiId, compiled);
+            for (Player player : getServer().getOnlinePlayers()) {
+                Session session = sessions.get(player.getUniqueId());
+                if (session != null && name.equals(session.pageNames.get(uiId))) {
+                    refreshPage(player, session, compiled);
+                    refreshed++;
+                }
+            }
+        }
+        sender.sendMessage(Component.text("Reloaded " + names.size() + " pages, refreshed "
+                + refreshed + " open views"));
+        getLogger().info(sender.getName() + " reloaded " + names.size() + " pages");
+    }
+
+    /** Page names: {@code <dir>/page.yml}, top-level {@code *.yml}, sorted for stable output. */
+    private java.util.List<String> listPageNames() {
+        java.util.List<String> names = new java.util.ArrayList<>();
+        if (pagesRoot == null) {
+            return names;
+        }
+        try (var stream = java.nio.file.Files.walk(pagesRoot, 4)) {
+            stream.filter(java.nio.file.Files::isRegularFile).forEach(file -> {
+                String relative = pagesRoot.relativize(file).toString()
+                        .replace('\\', '/');
+                if (relative.equals("page.yml") || relative.equals("page.yaml")) {
+                    names.add("");
+                } else if (relative.endsWith("/page.yml")) {
+                    names.add(relative.substring(0, relative.length() - "/page.yml".length()));
+                } else if (relative.endsWith("/page.yaml")) {
+                    names.add(relative.substring(0, relative.length() - "/page.yaml".length()));
+                } else if (!relative.contains("/")
+                        && (relative.endsWith(".yml") || relative.endsWith(".yaml"))) {
+                    names.add(relative.substring(0, relative.lastIndexOf('.')));
+                }
+            });
+        } catch (java.io.IOException exception) {
+            getLogger().log(Level.WARNING, "Cannot walk pages directory", exception);
+        }
+        names.removeIf(String::isEmpty);
+        java.util.Collections.sort(names);
+        return names;
     }
 
     private java.nio.file.Path resolvePageFile(String name) {
