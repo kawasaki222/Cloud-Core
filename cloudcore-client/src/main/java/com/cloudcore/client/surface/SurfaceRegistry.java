@@ -59,9 +59,10 @@ public final class SurfaceRegistry {
         registry.register(new CustomScreenAdapter(onPlayerClosed));
         registry.register(new HudSurfaceAdapter());
         registry.register(new TooltipSurfaceAdapter());
+        registry.register(new BossBarSurfaceAdapter());
         for (SurfaceType type : SurfaceType.values()) {
             if (type != SurfaceType.CUSTOM_SCREEN && type != SurfaceType.HUD
-                    && type != SurfaceType.TOOLTIP) {
+                    && type != SurfaceType.TOOLTIP && type != SurfaceType.BOSS_BAR) {
                 registry.register(new UnsupportedSurfaceAdapter(type));
             }
         }

@@ -181,6 +181,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   实际显示 panel/label；`UI_CLOSE` 后清除文档，HUD 消失。当前使用原生 RenderList，不支持 HUD 输入。
 - **Tooltip 面板已核实**：`/cloudcore demo-tooltip` 后悬停石头，`TooltipSurfaceAdapter` 用文档
   背景色绘制自定义提示框，原生文本仍由 `ClientTooltipComponent` 输出；滚动/九宫格尚未实现。
+- **BossBar 面板已核实**：`/cloudcore boss` 发送 UI_OPEN + 文档后，`BossBarSurfaceAdapter` 用
+  `BossEvent` 进度/颜色绘制自定义条，`@WrapOperation` 跳过原版 `drawBar`；`@Redirect` 去除哨兵，
+  标题实际显示为 `Cloud Core Boss`。九宫格/样式数据化尚未实现。
 - **本地贴图已核实**：`LocalTextureRegistry` 从
   `resourcepacks/CloudCore/test/red.png` 读取 PNG、注册 `DynamicTexture`，demo 页面实际显示绿色图片；
   路径逃逸/缺失分别记录 `CC-ASSET-001/002`。

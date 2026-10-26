@@ -417,11 +417,42 @@ public final class CloudCorePlugin extends JavaPlugin
     }
 
     private void sendBoss(Player player) {
-        BossBar bar = Bukkit.createBossBar("\u0000CCB:probe\u0000Cloud Core Boss",
+        int token = random.nextInt();
+        String tokenHex = Integer.toHexString(token);
+        String uiId = "cloudcore_demo_boss";
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        session.lastUiId = uiId;
+        UiOpen open = new UiOpen(uiId, 1, SurfaceType.BOSS_BAR, BindMode.PERSISTENT,
+                token, RenderMode.SURFACE_NATIVE, 0, tokenHex);
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
+                UiCodec.encodeOpen(open, Limits.S2C)));
+        String json = """
+                {
+                  "schema": 1,
+                  "id": "cloudcore_demo_boss",
+                  "surface": "boss_bar",
+                  "title": { "runs": [ { "text": "Cloud Core Boss" } ] },
+                  "size": [320, 180],
+                  "elements": [
+                    { "id": "boss_panel", "type": "panel", "x": 0, "y": 0,
+                      "width": 320, "height": 180,
+                      "style": { "background": "#F0101828" } }
+                  ]
+                }
+                """;
+        UiDefinition definition = new UiDefinition(uiId, 1, 0,
+                json.getBytes(StandardCharsets.UTF_8));
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (player.isOnline()) {
+                sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
+                        UiCodec.encodeDefinition(definition, Limits.S2C)));
+            }
+        }, 1L);
+
+        BossBar bar = Bukkit.createBossBar("\u0000CCB:" + tokenHex + "\u0000Cloud Core Boss",
                 BarColor.RED, BarStyle.SOLID);
         bar.addPlayer(player);
         bar.setVisible(true);
-        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
         if (session.bossBar != null) {
             session.bossBar.removeAll();
         }
@@ -432,7 +463,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 session.bossBar = null;
             }
         }, 200L);
-        getLogger().info("PROBE boss bar sent to " + player.getName());
+        getLogger().info("PROBE boss bar sent to " + player.getName() + " token=" + tokenHex);
     }
 
     private void sendProbe(Player player) {
