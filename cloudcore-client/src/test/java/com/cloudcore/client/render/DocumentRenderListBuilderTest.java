@@ -56,7 +56,7 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
-    void rejectsInlineAndUrlTexturesUntilSupported() {
+    void acceptsInlineAndPackButRejectsRawUrls() {
         UiElement inline = new UiElement("a", "image", 0, 0, "10", "10", true, true, 0,
                 Map.of(), List.of(), Map.of("texture", "inline:panel"));
         UiElement url = new UiElement("b", "image", 20, 0, "10", "10", true, true, 0,
@@ -69,8 +69,9 @@ class DocumentRenderListBuilderTest {
 
         List<RenderCommand> commands = DocumentRenderListBuilder.build(document, 200, 100)
                 .commands();
-        assertEquals(1, commands.size());
-        assertEquals("pack:cloudcore:ui/frame", ((RenderCommand.Image) commands.get(0)).texture());
+        assertEquals(2, commands.size(), "a raw url: never reaches the client builder");
+        assertEquals("inline:panel", ((RenderCommand.Image) commands.get(0)).texture());
+        assertEquals("pack:cloudcore:ui/frame", ((RenderCommand.Image) commands.get(1)).texture());
     }
 
     @Test

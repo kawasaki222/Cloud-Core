@@ -213,8 +213,7 @@ public final class NanoVgBackend implements RenderBackend {
         }
         byte[] bytes = TextureReferences.readBytes(reference);
         if (bytes == null || bytes.length == 0 || bytes.length > MAX_IMAGE_BYTES) {
-            LOGGER.warn("[CC-RENDER-022] NanoVG cannot load texture {}", reference);
-            imageHandles.put(reference, 0);
+            // Do not cache misses: an inline texture may finish downloading later.
             return 0;
         }
         java.nio.ByteBuffer buffer = org.lwjgl.BufferUtils.createByteBuffer(bytes.length);

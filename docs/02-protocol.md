@@ -211,7 +211,7 @@ state=4)` 中回传；`cloudcore-api` 内部用 `SurfaceType.UNKNOWN` 表示，�
 | `0x28` | `TEXTURE_PUT` | `string key, u16 width, u16 height, u8 format, u32 crc32, bytes data, u16 frameCount, u8 loop, u16[] frameDelaysMs` |
 | `0x29` | `TEXTURE_RELEASE` | `string key` |
 | `0x2A` | `THEME_SET` | `string themeId, u8 encoding, bytes json` |
-| `0x2B` | `TEXTURE_REF` | `string key, string url, string sha256, u16 width, u16 height, u8 flags, u32 maxBytes, u16 ttlSeconds` |
+| `0x2B` | `TEXTURE_REF` | `string key, string url, string sha256, u16 width, u16 height, u8 flags, u32 maxBytes, u16 ttlSeconds`（已实现，`TextureRefCodec`） |
 | `0x30` | `PING` | `u32 nonce, u64 serverTimeMs` |
 | `0x31` | `SERVER_CONFIG` | `u8 flags, u8 debugLevel, string language` |
 
@@ -342,6 +342,10 @@ u16    ttlSeconds   # 0 表示按内容哈希永久缓存
 - 未命中且客户端禁止直连、或下载失败时，客户端发送 `TEXTURE_REQUEST(key)` 请求服务端代理；
   服务端按 `textures.url.mode` 决定是否回复 `TEXTURE_PUT`。
 - 服务端代理模式下不发 `TEXTURE_REF`，直接发 `TEXTURE_PUT`。
+- 当前实现（客户端直连）：`PageLoader` 把 `url:` 改写成 `inline:<sha1 前 16 位>`，插件在 `UI_OPEN` 后
+  发 `TEXTURE_REF`；客户端 `RemoteTextureCache` 后台下载（https、≤ maxBytes、10 秒超时、
+  sha256 非空时校验），渲染线程注册 `DynamicTexture` 并在下载完成后重建渲染列表。
+  `TEXTURE_REQUEST`/`TEXTURE_PUT` 代理路径尚未实现。
 - `ttlSeconds` 只影响 URL 缓存；内容哈希命中的缓存不因 TTL 失效。
 
 ### 5.2 客户端 → 服务端

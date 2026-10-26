@@ -16,6 +16,8 @@ import org.slf4j.LoggerFactory;
 public final class TextureReferences {
     private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
     private static final Set<String> REPORTED = new HashSet<>();
+    private static final java.util.Map<String, Identifier> INLINE_CACHE =
+            new java.util.concurrent.ConcurrentHashMap<>();
 
     private TextureReferences() {
     }
@@ -38,8 +40,7 @@ public final class TextureReferences {
             return builtin;
         }
         if (reference.startsWith("inline:")) {
-            report("CC-ASSET-007", "inline texture requires TEXTURE_PUT: " + reference);
-            return null;
+            return resolveInline(reference.substring("inline:".length()));
         }
         report("CC-ASSET-005", "unsupported texture reference: " + reference);
         return null;
@@ -72,6 +73,40 @@ public final class TextureReferences {
             }
         }
         return null;
+    }
+
+    /**
+     * URL images arrive as {@code inline:<key>} plus a {@code TEXTURE_REF}; the bytes are
+     * downloaded on a background thread and registered here on the render thread.
+     */
+    private static Identifier resolveInline(String key) {
+        java.util.Map<String, Identifier> cache = INLINE_CACHE;
+        Identifier cached = cache.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        byte[] bytes = RemoteTextureCache.bytes(key);
+        if (bytes == null) {
+            // Pending or failed: draw nothing this frame; the download logs its own failure.
+            return null;
+        }
+        try {
+            com.mojang.blaze3d.platform.NativeImage image =
+                    com.mojang.blaze3d.platform.NativeImage.read(
+                            new java.io.ByteArrayInputStream(bytes));
+            Identifier identifier = Identifier.fromNamespaceAndPath("cloudcore", "inline/" + key);
+            net.minecraft.client.renderer.texture.DynamicTexture texture =
+                    new net.minecraft.client.renderer.texture.DynamicTexture(
+                            () -> "cloudcore-inline:" + key, image);
+            Minecraft.getInstance().getTextureManager().register(identifier, texture);
+            cache.put(key, identifier);
+            LOGGER.info("Registered inline texture {} ({} bytes)", key, bytes.length);
+            return identifier;
+        } catch (java.io.IOException | RuntimeException exception) {
+            report("CC-ASSET-012", "cannot decode inline texture " + key + ": "
+                    + exception.getMessage());
+            return null;
+        }
     }
 
     private static Identifier packIdentifier(String path) {

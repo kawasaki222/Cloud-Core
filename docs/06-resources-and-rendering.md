@@ -81,7 +81,7 @@ screenX = leftPos + documentX
 | 前缀 | 加载方式 | 缓存 | 提供者 |
 | --- | --- | --- | --- |
 | `local:` | `.minecraft/resourcepacks/CloudCore/` 读取字节 → `nvgCreateImageMem` | NanoVG image handle | 客户端本地目录 |
-| `inline:` | `TEXTURE_PUT` 字节 → `nvgCreateImageMem` | NanoVG image handle / LRU | 服务端 |
+| `inline:` | `TEXTURE_REF` 直连下载（或 `TEXTURE_PUT`）→ `DynamicTexture`/`nvgCreateImageMem` | 贴图缓存 | 客户端（直连）/服务端（代理） |
 | `pack:` | 资源管理器读取 PNG 字节 → `nvgCreateImageMem` | NanoVG image handle | 资源包/其他模组 |
 | `builtin:` | 模组 jar 读取 PNG 字节 → `nvgCreateImageMem` | NanoVG image handle | 模组（仅最小回退） |
 | `url:` | 客户端直连（默认）或服务端代理 → 字节 → NanoVG image | 内容哈希缓存 | 远程 HTTPS |

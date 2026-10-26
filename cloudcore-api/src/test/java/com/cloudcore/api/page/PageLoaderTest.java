@@ -245,6 +245,34 @@ class PageLoaderTest {
         assertEquals(first, second);
     }
 
+    @Test
+    void urlTexturesBecomeInlineRefsWithRemoteEntries() throws Exception {
+        Path page = write("url.yml", """
+                schema: 1
+                id: url_page
+                surface: custom_screen
+                title: "URL"
+                size: [200, 100]
+                elements:
+                  - type: image
+                    id: hero
+                    x: 0
+                    y: 0
+                    width: 64
+                    height: 64
+                    texture: "url:https://cdn.example.com/hero.png"
+                """);
+
+        PageLoader.CompiledPage compiled = PageLoader.load(pages, page, Map.of());
+
+        Object texture = compiled.document().elements().get(0).attributes().get("texture");
+        assertTrue(String.valueOf(texture).startsWith("inline:"), String.valueOf(texture));
+        assertEquals(1, compiled.textures().size());
+        String key = compiled.textures().get(0).key();
+        assertEquals("inline:" + key, texture);
+        assertEquals("https://cdn.example.com/hero.png", compiled.textures().get(0).url());
+    }
+
     private Path write(String relative, String content) throws IOException {
         Path file = pages.resolve(relative);
         Files.createDirectories(file.getParent());

@@ -62,6 +62,13 @@ elements:
           click:
             - action: message
               value: "选择了 ${entry.name}（${entry.price} 金）"
+  - type: image
+    id: remote_image
+    x: 240
+    y: 120
+    width: 56
+    height: 56
+    texture: "url:https://httpbin.org/image/png"
   - type: label
     id: clicks_label
     x: 232

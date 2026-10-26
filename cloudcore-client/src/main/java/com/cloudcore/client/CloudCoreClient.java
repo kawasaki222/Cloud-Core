@@ -144,6 +144,7 @@ public final class CloudCoreClient implements ClientModInitializer {
             case Opcode.UI_DEFINITION -> handleUiDefinition(frame);
             case Opcode.UI_CLOSE -> handleUiClose(frame);
             case Opcode.DIAGNOSTIC -> handleDiagnostic(frame);
+            case Opcode.TEXTURE_REF -> handleTextureRef(frame);
             default -> LOGGER.info("Unhandled S2C opcode=0x{} bytes={}",
                     Integer.toHexString(frame.opcode()), frame.bodyLength());
         }
@@ -278,6 +279,15 @@ public final class CloudCoreClient implements ClientModInitializer {
                     exception.getMessage());
             LOGGER.error("Failed to open ui=" + definition.uiId(), exception);
         }
+    }
+
+    /** URL images: fetch on a background thread, never inside the render loop. */
+    private void handleTextureRef(Frame frame) {
+        com.cloudcore.protocol.TextureRef ref =
+                com.cloudcore.protocol.TextureRefCodec.decode(frame.body(), Limits.S2C);
+        com.cloudcore.client.render.RemoteTextureCache.request(ref);
+        LOGGER.info("TEXTURE_REF key={} url={} maxBytes={}", ref.key(), ref.url(),
+                ref.maxBytes());
     }
 
     private void handleDiagnostic(Frame frame) {

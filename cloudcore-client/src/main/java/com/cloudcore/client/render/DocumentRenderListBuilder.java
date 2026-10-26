@@ -251,11 +251,11 @@ public final class DocumentRenderListBuilder {
         }
     }
 
-    /** {@code inline:} needs TEXTURE_PUT and is rejected until that path exists. */
     private static boolean isSupportedTexture(String reference) {
         return reference.startsWith("local:")
                 || reference.startsWith("pack:")
-                || reference.startsWith("builtin:");
+                || reference.startsWith("builtin:")
+                || reference.startsWith("inline:");
     }
 
     private static String text(UiElement element) {

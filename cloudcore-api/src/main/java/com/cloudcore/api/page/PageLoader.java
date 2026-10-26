@@ -53,12 +53,22 @@ public final class PageLoader {
      */
     public record CompiledPage(UiDocument document,
             Map<Integer, List<PageAction>> actions,
-            Map<String, Object> state) {
+            Map<String, Object> state,
+            List<RemoteTexture> textures) {
         public CompiledPage {
             Objects.requireNonNull(document, "document");
             Objects.requireNonNull(state, "state");
             actions = Map.copyOf(actions);
             state = Map.copyOf(state);
+            textures = List.copyOf(textures);
+        }
+    }
+
+    /** A {@code url:} reference rewritten to {@code inline:<key>} for the client. */
+    public record RemoteTexture(String key, String url) {
+        public RemoteTexture {
+            Objects.requireNonNull(key, "key");
+            Objects.requireNonNull(url, "url");
         }
     }
 
@@ -66,6 +76,7 @@ public final class PageLoader {
         private final String pageId;
         private final Map<Integer, List<PageAction>> actions = new LinkedHashMap<>();
         private final Set<Integer> usedActionIds = new LinkedHashSet<>();
+        private final Map<String, RemoteTexture> textures = new LinkedHashMap<>();
 
         private BuildContext(String pageId) {
             this.pageId = pageId;
@@ -78,6 +89,45 @@ public final class PageLoader {
                 candidate = candidate % 65534 + 1;
             }
             return candidate;
+        }
+
+        /** Rewrites {@code url:https://...} to {@code inline:<key>} and remembers the URL. */
+        private Object rewriteUrls(Object value) {
+            if (value instanceof String text && text.startsWith("url:")) {
+                String url = text.substring("url:".length());
+                String key = textureKey(url);
+                textures.putIfAbsent(key, new RemoteTexture(key, url));
+                return "inline:" + key;
+            }
+            if (value instanceof Map<?, ?> map) {
+                Map<String, Object> result = new LinkedHashMap<>();
+                for (Map.Entry<?, ?> entry : map.entrySet()) {
+                    result.put(String.valueOf(entry.getKey()), rewriteUrls(entry.getValue()));
+                }
+                return result;
+            }
+            if (value instanceof List<?> list) {
+                List<Object> result = new ArrayList<>(list.size());
+                for (Object entry : list) {
+                    result.add(rewriteUrls(entry));
+                }
+                return result;
+            }
+            return value;
+        }
+    }
+
+    private static String textureKey(String url) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-1");
+            byte[] hash = digest.digest(url.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(16);
+            for (int index = 0; index < 8; index++) {
+                hex.append(String.format("%02x", hash[index]));
+            }
+            return hex.toString();
+        } catch (java.security.NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-1 unavailable", exception);
         }
     }
     public static final int MAX_INCLUDE_DEPTH = 8;
@@ -169,7 +219,8 @@ public final class PageLoader {
             ValidationIssue issue = validation.errors().get(0);
             throw new PageLoadException(issue.code() + " " + issue.path() + ": " + issue.message());
         }
-        return new CompiledPage(document, context.actions, mergedState);
+        return new CompiledPage(document, context.actions, mergedState,
+                new ArrayList<>(context.textures.values()));
     }
 
     private static void mergeInclude(Path root, Path baseDir, String relative,
@@ -356,7 +407,8 @@ public final class PageLoader {
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             // Action bodies stay on the server; the document only carries events map.
             if (!STRUCTURE_FIELDS.contains(entry.getKey()) && !"on".equals(entry.getKey())) {
-                attributes.put(entry.getKey(), applyTemplate(entry.getValue(), scope));
+                attributes.put(entry.getKey(),
+                        context.rewriteUrls(applyTemplate(entry.getValue(), scope)));
             }
         }
         List<UiElement> children = new ArrayList<>();

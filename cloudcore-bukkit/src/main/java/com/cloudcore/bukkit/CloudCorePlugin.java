@@ -974,6 +974,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 RenderMode.SCREEN, 0, name);
         sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
                 UiCodec.encodeOpen(open, Limits.S2C)));
+        sendTextureRefs(player, compiled);
         String json = com.cloudcore.api.document.UiDocumentJson.write(document);
         UiDefinition definition = new UiDefinition(uiId, revision, 0,
                 json.getBytes(StandardCharsets.UTF_8));
@@ -985,6 +986,22 @@ public final class CloudCorePlugin extends JavaPlugin
         }, 1L);
         getLogger().info("Sent page '" + name + "' to " + player.getName()
                 + " elements=" + document.elements().size() + " bytes=" + json.length());
+    }
+
+    /** Tells the client which URL images this page uses; the client downloads them itself. */
+    private void sendTextureRefs(Player player,
+            com.cloudcore.api.page.PageLoader.CompiledPage compiled) {
+        for (com.cloudcore.api.page.PageLoader.RemoteTexture texture : compiled.textures()) {
+            if (!texture.url().startsWith("https://")) {
+                getLogger().warning("Page " + compiled.document().id()
+                        + " references a non-https texture: " + texture.url());
+                continue;
+            }
+            com.cloudcore.protocol.TextureRef ref = new com.cloudcore.protocol.TextureRef(
+                    texture.key(), texture.url(), "", 0, 0, 0, 8L * 1024L * 1024L, 3600);
+            sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.TEXTURE_REF,
+                    com.cloudcore.protocol.TextureRefCodec.encode(ref, Limits.S2C)));
+        }
     }
 
     private java.nio.file.Path resolvePageFile(String name) {

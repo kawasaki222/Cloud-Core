@@ -124,6 +124,8 @@ docs/
 - [x] M2 渲染：NanoVG 后端、裁剪/滚动偏移（原生 + NanoVG 真机验证）
 - [x] 滚轮滚动：光标下 `scroll` 元素的本地偏移与钳制（真机验证 + 单元测试）
 - [x] 九宫格 `nine_slice`：9 块拆分，角固定/边单向/中心双向（真机验证）
+- [x] `url:` 贴图：编译成 `inline:` + `TEXTURE_REF` + 客户端直连下载（真机验证，https/大小/超时/sha256）
+- [ ] 代理模式：`TEXTURE_REQUEST`/`TEXTURE_PUT`
 - [ ] M2 渲染剩余：GIF、文本 shaping、`scroll` 事件回传
 - [x] HUD / Tooltip / BossBar / Container 面板最小闭环
 - [x] PlayerInventory 面板：持久皮肤、`CloudInventoryScreen`、`UI_CLOSE` 还原原版（真机截图验证）
