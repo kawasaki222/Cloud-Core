@@ -222,7 +222,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 + " actions=" + actions.size() + " player=" + player.getName());
         int status = com.cloudcore.protocol.EventResult.OK;
         for (com.cloudcore.api.page.PageLoader.PageAction action : actions) {
-            if (!executeAction(player, page, action)) {
+            if (!executeAction(player, page, action, event.payload())) {
                 status = com.cloudcore.protocol.EventResult.REJECTED;
             }
         }
@@ -238,7 +238,8 @@ public final class CloudCorePlugin extends JavaPlugin
 
     private boolean executeAction(Player player,
             com.cloudcore.api.page.PageLoader.CompiledPage page,
-            com.cloudcore.api.page.PageLoader.PageAction action) {
+            com.cloudcore.api.page.PageLoader.PageAction action,
+            Map<String, com.cloudcore.protocol.WireValue> payload) {
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
         Map<String, Object> state = session.pageState.computeIfAbsent(
                 session.pageNames.getOrDefault(page.document().id(), page.document().id()),
@@ -248,12 +249,13 @@ public final class CloudCorePlugin extends JavaPlugin
             case "message" -> {
                 Object text = action.params().getOrDefault("value",
                         action.params().getOrDefault("text", ""));
-                player.sendMessage(Component.text(resolveState(String.valueOf(text), state)));
+                player.sendMessage(Component.text(
+                        resolveState(String.valueOf(text), state, payload)));
             }
             case "command" -> {
                 Object raw = action.params().getOrDefault("command",
                         action.params().getOrDefault("value", ""));
-                String command = resolveState(String.valueOf(raw), state);
+                String command = resolveState(String.valueOf(raw), state, payload);
                 if (!commandAllowed(command)) {
                     getLogger().warning("Blocked command action '" + command + "' from page "
                             + page.document().id() + " for " + player.getName());
@@ -339,15 +341,34 @@ public final class CloudCorePlugin extends JavaPlugin
                 + " state=" + state + " for " + player.getName());
     }
 
-    /** Replaces {@code ${state.key}} and {@code ${key}} with current state values. */
-    private static String resolveState(String text, Map<String, Object> state) {
+    /**
+     * Replaces {@code ${value}} and friends from the event payload first, then
+     * {@code ${state.key}} / {@code ${key}} from the page state.
+     */
+    private static String resolveState(String text, Map<String, Object> state,
+            Map<String, com.cloudcore.protocol.WireValue> payload) {
         String result = text;
+        for (Map.Entry<String, com.cloudcore.protocol.WireValue> entry : payload.entrySet()) {
+            result = result.replace("${" + entry.getKey() + "}", payloadText(entry.getValue()));
+        }
         for (Map.Entry<String, Object> entry : state.entrySet()) {
             result = result.replace("${state." + entry.getKey() + "}",
                     String.valueOf(entry.getValue()));
             result = result.replace("${" + entry.getKey() + "}", String.valueOf(entry.getValue()));
         }
         return result;
+    }
+
+    private static String payloadText(com.cloudcore.protocol.WireValue value) {
+        return switch (value) {
+            case com.cloudcore.protocol.WireValue.StringValue string -> string.value();
+            case com.cloudcore.protocol.WireValue.IntValue number -> String.valueOf(number.value());
+            case com.cloudcore.protocol.WireValue.LongValue number -> String.valueOf(number.value());
+            case com.cloudcore.protocol.WireValue.FloatValue number -> String.valueOf(number.value());
+            case com.cloudcore.protocol.WireValue.DoubleValue number -> String.valueOf(number.value());
+            case com.cloudcore.protocol.WireValue.BoolValue flag -> String.valueOf(flag.value());
+            default -> "";
+        };
     }
 
     private void handleHello(Player player, Session session, Frame frame) {

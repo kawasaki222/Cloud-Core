@@ -228,6 +228,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **输入框已核实**：示例页的 `text_field` 渲染为原版 `EditBox`（点击出现光标），
+  通过字符输入写入 `abc`，ENTER 后服务端记录 `EVENT ui=example element=name_input`；
+  动作 `${value}` 用事件载荷替换（`textfield8.png`、`textfield-submit.png`）。
+  外观只换了背景，输入法/剪贴板仍走原版。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。

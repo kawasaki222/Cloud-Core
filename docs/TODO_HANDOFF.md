@@ -102,6 +102,7 @@ docs/
 - [x] 滚轮滚动：光标下 `scroll` 元素的本地偏移与钳制（真机验证 + 单元测试）
 - [x] `panel`/`button` 的背景贴图与九宫格；标签富文本按段着色
 - [x] 按钮 `style.hover` 悬停样式（真机验证）
+- [x] `text_field`：原版 EditBox 控件 + `change`/`submit` 事件与 `${value}` 替换（真机验证）
 - [x] 九宫格 `nine_slice`：9 块拆分，角固定/边单向/中心双向（真机验证）
 - [x] `url:` 贴图：编译成 `inline:` + `TEXTURE_REF` + 客户端直连下载（真机验证，https/大小/超时/sha256）
 - [ ] 代理模式：`TEXTURE_REQUEST`/`TEXTURE_PUT`

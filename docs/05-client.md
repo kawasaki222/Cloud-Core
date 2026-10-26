@@ -109,6 +109,9 @@ final class ClientSession {
 - 同一 `uiId` 收到更高 revision 的 `UI_DEFINITION` 时按“更新”处理：重新解析、校验并
   `SurfaceAdapter.open`（`CloudScreen` 会换成新文档），不再发 `UI_READY` 失败。
 - 点击带 `click` 事件的元素时发 `EVENT`（actionId 来自文档）；未命中的点击交给 `Screen` 默认处理。
+- `text_field` 用原版 `EditBox` 控件：`CloudScreen.init` 按 `LayoutBoxes` 计算位置并 `addRenderableWidget`，
+  `render` 里自行绘制控件；文档只画背景。输入法/选择/剪贴板沿用原版，`change` 事件带 `value`，
+  ENTER 触发 `submit`。
 - 断线清空全部会话，并释放 NanoVG image handle / 原生纹理。
   实现：`ClientPlayConnectionEvents.JOIN/DISCONNECT` 调用 `resetSessionState`，清空重组器、
   `pendingOpens`、`pendingDefinitions`，并 `SurfaceRegistry#reset(DISCONNECT)` 让每个面板丢弃文档

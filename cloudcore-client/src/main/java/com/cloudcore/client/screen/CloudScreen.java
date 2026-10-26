@@ -30,6 +30,8 @@ public final class CloudScreen extends Screen {
     private int cachedTextureGeneration = -1;
     private String hoveredId;
     private final java.util.Map<String, Integer> localScroll = new java.util.HashMap<>();
+    private final java.util.List<net.minecraft.client.gui.components.EditBox> textFields =
+            new java.util.ArrayList<>();
     private static final int SCROLL_STEP = 12;
     private boolean closed;
 
@@ -54,6 +56,67 @@ public final class CloudScreen extends Screen {
 
     @Override
     protected void init() {
+        // Text fields are real vanilla EditBox widgets so IME, selection and clipboard stay
+        // vanilla; the document still draws their background.
+        textFields.clear();
+        java.util.List<com.cloudcore.client.screen.LayoutBoxes.Box> fields =
+                com.cloudcore.client.screen.LayoutBoxes.ofType(document, width, height,
+                        "text_field");
+        if (!fields.isEmpty()) {
+            LOGGER.debug("Adding {} text field widget(s) for ui={}", fields.size(),
+                    document.id());
+        }
+        for (com.cloudcore.client.screen.LayoutBoxes.Box box : fields) {
+            com.cloudcore.api.document.UiElement element = box.element();
+            net.minecraft.client.gui.components.EditBox edit =
+                    new net.minecraft.client.gui.components.EditBox(font, box.x(), box.y(),
+                            Math.max(20, box.width()), Math.max(12, box.height()),
+                            net.minecraft.network.chat.Component.empty());
+            edit.setBordered(false);
+            edit.setMaxLength(maxLength(element));
+            Object hint = element.attributes().get("placeholder");
+            if (hint instanceof String text && !text.isEmpty()) {
+                edit.setHint(net.minecraft.network.chat.Component.literal(text));
+            }
+            Object value = element.attributes().get("value");
+            if (value instanceof String text) {
+                edit.setValue(text);
+            }
+            Integer changeId = element.events().get("change");
+            if (changeId != null) {
+                edit.setResponder(text -> com.cloudcore.client.CloudCoreClient.sendEvent(document.id(),
+                        element.id(), changeId,
+                        java.util.Map.of("value",
+                                new com.cloudcore.protocol.WireValue.StringValue(text))));
+            }
+            addRenderableWidget(edit);
+            textFields.add(edit);
+        }
+    }
+
+    private static int maxLength(com.cloudcore.api.document.UiElement element) {
+        Object value = element.attributes().get("max_length");
+        return value instanceof Number number ? Math.max(1, Math.min(256, number.intValue()))
+                : 32;
+    }
+
+    @Override
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
+        if (event.isConfirmation() && getFocused() instanceof net.minecraft.client.gui.components.EditBox edit) {
+            for (com.cloudcore.client.screen.LayoutBoxes.Box box
+                    : com.cloudcore.client.screen.LayoutBoxes.ofType(document, width, height,
+                            "text_field")) {
+                Integer submitId = box.element().events().get("submit");
+                if (submitId != null && box.x() == edit.getX() && box.y() == edit.getY()) {
+                    com.cloudcore.client.CloudCoreClient.sendEvent(document.id(), box.element().id(), submitId,
+                            java.util.Map.of("value",
+                                    new com.cloudcore.protocol.WireValue.StringValue(
+                                            edit.getValue())));
+                    return true;
+                }
+            }
+        }
+        return super.keyPressed(event);
     }
 
     @Override
@@ -75,6 +138,10 @@ public final class CloudScreen extends Screen {
         }
         backend.render(graphics, cachedList, new FrameContext(graphics, width, height,
                 minecraft.getWindow().getGuiScale(), partialTick));
+        // Widgets (EditBox) draw themselves; the render list only paints their background.
+        for (net.minecraft.client.gui.components.EditBox field : textFields) {
+            field.render(graphics, mouseX, mouseY, partialTick);
+        }
         graphics.drawString(font, title, 8, 8, TITLE_COLOR, true);
     }
 

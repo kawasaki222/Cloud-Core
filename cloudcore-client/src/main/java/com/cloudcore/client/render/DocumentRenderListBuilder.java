@@ -136,14 +136,11 @@ public final class DocumentRenderListBuilder {
                 }
             }
             case "text_field" -> {
+                // Only the background: the vanilla EditBox widget (added by CloudScreen)
+                // draws the hint, value, selection and caret.
                 int w = width > 0 ? width : parentWidth;
                 int h = height > 0 ? height : 18;
                 addFill(commands, x, y, w, h, color(style(element, "background"), DEFAULT_FIELD));
-                Object placeholder = attribute(element, "placeholder");
-                if (placeholder instanceof String value && !value.isEmpty()) {
-                    addText(commands, value, x + 4, y + Math.max(2, (h - 8) / 2),
-                            color(styleText(element), 0xFF9A9A9A), fontPath(element, fonts));
-                }
                 childWidth = w;
                 childHeight = h;
             }
