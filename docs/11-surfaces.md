@@ -100,6 +100,7 @@
 
 - **绑定**：服务端创建 `KeyedBossBar`，标题加哨兵 `\u0000CCB:<token>\u0000`；
   `UI_OPEN(surface=BOSS_BAR, bindMode=PERSISTENT, surfaceKey=<hex token>)`。
+  U13/U19 已在真实客户端验证：私有 `drawBar` 可注入，Paper 哨兵标题可被客户端观察。
 - **客户端**：`BossHealthOverlay#render` 遍历事件，匹配哨兵的血条用 Cloud 文档绘制，其余原版绘制。
 - **数据**：进度、颜色、样式来自 `BossEvent`；文档只负责外观。
 - **外观**：NanoVG 画背景、填充、覆盖层；九宫格、填充方向、文字字体/颜色/阴影/对齐来自

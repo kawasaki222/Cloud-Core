@@ -33,6 +33,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
+import org.bukkit.boss.BarColor;
+import org.bukkit.boss.BarStyle;
+import org.bukkit.boss.BossBar;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -235,6 +238,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 sendPing(target, session);
             } else if (args[0].equalsIgnoreCase("probe")) {
                 sendProbe(target);
+            } else if (args[0].equalsIgnoreCase("boss")) {
+                sendBoss(target);
             } else {
                 sendDemoOpen(target, args[0].equalsIgnoreCase("demo-big"));
             }
@@ -258,9 +263,14 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core probe inventory opened."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("boss")) {
+            sendBoss(player);
+            sender.sendMessage(Component.text("Cloud Core probe boss bar sent."));
+            return true;
+        }
         if (args.length != 1 || !args[0].equalsIgnoreCase("ping")) {
             sender.sendMessage(Component.text(
-                    "Usage: /" + label + " <ping|demo|demo-big|probe>"));
+                    "Usage: /" + label + " <ping|demo|demo-big|probe|boss>"));
             return true;
         }
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
@@ -273,7 +283,27 @@ public final class CloudCorePlugin extends JavaPlugin
         return action.equalsIgnoreCase("ping")
                 || action.equalsIgnoreCase("demo")
                 || action.equalsIgnoreCase("demo-big")
-                || action.equalsIgnoreCase("probe");
+                || action.equalsIgnoreCase("probe")
+                || action.equalsIgnoreCase("boss");
+    }
+
+    private void sendBoss(Player player) {
+        BossBar bar = Bukkit.createBossBar("\u0000CCB:probe\u0000Cloud Core Boss",
+                BarColor.RED, BarStyle.SOLID);
+        bar.addPlayer(player);
+        bar.setVisible(true);
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        if (session.bossBar != null) {
+            session.bossBar.removeAll();
+        }
+        session.bossBar = bar;
+        getServer().getScheduler().runTaskLater(this, () -> {
+            bar.removeAll();
+            if (session.bossBar == bar) {
+                session.bossBar = null;
+            }
+        }, 200L);
+        getLogger().info("PROBE boss bar sent to " + player.getName());
     }
 
     private void sendProbe(Player player) {
@@ -349,6 +379,9 @@ public final class CloudCorePlugin extends JavaPlugin
         Session removed = sessions.remove(event.getPlayer().getUniqueId());
         if (removed != null) {
             removed.assembler.clear();
+            if (removed.bossBar != null) {
+                removed.bossBar.removeAll();
+            }
         }
     }
 
@@ -358,5 +391,6 @@ public final class CloudCorePlugin extends JavaPlugin
         private boolean pingPending;
         private int pingNonce;
         private long pingSentNanos;
+        private BossBar bossBar;
     }
 }

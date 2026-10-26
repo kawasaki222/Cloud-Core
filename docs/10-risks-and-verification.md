@@ -112,13 +112,13 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 | U10 | `canSend` 需要 `playC2S` 注册 | 发送 `HELLO` | 去掉注册观察 | 两侧都注册 |
 | U11 | `StreamCodec.of` 的签名与参数顺序 | payload | 编译 | 按映射调整 |
 | U12 | `MouseHandler#onScroll(long, double, double)` 是全局滚轮入口；`Screen` 不保证覆盖 `mouseScrolled` | Tooltip 滚动 | 2026-10-26 真实客户端已核实（ContainerScreen 上滚轮进入混入） | 只改混入 |
-| U13 | `BossHealthOverlay` 的两个私有 `drawBar` 重载可被 `@WrapOperation` 包裹 | Boss 面板 | 2026-10-26 `javap` 已核对；运行待验证 | HEAD 取消并自行渲染 |
+| U13 | `BossHealthOverlay` 的两个私有 `drawBar` 重载可被 `@WrapOperation` 包裹 | Boss 面板 | 2026-10-26 已用 `@Inject` 命中 4 参数重载；`@WrapOperation` 尚未验证 | HEAD 取消并自行渲染 |
 | U14 | `InventoryScreen` 在 1.21.11 的父类与构造 | 背包面板 | 编译 | 自定义 `AbstractContainerScreen<InventoryMenu>` |
 | U15 | 客户端打开背包一定经过 `Minecraft#setScreen` | 背包拦截 | 运行 | 仅在打开时应用，不拦截按键 |
 | U16 | 原版 Tooltip 的延迟绘制时序可被安全替换 | Tooltip 面板 | spike + 视觉 | 只改样式，不接管 |
 | U17 | 资源包字体在 1.21.11 的 provider 行为 | 字体 | 运行 | 只用内置位图字体 |
 | U18 | `AbstractRecipeBookScreen` 的构造与状态 | 配方书 | 编译 | v1 隐藏配方书 |
-| U19 | 带哨兵的 Paper BossBar 标题对模组客户端可见 | Boss 匹配 | 抓包 | 自绘 Boss 血条（v2） |
+| U19 | 带哨兵的 Paper BossBar 标题对模组客户端可见 | Boss 匹配 | 2026-10-26 真实客户端已观察到 `\u0000CCB:probe\u0000` | 自绘 Boss 血条（v2） |
 | U20 | Fabric API 0.141.3 能重映射到 officialMojangMappings | 构建 | M0 构建 | 固定 Loom 版本/升级 API |
 | U21 | PlaceholderAPI 扩展在主线程解析安全，异步仅限白名单 | 占位符刷新 | 阅读扩展 + 压力测试 | 全部同步，取消异步 |
 | U22 | 客户端 JRE 的 `ImageIO` 可解码 GIF/JPEG，且内存可控 | 直连模式 GIF | 启动测试 + 解码样例 | 内置纯 Java 解码器，或强制 proxy 模式 |
@@ -165,7 +165,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **Minecraft#setScreen 混入已核实**：客户端日志实际打印 `ContainerScreen` 切换，未发生 mixin 错误。
 - **U12 已核实**：`MouseHandler#onScroll(long,double,double)` 混入在 `ContainerScreen` 上收到
   `Scroll observed ... y=1.0`；全局滚轮入口成立，Tooltip 应在这里消费滚轮而不是只依赖 `Screen`。
-- `GuiGraphics` tooltip 与两个私有 `drawBar` 重载已静态核对（U3/U13），运行时混入待做。
+- **U13 部分核实 / U19 已核实**：`BossHealthOverlayMixin` 用 `@Inject` 命中私有
+  `drawBar(GuiGraphics,int,int,BossEvent)`；Paper `BossBar` 的 `\u0000CCB:probe\u0000` 标题
+  在客户端实际可见并被日志捕获。`@WrapOperation` 包裹仍待验证。
+- `GuiGraphics` tooltip 入口已静态核对（U3），运行时混入待做。
 - **U20 已核实**：Fabric API 0.141.3 能在 officialMojangMappings 下编译并启动。
 - **U10 已核实并规避**：Fabric `canSend()` 只反映服务端声明的通道；Paper 不保证声明，
   发送路径不再用 `canSend()` 作为门控。
@@ -180,7 +183,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 
 仍未验证：
 
-- U3/U3a、U13：签名已用 `javap` 静态核对；Tooltip/Boss 混入的运行时行为仍未验证。
+- U3/U3a：签名已用 `javap` 静态核对；Tooltip 混入的运行时行为仍未验证。
 - U28–U31：NanoVG 三平台原生库、FBO 合成、预乘 alpha、1.21.6 提取/绘制状态。
 - NanoVG/FBO：`NanoVgBackend.available()` 仍为 `false`，`FboCompositor` 未实现。
 - UI_DEFINITION 已能解码/校验并打开 `CloudScreen`；原生 RenderList 已支持 panel/label/button/

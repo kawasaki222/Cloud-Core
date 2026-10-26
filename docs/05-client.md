@@ -139,7 +139,7 @@ public final class SurfaceRegistry {
 | --- | --- | --- |
 | `MinecraftMixin` | `Minecraft#setScreen` | 用 `@ModifyVariable` 替换界面参数 |
 | `TooltipMixin` | `GuiGraphics#renderTooltip(...)` | 捕获并替换物品提示渲染 |
-| `ScreenScrollMixin` | `MouseHandler#onScroll(long,double,double)` | Tooltip 可滚动时消费滚轮 |
+| `MouseHandlerMixin` | `MouseHandler#onScroll(long,double,double)` | Tooltip 可滚动时消费滚轮 |
 | `BossHealthOverlayMixin` | `BossHealthOverlay#render` | 接管已绑定的 Boss 血条 |
 
 混入只负责生命周期和捕获，不负责绘制；绘制统一走 `RenderBackend`。混入都设置明确的优先级，
@@ -277,7 +277,7 @@ HudElementRegistry.addLast(
 
 ```java
 @Mixin(MouseHandler.class)
-public abstract class ScreenScrollMixin {
+public abstract class MouseHandlerMixin {
     @Inject(method = "onScroll", at = @At("HEAD"), cancellable = true)
     private void cloudcore$scrollTooltip(long window, double xOffset, double yOffset,
                                          CallbackInfo ci) {

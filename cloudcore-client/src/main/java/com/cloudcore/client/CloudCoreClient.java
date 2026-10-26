@@ -53,6 +53,8 @@ public final class CloudCoreClient implements ClientModInitializer {
     private static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static final int CURRENT_FEATURES = FeatureFlags.NONE;
     private static final boolean DIAGNOSTICS = Boolean.getBoolean("cloudcore.diagnostics");
+    private static final java.util.Set<String> OBSERVED_BOSS_TITLES =
+            java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     private static SurfaceRegistry surfaceRegistry;
     private final FragmentAssembler assembler = new FragmentAssembler(Limits.S2C);
@@ -303,6 +305,21 @@ public final class CloudCoreClient implements ClientModInitializer {
                 LOGGER.debug("Scroll observed screen={} x={} y={}",
                         minecraft.screen.getClass().getName(), xOffset, yOffset);
             }
+        }
+    }
+
+    public static void onBossBar(String title) {
+        if (title == null || !title.contains("\u0000CCB:")) {
+            LOGGER.debug("Boss bar observed title={}", title);
+            return;
+        }
+        String printable = title.replace('\u0000', '|');
+        if (OBSERVED_BOSS_TITLES.contains(title)
+                || OBSERVED_BOSS_TITLES.size() >= 64
+                || !OBSERVED_BOSS_TITLES.add(title)) {
+            LOGGER.debug("Boss bar observed title={}", printable);
+        } else {
+            LOGGER.info("Boss bar observed title={}", printable);
         }
     }
 

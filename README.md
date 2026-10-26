@@ -12,7 +12,8 @@ PING/PONG、UI_OPEN/UI_READY 编解码与黄金向量、Paper/Fabric 接线已�
 M2 的面板注册表、最小 `UiDocument`、`UI_DEFINITION` 解码/校验、`CloudScreen`、渲染后端骨架，
 以及 panel/label/button/text_field/checkbox/progress 的原生最小渲染也已存在。已在本地 Paper 1.21.11
 + Fabric 开发客户端上验证握手、PING/PONG、UI 打开/关闭、64 KiB 文档压缩分片重组、demo 页面显示，
-  以及 `InventoryOpenEvent` 早于 `ContainerScreen#setScreen` 的容器时序、`MouseHandler#onScroll` 全局滚轮钩子；
+  以及 `InventoryOpenEvent` 早于 `ContainerScreen#setScreen` 的容器时序、`MouseHandler#onScroll` 全局滚轮钩子、
+  私有 `BossHealthOverlay#drawBar` 注入与 Paper BossBar 哨兵标题；
 NanoVG/FBO 合成、
 图片/物品图标、混入和压力测试尚未验证，见 `docs/TODO_HANDOFF.md`。
 
