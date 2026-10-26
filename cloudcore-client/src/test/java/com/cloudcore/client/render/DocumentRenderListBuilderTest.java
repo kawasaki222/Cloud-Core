@@ -39,6 +39,23 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
+    void buildsLocalImageCommand() {
+        UiElement image = new UiElement("logo", "image", 4, 4, "32", "24",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("texture", "local:test/logo.png"));
+        UiDocument document = new UiDocument(1, "demo", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("Demo"), null, 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(image));
+
+        RenderCommand command = DocumentRenderListBuilder.build(document, 200, 100)
+                .commands().get(0);
+        RenderCommand.Image resolved = (RenderCommand.Image) command;
+        assertEquals("test/logo.png", resolved.texture());
+        assertEquals(32, resolved.width());
+        assertEquals(24, resolved.height());
+    }
+
+    @Test
     void resolvesPercentAndFillDimensions() {
         UiElement panel = new UiElement("root", "panel", 0, 0, "50%", "fill",
                 true, true, 0, Map.of(), List.of(), Map.of());

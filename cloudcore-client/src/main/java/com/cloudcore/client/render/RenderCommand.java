@@ -10,4 +10,7 @@ public sealed interface RenderCommand {
 
     record Text(String text, int x, int y, int argb, boolean shadow) implements RenderCommand {
     }
+
+    record Image(String texture, int x, int y, int width, int height) implements RenderCommand {
+    }
 }

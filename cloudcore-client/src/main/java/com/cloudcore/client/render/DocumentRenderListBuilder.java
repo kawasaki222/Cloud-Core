@@ -100,8 +100,15 @@ public final class DocumentRenderListBuilder {
                     addFill(commands, x, y, fill, h, 0xFF3C8CE7);
                 }
             }
-            case "image", "item_icon", "inventory_grid", "spacer" -> {
-                // Native bridge / asset pipeline work is not implemented yet.
+            case "image" -> {
+                Object texture = attribute(element, "texture");
+                if (texture instanceof String reference && reference.startsWith("local:")) {
+                    addImage(commands, reference.substring("local:".length()), x, y,
+                            width > 0 ? width : 64, height > 0 ? height : 64);
+                }
+            }
+            case "item_icon", "inventory_grid", "spacer" -> {
+                // Native bridge work is not implemented yet.
             }
             default -> {
                 // row/column/grid/scroll/overlay and future containers: recurse with the
@@ -124,6 +131,13 @@ public final class DocumentRenderListBuilder {
     private static void addText(List<RenderCommand> commands, String text, int x, int y, int argb) {
         if (!text.isEmpty() && commands.size() < MAX_COMMANDS) {
             commands.add(new RenderCommand.Text(text, x, y, argb, true));
+        }
+    }
+
+    private static void addImage(List<RenderCommand> commands, String texture, int x, int y,
+            int width, int height) {
+        if (width > 0 && height > 0 && commands.size() < MAX_COMMANDS) {
+            commands.add(new RenderCommand.Image(texture, x, y, width, height));
         }
     }
 

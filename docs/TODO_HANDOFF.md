@@ -110,6 +110,7 @@ docs/
 - [x] M2 骨架：SurfaceRegistry/SurfaceAdapter/SurfaceProvider、UiDocument、RenderBackend、CloudScreen
 - [x] M2 文档链路：UI_DEFINITION 解码、校验、`CloudScreen` 打开
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
+- [x] `image` 的 `local:` PNG 加载与绘制（真机截图验证）
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
 - [ ] M2 完整渲染：NanoVG/FBO、image/item_icon、裁剪/滚动、混入
 - [x] 协议前向兼容：未知 `surfaceId` 保留原始值并回 `UI_READY(state=4)`
@@ -131,7 +132,7 @@ docs/
      合成到屏幕，验证预乘 alpha 与 1.21.6 提取/绘制状态；补 Linux/macOS。
    - 先做一个纯色面板 + 一张 TTF 文本的 NanoVG 合成 spike，确认没有色差和状态泄漏。
 3. **M2 实际渲染**：
-   - 补齐 `image`/`item_icon`、text shaping、裁剪、scroll 和真实布局容器。
+   - 补齐 `inline:`/`pack:` 图片、GIF、`item_icon`、text shaping、裁剪、scroll 和真实布局容器。
    - 接入 `NanoVgBackend`/`FboCompositor`；失败时整帧回退 `NativeBackend`。
    - 增加四个混入和客户端日志/诊断。
 4. 之后按 `08-roadmap.md` 的 M3–M10 推进。

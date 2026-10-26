@@ -41,6 +41,14 @@ public final class NativeBackend implements RenderBackend {
                 case RenderCommand.Text text -> frame.graphics().drawString(
                         Minecraft.getInstance().font, text.text(), text.x(), text.y(),
                         text.argb(), text.shadow());
+                case RenderCommand.Image image -> {
+                    net.minecraft.resources.Identifier texture =
+                            LocalTextureRegistry.resolveLocal(image.texture());
+                    if (texture != null) {
+                        frame.graphics().blit(texture, image.x(), image.y(),
+                                image.width(), image.height(), 0.0f, 0.0f, 1.0f, 1.0f);
+                    }
+                }
             }
         }
     }

@@ -400,7 +400,9 @@ public final class CloudCorePlugin extends JavaPlugin
                       "text": "Native RenderList / protocol 1.1", "color": "#FF9AD0FF" },
                     { "id": "button", "type": "button", "x": 16, "y": 70,
                       "width": 120, "height": 24, "text": "Button",
-                      "style": { "background": "#FF3C6E9F" } }
+                      "style": { "background": "#FF3C6E9F" } },
+                    { "id": "logo", "type": "image", "x": 160, "y": 70,
+                      "width": 64, "height": 64, "texture": "local:test/red.png" }
                   ]
                 }
                 """.formatted(uiId, padding);

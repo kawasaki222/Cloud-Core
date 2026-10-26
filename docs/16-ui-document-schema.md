@@ -174,7 +174,7 @@
 
 | 形式 | 含义 |
 | --- | --- |
-| `local:path` | `.minecraft/resourcepacks/CloudCore/<path>`，可含业务分类目录 |
+| `local:path` | `.minecraft/resourcepacks/CloudCore/<path>`，可含业务分类目录；客户端已实现 PNG/JPEG 加载与 `DynamicTexture` 绘制 |
 | `inline:key` | 服务端通过 `TEXTURE_PUT` / `TEXTURE_REF` 关联的贴图 |
 | `pack:namespace:path` | 资源包贴图 |
 | `builtin:name` | 模组 jar 内置，仅最小回退 |

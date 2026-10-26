@@ -177,6 +177,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   并记录 `UI_CLOSE ui=cloudcore_demo reason=0`；服务端日志显示对应 S2C 帧。
 - **DIAGNOSTIC 链路已核实**：`/cloudcore diagnostic` 下发 `CC-PROBE-001`，客户端文件日志写入
   `ERROR [cloudcore] [CC-PROBE-001] scope=probe trace=...`。
+- **本地贴图已核实**：`LocalTextureRegistry` 从
+  `resourcepacks/CloudCore/test/red.png` 读取 PNG、注册 `DynamicTexture`，demo 页面实际显示绿色图片；
+  路径逃逸/缺失分别记录 `CC-ASSET-001/002`。
 - **U28 已核实（Windows x64）/ U29 部分核实**：`NanoVgSpike` 加载 `lwjgl-nanovg:3.3.3`，
   创建 GL3 context 与 64×64 FBO，绘制红色矩形并 `glReadPixels` 得到 `(255,0,0,255)`；
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
@@ -201,7 +204,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - NanoVG/FBO：初始化/FBO 绘制已在 Windows 验证；`NanoVgBackend.available()` 仍为 `false`，
   `FboCompositor` 未实现，屏幕合成与生产打包未完成。
 - U28–U31：Linux/macOS、FBO 屏幕合成、预乘 alpha、1.21.6 提取/绘制状态。
-- image/item_icon、文本整形、裁剪/滚动、真实布局容器、其余五类面板的实际替换。
+- `inline:`/`pack:` 图片、GIF、item_icon、文本整形、裁剪/滚动、真实布局容器、其余五类面板的实际替换。
 - 当前 screen/scroll/tooltip/boss 混入只是诊断探针，尚未替换绘制或输入。
 - `BindMode` / `RenderMode` 的未知值仍会拒绝整帧；`surfaceId` 已改为保留原始 id 并回
   `UI_READY(state=4)`。
