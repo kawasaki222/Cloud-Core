@@ -1,5 +1,8 @@
 package com.cloudcore.bukkit;
 
+import com.cloudcore.api.BindMode;
+import com.cloudcore.api.RenderMode;
+import com.cloudcore.api.SurfaceType;
 import com.cloudcore.protocol.FeatureFlags;
 import com.cloudcore.protocol.Frame;
 import com.cloudcore.protocol.FrameCodec;
@@ -16,7 +19,10 @@ import com.cloudcore.protocol.ProtocolException;
 import com.cloudcore.protocol.ProtocolVersion;
 import com.cloudcore.protocol.UiClosed;
 import com.cloudcore.protocol.UiCodec;
+import com.cloudcore.protocol.UiDefinition;
+import com.cloudcore.protocol.UiOpen;
 import com.cloudcore.protocol.UiReady;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Map;
 import java.util.Optional;
@@ -117,7 +123,13 @@ public final class CloudCorePlugin extends JavaPlugin
                 + " guiScale=" + hello.guiScale()
                 + " scaled=" + hello.scaledWidth() + "x" + hello.scaledHeight()
                 + (compatible ? "" : " (incompatible major)"));
-        sendHelloAck(player);
+        // The client's JOIN callback sends HELLO while its play handler is still being
+        // installed. Answer one tick later so the client has a live receiver for S2C.
+        getServer().getScheduler().runTask(this, () -> {
+            if (player.isOnline()) {
+                sendHelloAck(player);
+            }
+        });
     }
 
     private void handleUiClosed(Player player, Frame frame) {
@@ -162,6 +174,9 @@ public final class CloudCorePlugin extends JavaPlugin
                 "Cloud Core " + getPluginMeta().getVersion());
         sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.HELLO_ACK,
                 HandshakeCodec.encodeHelloAck(ack, Limits.S2C)));
+        getLogger().info("Sent HELLO_ACK to " + player.getName()
+                + " protocol=" + ack.protoMajor() + "." + ack.protoMinor()
+                + " acceptedFeatures=0x" + Integer.toHexString(ack.acceptedFeatures()));
     }
 
     private void sendPing(Player player, Session session) {
@@ -181,6 +196,10 @@ public final class CloudCorePlugin extends JavaPlugin
         try {
             byte[] data = FrameCodec.encode(frame, Limits.S2C);
             player.sendPluginMessage(this, CHANNEL, data);
+            if (getConfig().getBoolean("debug", false)) {
+                getLogger().info("S2C opcode=0x" + Integer.toHexString(frame.opcode())
+                        + " bytes=" + data.length + " player=" + player.getUniqueId());
+            }
         } catch (ProtocolException exception) {
             getLogger().warning("Failed to encode opcode 0x" + Integer.toHexString(frame.opcode())
                     + " for " + player.getName() + ": " + exception.getMessage());
@@ -193,18 +212,82 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("No permission."));
             return true;
         }
+        if (args.length == 2 && (args[0].equalsIgnoreCase("ping")
+                || args[0].equalsIgnoreCase("demo"))) {
+            Player target = getServer().getPlayerExact(args[1]);
+            if (target == null) {
+                sender.sendMessage(Component.text("Player not found: " + args[1]));
+                return true;
+            }
+            if (args[0].equalsIgnoreCase("demo")) {
+                sendDemoOpen(target);
+            } else {
+                Session session = sessions.computeIfAbsent(target.getUniqueId(),
+                        ignored -> new Session());
+                sendPing(target, session);
+            }
+            sender.sendMessage(Component.text("Cloud Core " + args[0] + " sent to "
+                    + target.getName()));
+            return true;
+        }
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("Only players can use this command."));
+            sender.sendMessage(Component.text("Usage: /cloudcore <ping|demo> <player>"));
+            return true;
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("demo")) {
+            sendDemoOpen(player);
+            sender.sendMessage(Component.text("Cloud Core demo page sent."));
             return true;
         }
         if (args.length != 1 || !args[0].equalsIgnoreCase("ping")) {
-            sender.sendMessage(Component.text("Usage: /" + label + " ping"));
+            sender.sendMessage(Component.text("Usage: /" + label + " <ping|demo>"));
             return true;
         }
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
         sendPing(player, session);
         sender.sendMessage(Component.text("Cloud Core PING sent."));
         return true;
+    }
+
+    private void sendDemoOpen(Player player) {
+        int token = random.nextInt();
+        UiOpen open = new UiOpen("cloudcore_demo", 1, SurfaceType.CUSTOM_SCREEN,
+                BindMode.NONE, token, RenderMode.SCREEN, 0, "demo");
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
+                UiCodec.encodeOpen(open, Limits.S2C)));
+
+        String json = """
+                {
+                  "schema": 1,
+                  "id": "cloudcore_demo",
+                  "surface": "custom_screen",
+                  "title": { "runs": [ { "text": "Cloud Core Demo" } ] },
+                  "theme": "dark",
+                  "size": [320, 180],
+                  "scale": 1.0,
+                  "elements": [
+                    { "id": "root", "type": "panel", "x": 0, "y": 0,
+                      "width": "fill", "height": "fill",
+                      "style": { "background": "#CC202830" } },
+                    { "id": "title", "type": "label", "x": 16, "y": 18,
+                      "text": "Cloud Core Demo", "color": "#FFFFFFFF" },
+                    { "id": "hint", "type": "label", "x": 16, "y": 38,
+                      "text": "Native RenderList / protocol 1.1", "color": "#FF9AD0FF" },
+                    { "id": "button", "type": "button", "x": 16, "y": 70,
+                      "width": 120, "height": 24, "text": "Button",
+                      "style": { "background": "#FF3C6E9F" } }
+                  ]
+                }
+                """;
+        UiDefinition definition = new UiDefinition("cloudcore_demo", 1, 0,
+                json.getBytes(StandardCharsets.UTF_8));
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (player.isOnline()) {
+                sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
+                        UiCodec.encodeDefinition(definition, Limits.S2C)));
+            }
+        }, 1L);
+        getLogger().info("Sent demo UI_OPEN/UI_DEFINITION to " + player.getName());
     }
 
     @EventHandler

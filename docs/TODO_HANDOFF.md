@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-**文档基线完成；M1 协议核心已实现，M2 客户端/服务端面板骨架已落地；真实 Paper/Fabric 联调未运行。**
+**文档基线完成；M1 协议核心与真实 Paper/Fabric 联调已通过，M2 最小面板链路已落地并可显示原生页面。**
 
 - Gradle 9.2.0 wrapper、5 模块、JDK 21 toolchain、Loom 1.14 + Mojang 映射。
 - `cloudcore-protocol`：Frame/FrameCodec/Deflate/VarInt/WireValue、分片/重组、Hello/HelloAck/Ping/Pong、
@@ -20,7 +20,11 @@
   绘制 panel/label/button/text_field/checkbox/progress，图片、物品图标、裁剪/滚动和混入未实现。
 - 客户端 jar 已合并 `api` + `protocol` 类，插件 jar 已合并 `api` + `protocol` + `server-core` 类；
   两者仍是独立可部署 jar，Gson 由 Minecraft/Paper 提供。
-- 未验证：真实 Minecraft 客户端连接、Paper 服务端、NanoVG/FBO、混入签名、U1/U2/U3/U28–U31。
+- 已联调（2026-10-26，Paper 1.21.11 build 132 + Fabric 开发客户端，离线模式）：
+  `HELLO`/`HELLO_ACK`、`/cloudcore ping`（RTT 9ms）、`UI_OPEN`/`UI_DEFINITION`/`UI_READY`、
+  Escape 关闭后的 `UI_CLOSED`，以及 demo 页面 panel/label/button 的实际显示。
+- 同一 tick 内回 `HELLO_ACK` 会丢失；服务端延迟 1 tick 后稳定，已写入协议实现说明。
+- 未验证：NanoVG/FBO、混入签名、U2/U3/U28–U31、100 万随机帧压测、真机大报文分片。
 
 - 客户端与服务端统一使用 **Mojang 映射**，不使用 Yarn。
 - 六类面板：HUD、箱子界面、玩家背包界面、ItemTooltip、自定义页面、Boss 血条。
@@ -89,23 +93,23 @@ docs/
 - [x] 附属插件 API、代码构造页面、兼容策略（`19`）
 - [x] M0：Gradle 多模块/协议核心/Paper 通道/Fabric payload 骨架
 - [x] M1：分片与重组、握手、PING/PONG、UI_OPEN/UI_READY 编解码、黄金向量、随机帧测试
-- [x] M1 接线：Paper 与 Fabric 的 HELLO/PING/PONG/分片/UI_OPEN 处理（仅编译与单元测试）
-- [ ] M1 真实联调：Paper + Fabric 客户端握手、`/cloudcore ping`、100 万随机帧压测
+- [x] M1 接线：Paper 与 Fabric 的 HELLO/PING/PONG/分片/UI_OPEN 处理
+- [x] M1 真实联调：Paper + Fabric 握手、`/cloudcore ping`（RTT 9ms）、UI 打开/关闭
+- [ ] M1 压力：100 万随机帧、真机大报文分片、断线清理
 - [x] M2 骨架：SurfaceRegistry/SurfaceAdapter/SurfaceProvider、UiDocument、RenderBackend、CloudScreen
 - [x] M2 文档链路：UI_DEFINITION 解码、校验、`CloudScreen` 打开
-- [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList
-- [ ] M2 实际渲染：NanoVG/FBO、image/item_icon、裁剪/滚动、混入
+- [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
+- [ ] M2 完整渲染：NanoVG/FBO、image/item_icon、裁剪/滚动、混入
 - [ ] M0 渲染 spike：NanoVG 三平台/FBO 合成/预乘 alpha
 
 剩余的是实现前的验证项和待决问题，不是文档缺口。
 
 ## 下一步动作（按顺序）
 
-1. **真实联调 M1**（优先，当前唯一阻塞验收的点）：
-   - 下载/启动 Paper 1.21.11，安装插件 jar；启动 Fabric 1.21.11 客户端并安装模组 jar。
-   - 验证 JOIN 后客户端日志出现 `Sent HELLO`，服务端日志出现 `HELLO from`，客户端收到 `HELLO_ACK`。
-   - 执行 `/cloudcore ping`，确认服务端 `PONG` 与 RTT。
-   - 用大报文验证分片；确认断开后组被清理。
+1. **M1 压力与边界**：
+   - 100 万随机帧压测（当前 10,000）。
+   - 真机发送接近 1 MiB 的分片文档，验证重组与超时。
+   - 断线/重连后确认分片组与 pending UI 会话被清理。
 2. **M0 的 spike**（各半天到一天）：
    - U2：`InventoryOpenEvent` 中的插件消息早于 `OpenScreen`，重复 100 次。
    - U3/U12/U13：`GuiGraphics` 的 blit/tooltip 重载、`Screen#mouseScrolled`、

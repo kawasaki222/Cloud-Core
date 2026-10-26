@@ -459,5 +459,8 @@ Tooltip 的滚轮事件默认**不**上报服务端；只有文档显式声明 `
 - 写入：body → 压缩 → 分片。读取：每一步都受剩余帧大小和类型上限约束，先检查再分配。
 - 分片重组在协议层完成；上层只看到解压后的逻辑帧。畸形分片只丢弃该组并计数，不断连。
 - `fragmentId` 是 `u16` 随机值；与在途组冲突时拒绝新组。
+- 服务端在收到 `HELLO` 后至少延迟 1 tick 再发 `HELLO_ACK`。实测同一 tick 内发送时，Fabric
+  客户端刚在 `JOIN` 回调里发出 `HELLO`，其 S2C 接收器尚未完全就绪，ACK 会丢失；延迟 1 tick
+  后稳定送达。这是传输实现约束，不改变线上格式。
 - 计数器（`unknown_opcode`、`bad_fragment`、`crc_fail`、`rate_limited`、`surface_unsupported`）
   通过 `/cloudcore stats` 和客户端 F3 叠加层暴露。

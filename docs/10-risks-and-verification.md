@@ -140,22 +140,35 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 
 ### 2.1 本轮实现记录（2026-10-26）
 
-已通过编译与单元测试，但**不代表真实运行时已验证**：
+已通过编译、单元测试，并在**真实 Paper + Fabric 开发客户端**上完成一次本地联调
+（Paper 1.21.11 build 132，Fabric Loader 0.19.5，Fabric API 0.141.3+1.21.11，离线模式）。
 
+已核实：
+
+- **U1 已核实**：Paper 插件消息能到达 Fabric 注册的 payload；客户端 `HELLO` 成功送达服务端，
+  服务端 `HELLO_ACK` 成功送达客户端。实测同一 tick 内立即回 ACK 会丢失，服务端延后 1 tick
+  后稳定送达；该时序已写入 `02-protocol.md` 实现说明。
+- **PING/PONG 已核实**：`/cloudcore ping` 经客户端回包，服务端报告 `rtt=9ms`。
+- **UI_OPEN / UI_DEFINITION / UI_READY / UI_CLOSED 已核实**：服务端发送 demo 文档，客户端
+  解码、校验并打开 `CloudScreen`，回 `UI_READY`；按 Escape 后回 `UI_CLOSED(reason=0)`。
+- **原生 RenderList 已核实**：demo 页面实际显示 panel、label、button；截图与客户端日志一致。
+- **U20 已核实**：Fabric API 0.141.3 能在 officialMojangMappings 下编译并启动。
+- **U10 已核实并规避**：Fabric `canSend()` 只反映服务端声明的通道；Paper 不保证声明，
+  发送路径不再用 `canSend()` 作为门控。
 - 分片/重组、压缩分片、乱序、重复片、组冲突、超时、4 组上限、1 MiB 上限：
   `FragmentCodecTest`。
-- HELLO 黄金字节、HELLO_ACK、PING/PONG、UI_OPEN/UI_READY 往返与畸形输入：
+- HELLO 黄金字节、HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED：
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21）。
+- `./gradlew clean build` 通过（JDK 21，60+ 测试，0 失败）。
 
 仍未验证：
 
-- U1：真实 Paper + Fabric 的插件消息互通；当前只有编译期与帧级测试。
-- U2、U3、U12、U13、U28–U31：需要真实客户端/服务端和显卡环境。
-- NanoVG/FBO：`NanoVgBackend.available()` 仍为 `false`，`FboCompositor` 未实现，
-  不得把骨架当成渲染验证。
+- U2：`InventoryOpenEvent` 与 `OpenScreen` 的先后顺序；需要容器 spike。
+- U3、U12、U13：`GuiGraphics` blit/tooltip、`Screen#mouseScrolled`、Boss 血条钩子。
+- U28–U31：NanoVG 三平台原生库、FBO 合成、预乘 alpha、1.21.6 提取/绘制状态。
+- NanoVG/FBO：`NanoVgBackend.available()` 仍为 `false`，`FboCompositor` 未实现。
 - UI_DEFINITION 已能解码/校验并打开 `CloudScreen`；原生 RenderList 已支持 panel/label/button/
   text_field/checkbox/progress；image/item_icon、NanoVG/FBO、裁剪/滚动、混入替换仍未实现。
 

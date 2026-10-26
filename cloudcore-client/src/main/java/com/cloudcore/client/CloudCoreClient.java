@@ -88,6 +88,10 @@ public final class CloudCoreClient implements ClientModInitializer {
 
     private void handlePayload(CloudFramePayload payload) {
         try {
+            if (!handshakeComplete) {
+                LOGGER.info("Received S2C payload before handshake completion ({} bytes)",
+                        payload.data().length);
+            }
             Frame frame = FrameCodec.decode(payload.data(), Limits.S2C);
             if ((frame.flags() & FrameFlags.FRAGMENT) != 0) {
                 Optional<Frame> complete = assembler.accept(frame);

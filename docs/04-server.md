@@ -125,21 +125,26 @@ debug: false
 ## 3. 命令与权限
 
 ```
-/cloudcore reload                       重载主题、字体索引与页面
-/cloudcore open <player> <page>         为玩家打开页面（按页面声明的 surface）
-/cloudcore close <player> [surface]     关闭某个面板或全部面板
-/cloudcore list                         列出已加载页面、面板类型与修订号
-/cloudcore validate <file>              编译并校验单个 YAML
-/cloudcore stats                        计数器
-/cloudcore debug <player> [on|off]      单玩家报文日志
-/cloudcore texture push <player> <key> <file.png>
-/cloudcore surfaces <player>            查看该玩家各面板的绑定状态
-/cloudcore diagnostics <player>         发送一条测试诊断，确认客户端日志链路
+/cloudcore ping [player]                发送 PING 并报告 RTT（控制台可指定玩家）
+/cloudcore demo [player]                发送最小自绘演示页，验证传输与渲染链路
+/cloudcore reload                       重载主题、字体索引与页面（计划）
+/cloudcore open <player> <page>         为玩家打开页面（计划）
+/cloudcore close <player> [surface]     关闭某个面板或全部面板（计划）
+/cloudcore list                         列出已加载页面、面板类型与修订号（计划）
+/cloudcore validate <file>              编译并校验单个 YAML（计划）
+/cloudcore stats                        计数器（计划）
+/cloudcore debug <player> [on|off]      单玩家报文日志（计划）
+/cloudcore texture push <player> <key> <file.png>（计划）
+/cloudcore surfaces <player>            查看该玩家各面板的绑定状态（计划）
+/cloudcore diagnostics <player>         发送一条测试诊断（计划）
 ```
+
+当前已实现 `ping` / `demo`，使用 `cloudcore.admin`；其余为后续里程碑命令。
 
 | 权限 | 默认 | 用途 |
 | --- | --- | --- |
-| `cloudcore.command` | op | 基础命令 |
+| `cloudcore.admin` | op | 当前 `ping` / `demo` 及后续基础命令 |
+| `cloudcore.command` | op | 基础命令（计划拆分） |
 | `cloudcore.open` | op | 打开任意页面 |
 | `cloudcore.page.<id>` | op | 打开指定页面 |
 | `cloudcore.surface.<name>` | op | 使用指定面板 |
@@ -167,9 +172,10 @@ public final class PluginMessageTransport implements PluginMessageListener {
     }
 
     public void send(Player player, Frame frame) {
-        byte[] bytes = FrameCodec.encode(frame, Limits.S2C);
-        for (byte[] fragment : Fragmenter.split(bytes, Limits.FRAGMENT_PAYLOAD)) {
-            player.sendPluginMessage(plugin, CHANNEL, fragment);
+        int fragmentId = Fragmenter.randomFragmentId(random);
+        for (Frame part : Fragmenter.fragment(frame, Limits.S2C, fragmentId)) {
+            player.sendPluginMessage(plugin, CHANNEL,
+                    FrameCodec.encode(part, Limits.S2C));
         }
     }
 }
@@ -180,6 +186,8 @@ public final class PluginMessageTransport implements PluginMessageListener {
 - `send` 只在主线程调用；调试模式下写入方检查并抛异常。
 - 未完成握手的玩家只允许收到 `HELLO_ACK`。
 - 只有收到主版本兼容的合法 `HELLO` 后，玩家才被标记为 `modded`。
+- `HELLO_ACK` 在收到 `HELLO` 后至少延后 1 tick 发送；同一 tick 内发送时 Fabric 客户端
+  接收器尚未完全就绪，实测会丢失。
 - `HELLO.features` 决定该玩家能用哪些面板；服务端不得下发未声明的面板类型。
 
 ## 5. 页面加载与组合
