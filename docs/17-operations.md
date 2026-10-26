@@ -25,9 +25,10 @@ Paper 1.21.11 服务端
 
 1. Paper 1.21.11 + Java 21。
 2. 把 `cloudcore-bukkit-<version>.jar` 放入 `plugins/`。
-3. 启动一次，生成 `plugins/CloudCore/config.yml`、`pages/`、`themes/`。
-4. 编辑配置与页面；`/cloudcore validate <file>` 校验。
-5. `/cloudcore reload` 或重启。
+3. 启动一次，生成 `plugins/CloudCore/config.yml` 与 `pages/`（首次会写入六张示例页：
+   `example`、`shop`、`progress_demo`、`scroll_demo`、`actions_demo`、`papi_demo`，已存在的文件不覆盖）。
+4. 编辑配置与页面；`/cloudcore validate` 校验全部页面。
+5. `/cloudcore reload`（同时重读 `config.yml`）或重启。
 6. 确认通道注册成功：启动日志无 `ChannelNotRegisteredException`。
 
 目录：
@@ -35,12 +36,15 @@ Paper 1.21.11 服务端
 ```
 plugins/CloudCore/
   config.yml
-  pages/
-  themes/
-  fonts/              # 可选字体索引
-  cloudcore.db        # 默认 SQLite（动作引擎 v2 持久变量）
-  cache/textures/     # 代理模式图片缓存
+  pages/              # YAML 页面；子目录（<名字>/page.yml）也可以
+  state/<uuid>.json   # 每个玩家的会话状态（异步写、原子替换；state.persist: false 可关闭）
+  themes/             # 计划中
+  fonts/              # 可选字体索引（NanoVG 后端）
+  cache/textures/     # 计划中：代理模式图片缓存
 ```
+
+`state/` 里的文件只包含文档用到的状态值（数字/布尔/字符串），删除某个文件等于把该玩家的页面状态
+重置为文档默认值；服务器迁移时连同 `pages/` 一起备份即可。
 
 ## 3. 客户端分发
 
@@ -48,8 +52,10 @@ plugins/CloudCore/
 - 依赖 Fabric Loader、Fabric API、Minecraft 1.21.11。
 - 模组内置 NanoVG 三平台 natives；玩家不需要额外安装运行库。
 - 版本策略：协议主版本相同即可互操作；服务端支持落后一个次版本的客户端。
-- 客户端配置：`config/cloudcore-client.json`；默认 `renderer=nanovg`，失败回退原生。
-- 客户端缓存：`.minecraft/cloudcore/image-cache/`（内容哈希）；可清理，不影响正确性。
+- 客户端配置：当前用启动参数 `-Dcloudcore.nanovg=true` 启用 NanoVG 后端（默认原生）；
+  `config/cloudcore-client.json` 与默认 NanoVG 计划中，失败时整帧回退原生。
+- 客户端缓存：`.minecraft/cloudcore/image-cache/`（内容哈希）计划中；本地贴图缓存由
+  `LocalTextureRegistry` 直接读文件系统。
 
 ## 4. 客户端本地资源
 
