@@ -1,6 +1,8 @@
 package com.cloudcore.client;
 
 import com.cloudcore.client.net.CloudFramePayload;
+import com.cloudcore.client.surface.OpenRequest;
+import com.cloudcore.client.surface.SurfaceRegistry;
 import com.cloudcore.protocol.FeatureFlags;
 import com.cloudcore.protocol.Frame;
 import com.cloudcore.protocol.FrameCodec;
@@ -15,6 +17,12 @@ import com.cloudcore.protocol.Ping;
 import com.cloudcore.protocol.Pong;
 import com.cloudcore.protocol.ProtocolException;
 import com.cloudcore.protocol.ProtocolVersion;
+import com.cloudcore.protocol.UiCodec;
+import com.cloudcore.protocol.UiOpen;
+import com.cloudcore.protocol.UiReady;
+import com.cloudcore.protocol.UiReadyState;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
@@ -31,11 +39,14 @@ public final class CloudCoreClient implements ClientModInitializer {
     private static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static final int CURRENT_FEATURES = FeatureFlags.NONE;
 
+    private static SurfaceRegistry surfaceRegistry;
     private final FragmentAssembler assembler = new FragmentAssembler(Limits.S2C);
+    private final Map<String, OpenRequest> pendingOpens = new HashMap<>();
     private volatile boolean handshakeComplete;
 
     @Override
     public void onInitializeClient() {
+        surfaceRegistry = SurfaceRegistry.createDefault();
         PayloadTypeRegistry.playS2C().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
         PayloadTypeRegistry.playC2S().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
 
@@ -45,12 +56,14 @@ public final class CloudCoreClient implements ClientModInitializer {
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             handshakeComplete = false;
             assembler.clear();
+            pendingOpens.clear();
             sendHello(client);
         });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             handshakeComplete = false;
             assembler.clear();
+            pendingOpens.clear();
         });
 
         LOGGER.info("Cloud Core client initialized (protocol {}.{})",
@@ -79,11 +92,42 @@ public final class CloudCoreClient implements ClientModInitializer {
         switch (frame.opcode()) {
             case Opcode.HELLO_ACK -> handleHelloAck(frame);
             case Opcode.PING -> handlePing(frame);
+            case Opcode.UI_OPEN -> handleUiOpen(frame);
+            case Opcode.UI_DEFINITION -> LOGGER.debug(
+                    "UI_DEFINITION received ({} bytes); document decoding is not implemented yet",
+                    frame.bodyLength());
             case Opcode.DIAGNOSTIC -> LOGGER.warn("Server diagnostic at opcode 0x{} ({} bytes)",
                     Integer.toHexString(frame.opcode()), frame.bodyLength());
             default -> LOGGER.debug("S2C opcode=0x{} bytes={}",
                     Integer.toHexString(frame.opcode()), frame.bodyLength());
         }
+    }
+
+    private void handleUiOpen(Frame frame) {
+        UiOpen open = UiCodec.decodeOpen(frame.body(), Limits.S2C);
+        OpenRequest request = new OpenRequest(
+                open.surface(),
+                open.uiId(),
+                open.revision(),
+                open.token(),
+                open.bindMode(),
+                open.renderMode(),
+                open.flags(),
+                open.surfaceKey());
+        Minecraft minecraft = Minecraft.getInstance();
+        if (!surfaceRegistry.canHandle(request, minecraft)) {
+            UiReady ready = new UiReady(open.uiId(), open.revision(), open.token(),
+                    open.surface(), UiReadyState.SURFACE_UNSUPPORTED,
+                    "Surface not implemented: " + open.surface());
+            sendFrame(new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_READY,
+                    UiCodec.encodeReady(ready, Limits.C2S)));
+            LOGGER.warn("Rejected UI_OPEN for unsupported surface {} ui={}",
+                    open.surface(), open.uiId());
+            return;
+        }
+        pendingOpens.put(open.uiId(), request);
+        LOGGER.info("UI_OPEN queued for {} ui={} revision={} surfaceKey={}",
+                open.surface(), open.uiId(), open.revision(), open.surfaceKey());
     }
 
     private void handleHelloAck(Frame frame) {
@@ -144,5 +188,12 @@ public final class CloudCoreClient implements ClientModInitializer {
 
     public boolean isHandshakeComplete() {
         return handshakeComplete;
+    }
+
+    public static SurfaceRegistry surfaces() {
+        if (surfaceRegistry == null) {
+            throw new IllegalStateException("Cloud Core client is not initialized");
+        }
+        return surfaceRegistry;
     }
 }

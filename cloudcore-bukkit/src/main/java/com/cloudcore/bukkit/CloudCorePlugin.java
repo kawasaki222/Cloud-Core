@@ -14,6 +14,8 @@ import com.cloudcore.protocol.Ping;
 import com.cloudcore.protocol.Pong;
 import com.cloudcore.protocol.ProtocolException;
 import com.cloudcore.protocol.ProtocolVersion;
+import com.cloudcore.protocol.UiCodec;
+import com.cloudcore.protocol.UiReady;
 import java.security.SecureRandom;
 import java.util.Map;
 import java.util.Optional;
@@ -94,6 +96,7 @@ public final class CloudCorePlugin extends JavaPlugin
         switch (frame.opcode()) {
             case Opcode.HELLO -> handleHello(player, session, frame);
             case Opcode.PONG -> handlePong(player, session, frame);
+            case Opcode.UI_READY -> handleUiReady(player, frame);
             default -> {
                 if (getConfig().getBoolean("debug", false)) {
                     getLogger().info("C2S opcode=0x" + Integer.toHexString(frame.opcode())
@@ -116,6 +119,18 @@ public final class CloudCorePlugin extends JavaPlugin
                 + " scaled=" + hello.scaledWidth() + "x" + hello.scaledHeight()
                 + (compatible ? "" : " (incompatible major)"));
         sendHelloAck(player);
+    }
+
+    private void handleUiReady(Player player, Frame frame) {
+        UiReady ready = UiCodec.decodeReady(frame.body(), Limits.C2S);
+        if (ready.state() == 0) {
+            getLogger().info("UI_READY from " + player.getName() + " ui=" + ready.uiId()
+                    + " surface=" + ready.surface());
+        } else {
+            getLogger().warning("UI_READY failure from " + player.getName()
+                    + " ui=" + ready.uiId() + " surface=" + ready.surface()
+                    + " state=" + ready.state() + " detail=" + ready.detail());
+        }
     }
 
     private void handlePong(Player player, Session session, Frame frame) {
