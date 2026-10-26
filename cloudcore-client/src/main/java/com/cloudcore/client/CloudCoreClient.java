@@ -51,7 +51,7 @@ public final class CloudCoreClient implements ClientModInitializer {
         PayloadTypeRegistry.playC2S().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
 
         ClientPlayNetworking.registerGlobalReceiver(CloudFramePayload.TYPE,
-                (payload, context) -> context.client().execute(() -> handlePayload(payload)));
+                (payload, context) -> handlePayload(payload));
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             handshakeComplete = false;
@@ -98,7 +98,7 @@ public final class CloudCoreClient implements ClientModInitializer {
                     frame.bodyLength());
             case Opcode.DIAGNOSTIC -> LOGGER.warn("Server diagnostic at opcode 0x{} ({} bytes)",
                     Integer.toHexString(frame.opcode()), frame.bodyLength());
-            default -> LOGGER.debug("S2C opcode=0x{} bytes={}",
+            default -> LOGGER.info("Unhandled S2C opcode=0x{} bytes={}",
                     Integer.toHexString(frame.opcode()), frame.bodyLength());
         }
     }
@@ -168,11 +168,8 @@ public final class CloudCoreClient implements ClientModInitializer {
     private static void sendFrame(Frame frame) {
         try {
             byte[] data = FrameCodec.encode(frame, Limits.C2S);
-            if (!ClientPlayNetworking.canSend(CloudFramePayload.TYPE)) {
-                LOGGER.warn("Cannot send opcode 0x{}: channel is not available",
-                        Integer.toHexString(frame.opcode()));
-                return;
-            }
+            // Paper does not necessarily advertise channels through minecraft:register, so
+            // canSend() is not a reliable gate for a plugin-message transport.
             ClientPlayNetworking.send(new CloudFramePayload(data));
         } catch (ProtocolException | IllegalStateException exception) {
             LOGGER.warn("Failed to send opcode 0x{}: {}",

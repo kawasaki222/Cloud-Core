@@ -97,12 +97,9 @@ public final class CloudCorePlugin extends JavaPlugin
             case Opcode.HELLO -> handleHello(player, session, frame);
             case Opcode.PONG -> handlePong(player, session, frame);
             case Opcode.UI_READY -> handleUiReady(player, frame);
-            default -> {
-                if (getConfig().getBoolean("debug", false)) {
-                    getLogger().info("C2S opcode=0x" + Integer.toHexString(frame.opcode())
-                            + " bytes=" + frame.bodyLength() + " player=" + player.getUniqueId());
-                }
-            }
+            default -> getLogger().info("Unhandled C2S opcode=0x"
+                    + Integer.toHexString(frame.opcode()) + " bytes=" + frame.bodyLength()
+                    + " player=" + player.getUniqueId());
         }
     }
 
