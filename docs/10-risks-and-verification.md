@@ -214,6 +214,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `item_icon`（钻石带数量、2 倍翡翠、下界合金剑）、`pack:minecraft:block/diamond_block`、
   `builtin:error`（洋红/黑棋盘）；缺失的 `pack:cloudcore:missing/texture` 不绘制并写
   `[CC-ASSET-006]`。截图：`assets-demo5.png`。
+- **1 MiB 真机分片已核实**：`/cloudcore demo-huge` 生成约 830 KB 文档（620,000 随机字节的 base64），
+  压缩后拆成 27 个分片（每片 24,018 字节，上限 32,767），客户端重组后打开页面并正常渲染。
+- **断线清理已核实**：`JOIN`/`DISCONNECT` 都调用 `resetSessionState`，日志
+  `Cleared session state on join|disconnect`；面板文档、分片组与 pending 会话全部清空，
+  重连后不会残留上一个服务器的 HUD/皮肤。规则有 `SurfaceRegistryTest`、`PlayerInventorySessionTest`。
 - **U28/U29 已核实（Windows x64）**：`NanoVgSpike` 加载 `lwjgl-nanovg:3.3.3`，
   创建 GL3 context 与 64×64 FBO，绘制红色矩形并 `glReadPixels` 得到 `(255,0,0,255)`；
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。

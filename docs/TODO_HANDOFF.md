@@ -105,9 +105,9 @@ docs/
 - [x] U3：`GuiGraphics#renderTooltip` 混入在悬停石头时实际命中（lines=1）
 - [x] U19：Paper BossBar 哨兵标题在客户端可见
 - [x] U13：`@WrapOperation` 命中 `BossHealthOverlay#render` 内的私有 `drawBar` 调用
-- [x] M1 真机大报文：64,776 字节文档压缩后拆成 3 片并重组成功
+- [x] M1 真机大报文：64,776 字节文档拆成 3 片；830 KB 文档拆成 27 片并重组成功
 - [x] M1 压力：100 万随机帧解码（仅 ProtocolException）
-- [ ] M1 断线清理：重连后分片组与 pending UI 会话
+- [x] M1 断线清理：重连后分片组、pending 会话与面板文档全部清空（日志 + 单元测试）
 - [x] M2 骨架：SurfaceRegistry/SurfaceAdapter/SurfaceProvider、UiDocument、RenderBackend、CloudScreen
 - [x] M2 文档链路：UI_DEFINITION 解码、校验、`CloudScreen` 打开
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
@@ -136,9 +136,8 @@ docs/
 
 ## 下一步动作（按顺序）
 
-1. **M1 压力与边界**：
-   - 接近 1 MiB 的真机分片与超时/乱序注入。
-   - 断线/重连后确认分片组与 pending UI 会话被清理。
+1. **M1 剩余压力**：
+   - 超时/乱序/重复分片的真机注入（单元测试已覆盖，真机未做）。
 2. **M0 的 spike**（各半天到一天）：
    - U29/U30/U31：把已通过的 Windows FBO spike 包装成 `AbstractTexture` 并用 `GuiGraphics.blit`
      合成到屏幕，验证预乘 alpha 与 1.21.6 提取/绘制状态；补 Linux/macOS。

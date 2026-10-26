@@ -41,6 +41,11 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
         }
     }
 
+    @Override
+    public void reset(CloseReason reason) {
+        DOCUMENT.set(null);
+    }
+
     public static void render(GuiGraphics graphics) {
         UiDocument document = DOCUMENT.get();
         if (document == null) {

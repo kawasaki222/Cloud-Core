@@ -42,6 +42,12 @@ final class PlayerInventorySession {
         return document;
     }
 
+    void clear() {
+        document = null;
+        active = false;
+        persistent = false;
+    }
+
     boolean active() {
         return active;
     }

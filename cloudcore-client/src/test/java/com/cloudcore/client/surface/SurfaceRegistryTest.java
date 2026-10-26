@@ -53,8 +53,21 @@ class SurfaceRegistryTest {
     }
 
     @Test
-    void duplicateRegistrationIsRejected() {
+    void resetNotifiesEveryAdapter() {
         SurfaceRegistry registry = new SurfaceRegistry();
+        CountingAdapter hud = new CountingAdapter(SurfaceType.HUD);
+        CountingAdapter tip = new CountingAdapter(SurfaceType.TOOLTIP);
+        registry.register(hud);
+        registry.register(tip);
+
+        registry.reset(CloseReason.DISCONNECT);
+
+        assertEquals(CloseReason.DISCONNECT, hud.lastReason);
+        assertEquals(CloseReason.DISCONNECT, tip.lastReason);
+    }
+
+    @Test
+    void duplicateRegistrationIsRejected() {        SurfaceRegistry registry = new SurfaceRegistry();
         registry.register(new UnsupportedSurfaceAdapter(SurfaceType.HUD));
         assertThrows(IllegalStateException.class,
                 () -> registry.register(new UnsupportedSurfaceAdapter(SurfaceType.HUD)));
@@ -62,5 +75,37 @@ class SurfaceRegistryTest {
 
     private static OpenRequest request(SurfaceType type) {
         return new OpenRequest(type, "ui", 1, 0, BindMode.NONE, RenderMode.SCREEN, 0, "");
+    }
+
+    private static final class CountingAdapter implements SurfaceAdapter {
+        private final SurfaceType type;
+        private CloseReason lastReason;
+
+        private CountingAdapter(SurfaceType type) {
+            this.type = type;
+        }
+
+        @Override
+        public SurfaceType type() {
+            return type;
+        }
+
+        @Override
+        public boolean canHandle(OpenRequest request, net.minecraft.client.Minecraft minecraft) {
+            return true;
+        }
+
+        @Override
+        public void open(OpenRequest request, UiRuntime runtime) {
+        }
+
+        @Override
+        public void close(String uiId, CloseReason reason) {
+        }
+
+        @Override
+        public void reset(CloseReason reason) {
+            lastReason = reason;
+        }
     }
 }

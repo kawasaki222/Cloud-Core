@@ -53,6 +53,11 @@ public final class BossBarSurfaceAdapter implements SurfaceAdapter {
         return Component.literal(raw.substring(end + 1)).setStyle(title.getStyle());
     }
 
+    @Override
+    public void reset(CloseReason reason) {
+        DOCUMENT.set(null);
+    }
+
     public static boolean render(GuiGraphics graphics, int x, int y, BossEvent event) {
         if (DOCUMENT.get() == null
                 || !event.getName().getString().contains("\u0000CCB:")) {

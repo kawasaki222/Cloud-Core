@@ -107,6 +107,10 @@ final class ClientSession {
 - 未知 `uiId` 的 `UI_DEFINITION` 进入 `pendingDefinitions`（最多 8 个，LRU，60 秒），不直接丢弃。
 - 文档 `revision` 必须严格大于缓存值；元素更新若更旧则丢弃。
 - 断线清空全部会话，并释放 NanoVG image handle / 原生纹理。
+  实现：`ClientPlayConnectionEvents.JOIN/DISCONNECT` 调用 `resetSessionState`，清空重组器、
+  `pendingOpens`、`pendingDefinitions`，并 `SurfaceRegistry#reset(DISCONNECT)` 让每个面板丢弃文档
+  （HUD/Tooltip/BossBar/Container/PlayerInventory 的静态文档与绑定，自定义页面关闭）。
+  日志写 `Cleared session state on join|disconnect`。
 - 文档不包含 `state`、动作体、`repeat` 或原始 URL。
 
 ## 4. 面板注册表

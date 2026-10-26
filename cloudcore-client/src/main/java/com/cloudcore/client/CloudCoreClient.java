@@ -83,22 +83,29 @@ public final class CloudCoreClient implements ClientModInitializer {
                 (payload, context) -> handlePayload(payload));
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            handshakeComplete = false;
-            assembler.clear();
-            pendingOpens.clear();
-            pendingDefinitions.clear();
+            resetSessionState("join");
             sendHello(client);
         });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-            handshakeComplete = false;
-            assembler.clear();
-            pendingOpens.clear();
-            pendingDefinitions.clear();
+            resetSessionState("disconnect");
         });
 
         LOGGER.info("Cloud Core client initialized (protocol {}.{})",
                 ProtocolVersion.MAJOR, ProtocolVersion.MINOR);
+    }
+
+    /**
+     * Clears reassembly, pending opens and every surface document. Without this a client
+     * that reconnects elsewhere keeps the previous server's HUD, tooltip and skins.
+     */
+    private void resetSessionState(String cause) {
+        handshakeComplete = false;
+        assembler.clear();
+        pendingOpens.clear();
+        pendingDefinitions.clear();
+        surfaceRegistry.reset(CloseReason.DISCONNECT);
+        LOGGER.info("Cleared session state on {}", cause);
     }
 
     private void handlePayload(CloudFramePayload payload) {

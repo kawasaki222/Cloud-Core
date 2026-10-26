@@ -271,7 +271,11 @@ public final class CloudCorePlugin extends JavaPlugin
             } else if (args[0].equalsIgnoreCase("demo-assets")) {
                 sendDemoAssets(target);
             } else {
-                sendDemoOpen(target, args[0].equalsIgnoreCase("demo-big"));
+                if (args[0].equalsIgnoreCase("demo-huge")) {
+                    sendDemoHuge(target);
+                } else {
+                    sendDemoOpen(target, args[0].equalsIgnoreCase("demo-big"));
+                }
             }
             sender.sendMessage(Component.text("Cloud Core " + args[0] + " sent to "
                     + target.getName()));
@@ -279,13 +283,18 @@ public final class CloudCorePlugin extends JavaPlugin
         }
         if (!(sender instanceof Player player)) {
             sender.sendMessage(Component.text(
-                    "Usage: /cloudcore <ping|demo|demo-big|probe> <player>"));
+                    "Usage: /cloudcore <ping|demo|demo-big|demo-huge|probe> <player>"));
             return true;
         }
         if (args.length == 1 && (args[0].equalsIgnoreCase("demo")
                 || args[0].equalsIgnoreCase("demo-big"))) {
             sendDemoOpen(player, args[0].equalsIgnoreCase("demo-big"));
             sender.sendMessage(Component.text("Cloud Core demo page sent."));
+            return true;
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("demo-huge")) {
+            sendDemoHuge(player);
+            sender.sendMessage(Component.text("Cloud Core huge demo page sent."));
             return true;
         }
         if (args.length == 1 && args[0].equalsIgnoreCase("probe")) {
@@ -355,6 +364,7 @@ public final class CloudCorePlugin extends JavaPlugin
         return action.equalsIgnoreCase("ping")
                 || action.equalsIgnoreCase("demo")
                 || action.equalsIgnoreCase("demo-big")
+                || action.equalsIgnoreCase("demo-huge")
                 || action.equalsIgnoreCase("probe")
                 || action.equalsIgnoreCase("boss")
                 || action.equalsIgnoreCase("close")
@@ -692,10 +702,24 @@ public final class CloudCorePlugin extends JavaPlugin
     }
 
     private void sendDemoOpen(Player player, boolean big) {
-        String uiId = big ? "cloudcore_demo_big" : "cloudcore_demo";
+        sendDemoOpen(player, big, big ? 48_000 : 0);
+    }
+
+    /** A document close to the 1 MiB frame limit, used to exercise fragmentation for real. */
+    private void sendDemoHuge(Player player) {
+        sendDemoOpen(player, true, 620_000);
+    }
+
+    /**
+     * @param paddingBytes random bytes embedded as base64 so the document approaches the
+     *                     1 MiB frame limit; 0 keeps the plain demo page
+     */
+    private void sendDemoOpen(Player player, boolean big, int paddingBytes) {
+        String uiId = big && paddingBytes > 100_000 ? "cloudcore_demo_huge"
+                : big ? "cloudcore_demo_big" : "cloudcore_demo";
         String padding = "";
-        if (big) {
-            byte[] bytes = new byte[48_000];
+        if (paddingBytes > 0) {
+            byte[] bytes = new byte[paddingBytes];
             random.nextBytes(bytes);
             padding = ", \"debug_padding\": \""
                     + Base64.getEncoder().encodeToString(bytes) + "\"";

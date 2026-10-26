@@ -48,6 +48,11 @@ public final class PlayerInventoryAdapter implements SurfaceAdapter {
         }
     }
 
+    @Override
+    public void reset(CloseReason reason) {
+        SESSION.clear();
+    }
+
     public static Screen replace(Screen screen) {
         if (!(screen instanceof InventoryScreen) || screen instanceof CloudInventoryScreen) {
             return screen;

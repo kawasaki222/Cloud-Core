@@ -42,6 +42,16 @@ public final class CustomScreenAdapter implements SurfaceAdapter {
     }
 
     @Override
+    public void reset(CloseReason reason) {
+        Minecraft minecraft = Minecraft.getInstance();
+        minecraft.execute(() -> {
+            if (minecraft.screen instanceof CloudScreen) {
+                minecraft.setScreen(null);
+            }
+        });
+    }
+
+    @Override
     public void close(String uiId, CloseReason reason) {
         Minecraft minecraft = Minecraft.getInstance();
         minecraft.execute(() -> {

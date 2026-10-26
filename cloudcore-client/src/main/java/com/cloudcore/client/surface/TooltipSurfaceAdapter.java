@@ -50,6 +50,11 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
         }
     }
 
+    @Override
+    public void reset(CloseReason reason) {
+        DOCUMENT.set(null);
+    }
+
     public static boolean render(GuiGraphics graphics, Font font,
             List<ClientTooltipComponent> lines, int x, int y,
             ClientTooltipPositioner positioner) {

@@ -52,6 +52,19 @@ class PlayerInventorySessionTest {
     }
 
     @Test
+    void clearDropsDocumentAndBinding() {
+        PlayerInventorySession session = new PlayerInventorySession();
+        session.open(document("skin"), true);
+
+        session.clear();
+
+        assertFalse(session.active());
+        assertFalse(session.persistent());
+        assertNull(session.activeUiId());
+        assertNull(session.documentForNextOpen());
+    }
+
+    @Test
     void nullScreenIsPassedThrough() {
         // Minecraft#setScreen(null) closes the current screen; the mixin must not wrap it.
         assertNull(PlayerInventoryAdapter.replace(null));

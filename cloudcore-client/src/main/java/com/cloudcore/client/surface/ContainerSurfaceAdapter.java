@@ -43,6 +43,12 @@ public final class ContainerSurfaceAdapter implements SurfaceAdapter {
         }
     }
 
+    @Override
+    public void reset(CloseReason reason) {
+        DOCUMENT.set(null);
+        armed = false;
+    }
+
     public static Screen replace(Screen screen) {
         UiDocument document = DOCUMENT.get();
         if (!armed || document == null || !(screen instanceof AbstractContainerScreen<?> container)) {

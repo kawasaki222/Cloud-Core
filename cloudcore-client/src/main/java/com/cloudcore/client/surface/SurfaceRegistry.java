@@ -43,6 +43,12 @@ public final class SurfaceRegistry {
                 .orElse(false);
     }
 
+    public void reset(CloseReason reason) {
+        for (SurfaceAdapter adapter : adapters.values()) {
+            adapter.reset(reason);
+        }
+    }
+
     public void close(String uiId, CloseReason reason) {
         for (SurfaceAdapter adapter : adapters.values()) {
             adapter.close(uiId, reason);
