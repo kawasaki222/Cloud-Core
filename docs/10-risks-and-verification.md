@@ -156,7 +156,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - U2、U3、U12、U13、U28–U31：需要真实客户端/服务端和显卡环境。
 - NanoVG/FBO：`NanoVgBackend.available()` 仍为 `false`，`FboCompositor` 未实现，
   不得把骨架当成渲染验证。
-- UI_DEFINITION 已能解码/校验并打开最小 `CloudScreen`；元素绘制、NanoVG/FBO、混入替换仍未实现。
+- UI_DEFINITION 已能解码/校验并打开 `CloudScreen`；原生 RenderList 已支持 panel/label/button/
+  text_field/checkbox/progress；image/item_icon、NanoVG/FBO、裁剪/滚动、混入替换仍未实现。
 
 ## 3. 风险登记
 
