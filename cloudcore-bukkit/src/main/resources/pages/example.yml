@@ -158,6 +158,22 @@ elements:
         - action: command
           command: "say 来自 Cloud Core 页面"
   - type: button
+    id: delayed_button
+    x: 232
+    y: 176
+    width: 72
+    height: 20
+    text: "延迟2秒"
+    style:
+      background: "#FF3C9F6E"
+    on:
+      click:
+        - action: delay
+          ticks: 40
+          then:
+            - action: message
+              value: "两秒后到达"
+  - type: button
     id: close_button
     x: 232
     y: 96
