@@ -28,6 +28,18 @@ public interface CloudCoreApi {
     OpenResult open(Player player, String pageId, OpenOptions options);
 
     /**
+     * Opens a page built in code with {@link com.cloudcore.api.document.PageBuilder}. The
+     * document, its action table and its state go through the same send path as a YAML page;
+     * because there is no file to recompile, {@code set_state} cannot refresh such a page —
+     * rebuild and open it again instead.
+     */
+    OpenResult open(Player player, com.cloudcore.api.page.PageLoader.CompiledPage page);
+
+    /** Opens a code-built page with explicit options. */
+    OpenResult open(Player player, com.cloudcore.api.page.PageLoader.CompiledPage page,
+            OpenOptions options);
+
+    /**
      * Registers a server-side action under {@code name}. Pages refer to it as
      * {@code action: <name>} and may pass arbitrary parameters, which arrive in {@code args}.
      * Names are case-insensitive and must match {@code [a-z0-9_.-]{1,64}}.

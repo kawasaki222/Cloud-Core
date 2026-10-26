@@ -52,24 +52,28 @@ OpenResult result = api.open(player, "rpg_shop", options);
 
 ## 4. 代码构造页面
 
-计划中（M8）。`PageBuilder`/`UiDocumentBuilder` 提供 Java DSL，适合 RPG 动态页面：
+已实现。`PageBuilder`（`cloudcore-api` 的 `com.cloudcore.api.document`）产出与 YAML 编译结果同类的
+`CompiledPage`：同一份文档模型、同一张动作表、同一个校验器，发送路径也相同。
 
 ```java
-UiDocument doc = PageBuilder.create("rpg_shop")
-        .surface(SurfaceType.CUSTOM_SCREEN)
-        .size(320, 180)
+CompiledPage page = PageBuilder.create("rpg_shop", SurfaceType.CUSTOM_SCREEN, 240, 120)
         .theme("dark")
-        .panel("root", 0, 0, 320, 180, "tx:panel")
-        .label("title", 12, 10, "&6RPG 商店")
-        .button("buy", 12, 40, 96, 20, "购买", "rpg_buy")
+        .panel("root", 0, 0, 240, 120, "#CC202830")
+        .label("title", 12, 10, "RPG 商店")
+        .button("buy", 12, 40, 100, 20, "购买", "rpg_buy", Map.of("item", "minecraft:diamond"))
         .itemIcon("icon", 120, 40, "minecraft:diamond", 1)
         .build();
+
+OpenResult result = api.open(player, page);
 ```
 
-- 元素 id、事件名、actionId 由 builder 分配；重复 id 抛 `IllegalArgumentException`。
-- 样式令牌与 YAML 共用。
-- 结果文档走同一套校验器；不合法直接抛异常，不发送。
-- 动态内容优先用代码构造；固定页面用 YAML。
+- 方法：`panel`、`label`、`button`（带动作与参数）、`itemIcon`、`on(elementId, event, action[, params])`、
+  `attribute(elementId, key, value)`（写任意元素属性，如 `nine_slice`、`checked`）、`state`、`theme`。
+- 同一个事件绑定两次会追加动作（等价 YAML 的 `on: {click: [...]}`）。
+- 重复 id、未知元素 id、非正尺寸、校验失败都会抛 `IllegalArgumentException`，不会发出坏文档。
+- 只支持普通属性：`url:` 贴图是 YAML 编译期的功能，代码页请用
+  `local:`/`pack:`/`builtin:`/`inline:` 或颜色。
+- 代码页没有文件可重编译，所以 `set_state` 不会刷新它；需要新内容时重新 `build()` 并 `open`。
 
 ## 5. 注册动作
 

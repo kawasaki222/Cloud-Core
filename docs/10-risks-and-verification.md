@@ -297,7 +297,13 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `width: 200`、`height: 8`、`background: #FF1A2028`、`border: #FF000000`、
   `fill: local:test/red.png`（该测试 PNG 实为绿色）、`tint_from_event: false` 绘制：
   界面显示 200×8 的深色条与贴图填充，标题仍由原版绘制（`boss-styled3.png`）；
-  演示条 200 tick 后由 `sendBoss` 的定时任务自行移除。
+  `sendBoss` 现在把进度设为 0.55，贴图填充按 55% 裁剪（`boss-partial.png`），
+  演示条 200 tick 后由定时任务自行移除。
+- **代码构造页面已核实**：测试插件用 `PageBuilder` 构建 `probe_built`（面板、两个标签、
+  两个按钮），`api.open(player, page)` 返回 `OPENED`，界面正常显示（`built-page.png`）；
+  点“Run addon”后日志 `EVENT ui=probe_built element=run actions=1` 与
+  `probe_grant ran ui=probe_built element=run args={amount=5}` —— 代码页的动作表按 uiId 正确接线。
+  `PageBuilderTest` 覆盖元素、动作/参数、同事件多动作、state、任意属性与错误输入。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
@@ -382,7 +388,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，179 个测试 / 37 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，185 个测试 / 38 个测试类，0 失败）。
 
 仍未验证：
 

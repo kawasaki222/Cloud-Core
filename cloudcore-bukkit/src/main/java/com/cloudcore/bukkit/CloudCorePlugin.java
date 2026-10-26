@@ -1379,9 +1379,20 @@ public final class CloudCorePlugin extends JavaPlugin
         UiDocument document = compiled.document();
         compiledPages.put(document.id(), compiled);
         session.pageNames.put(document.id(), name);
+        sendCompiledPage(player, session, name, compiled);
+    }
+
+    /**
+     * Sends {@code UI_OPEN} plus the document for an already compiled page. Used by the YAML
+     * path (where {@code name} is the file name) and by code-built pages from the addon API.
+     * The document is resent on the next tick so the client has installed its play handler.
+     */
+    private void sendCompiledPage(Player player, Session session, String surfaceKey,
+            com.cloudcore.api.page.PageLoader.CompiledPage compiled) {
+        UiDocument document = compiled.document();
         if (document.surface() != SurfaceType.CUSTOM_SCREEN) {
-            getLogger().warning("Page '" + name + "' uses surface " + document.surface()
-                    + "; /cloudcore page only opens custom screens");
+            getLogger().warning("Page '" + document.id() + "' uses surface " + document.surface()
+                    + "; only custom screens open this way");
             return;
         }
         document = expandPlaceholders(player, document);
@@ -1391,7 +1402,7 @@ public final class CloudCorePlugin extends JavaPlugin
         session.lastUiId = uiId;
         int revision = session.pageRevisions.merge(uiId, 1, Integer::sum);
         UiOpen open = new UiOpen(uiId, revision, SurfaceType.CUSTOM_SCREEN, BindMode.NONE, token,
-                RenderMode.SCREEN, 0, name);
+                RenderMode.SCREEN, 0, surfaceKey);
         sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
                 UiCodec.encodeOpen(open, Limits.S2C)));
         sendTextureRefs(player, compiled);
@@ -1404,7 +1415,7 @@ public final class CloudCorePlugin extends JavaPlugin
                         UiCodec.encodeDefinition(definition, Limits.S2C)));
             }
         }, 1L);
-        getLogger().info("Sent page '" + name + "' to " + player.getName()
+        getLogger().info("Sent page '" + surfaceKey + "' to " + player.getName()
                 + " elements=" + document.elements().size() + " bytes=" + json.length());
     }
 
@@ -1854,6 +1865,43 @@ public final class CloudCorePlugin extends JavaPlugin
                 return com.cloudcore.bukkit.api.OpenResult.UNSUPPORTED_SURFACE;
             }
             sendPage(player, pageId);
+            return com.cloudcore.bukkit.api.OpenResult.OPENED;
+        }
+
+        @Override
+        public com.cloudcore.bukkit.api.OpenResult open(Player player,
+                com.cloudcore.api.page.PageLoader.CompiledPage page) {
+            return open(player, page, com.cloudcore.bukkit.api.OpenOptions.defaults());
+        }
+
+        @Override
+        public com.cloudcore.bukkit.api.OpenResult open(Player player,
+                com.cloudcore.api.page.PageLoader.CompiledPage page,
+                com.cloudcore.bukkit.api.OpenOptions options) {
+            java.util.Objects.requireNonNull(player, "player");
+            java.util.Objects.requireNonNull(page, "page");
+            com.cloudcore.bukkit.api.OpenOptions effective = options == null
+                    ? com.cloudcore.bukkit.api.OpenOptions.defaults() : options;
+            if (!getServer().isPrimaryThread()) {
+                getServer().getScheduler().runTask(CloudCorePlugin.this,
+                        () -> open(player, page, effective));
+                return com.cloudcore.bukkit.api.OpenResult.SCHEDULED;
+            }
+            if (!isModded(player)) {
+                return com.cloudcore.bukkit.api.OpenResult.NOT_MODDED;
+            }
+            SurfaceType surface = effective.surface() == null
+                    ? page.document().surface() : effective.surface();
+            if (surface != SurfaceType.CUSTOM_SCREEN) {
+                getLogger().warning("API open: code-built page '" + page.document().id()
+                        + "' requests surface " + surface + "; v1 opens custom screens only");
+                return com.cloudcore.bukkit.api.OpenResult.UNSUPPORTED_SURFACE;
+            }
+            Session session = sessions.computeIfAbsent(player.getUniqueId(),
+                    ignored -> new Session());
+            // The action table must be reachable from the event handler by uiId.
+            compiledPages.put(page.document().id(), page);
+            sendCompiledPage(player, session, page.document().id(), page);
             return com.cloudcore.bukkit.api.OpenResult.OPENED;
         }
 
