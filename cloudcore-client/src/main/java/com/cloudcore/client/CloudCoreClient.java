@@ -356,6 +356,10 @@ public final class CloudCoreClient implements ClientModInitializer {
     }
 
     public static void onScreenChanged(net.minecraft.client.gui.screens.Screen screen) {
+        if (screen instanceof com.cloudcore.client.screen.CloudScreen
+                && Boolean.getBoolean("cloudcore.nanovg.spike")) {
+            com.cloudcore.client.render.NanoVgSpike.runOnce();
+        }
         if (screen == null) {
             LOGGER.debug("Screen changed: null");
         } else if (screen instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?>

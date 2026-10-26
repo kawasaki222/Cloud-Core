@@ -30,6 +30,8 @@
   字体数量、资源根目录、日志级别。
 - `-Dcloudcore.diagnostics=true` 把界面切换与滚轮观察日志提升到 INFO；默认只在 DEBUG 输出，
   避免正常游戏刷屏。U2/U12 复现时使用该开关。
+- `-Dcloudcore.nanovg.spike=true` 在首次打开 `CloudScreen` 时运行 Windows NanoVG FBO spike，
+  写入 `NanoVG spike: fbo texture=... pixel=...`。
 
 格式：
 

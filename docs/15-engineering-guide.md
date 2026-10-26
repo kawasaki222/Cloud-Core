@@ -86,7 +86,8 @@ cloud-core/
 规则：
 
 - 版本只写在 `gradle/libs.versions.toml`，模块不硬编码。
-- LWJGL 核心模块由 Minecraft 提供；只引入 `lwjgl-nanovg` 和对应 natives，避免重复类/原生库。
+- LWJGL 核心模块由 Minecraft 提供；只引入 `lwjgl-nanovg:3.3.3` 和对应 natives，避免重复类/原生库。
+  客户端 jar 会合并这些类和原生库，运行时仍使用 Minecraft 提供的 LWJGL 核心。
 - 发布前跑依赖许可证审计；新增依赖必须在 `15` 或 `10` 记录理由。
 
 ## 3. Gradle 配置要点

@@ -127,8 +127,8 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 | U25 | Minecraft 客户端允许 `java.net.http.HttpClient` 异步下载且不触发线程/类加载问题 | 直连模式 | 最小客户端 spike | 使用独立低优先级线程池 |
 | U26 | `EditBox` 的光标/选区颜色可被安全覆盖，且不影响 IME | 输入框换皮 | 编译 + IME 测试 | 只换外框，光标/选区保持原版 |
 | U27 | `renderItemDecorations(Font, ...)` 可用于自定义数量字体 | 物品显示 | 编译 + 视觉 | 数量字体保持原版 |
-| U28 | `lwjgl-nanovg` 版本与 1.21.11 自带 LWJGL 对齐，三平台原生库可加载 | NanoVG 默认 | 三平台初始化测试 | 回退 `NativeBackend` |
-| U29 | FBO 颜色纹理可包装成 `AbstractTexture` 并通过 `GuiGraphics.blit` 合成 | 渲染链路 | 编译 + 运行 | 自定义 `RenderPipeline` 合成 |
+| U28 | `lwjgl-nanovg` 版本与 1.21.11 自带 LWJGL 对齐，三平台原生库可加载 | NanoVG 默认 | Windows x64 已验证；Linux/macOS 待测 | 回退 `NativeBackend` |
+| U29 | FBO 颜色纹理可包装成 `AbstractTexture` 并通过 `GuiGraphics.blit` 合成 | 渲染链路 | NanoVG FBO 创建/绘制/readback 已验证；屏幕合成待做 | 自定义 `RenderPipeline` 合成 |
 | U30 | NanoVG 预乘 alpha 与 MC GUI 混合函数匹配 | 半透明边缘 | 视觉对比 | shader 反预乘或调整混合 |
 | U31 | NanoVG FBO 渲染不会破坏 1.21.6 提取/绘制状态 | 渲染稳定性 | 运行 + 截图 | 在独立 pass/回退原生 |
 | U32 | TTF/OTF 从资源包加载、CJK 覆盖与 NanoVG 度量符合布局 | 字体/布局 | 字体样例 + 中文测试 | 内置字体/原版 `Font` |
@@ -177,7 +177,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   并记录 `UI_CLOSE ui=cloudcore_demo reason=0`；服务端日志显示对应 S2C 帧。
 - **DIAGNOSTIC 链路已核实**：`/cloudcore diagnostic` 下发 `CC-PROBE-001`，客户端文件日志写入
   `ERROR [cloudcore] [CC-PROBE-001] scope=probe trace=...`。
-- `GuiGraphics#blit` 的 RenderPipeline 重载已静态核对；FBO 合成仍需实现。
+- **U28/U29 部分核实（Windows x64）**：`NanoVgSpike` 加载 `lwjgl-nanovg:3.3.3`，创建 GL3
+  context 与 64×64 FBO，绘制红色矩形并 `glReadPixels` 得到 `(255,0,0,255)`；FBO texture=719。
+  客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）；尚未把该 FBO
+  通过 `AbstractTexture`/`GuiGraphics.blit` 合成到屏幕，也尚未在 Linux/macOS 运行。
+- `GuiGraphics#blit` 的 RenderPipeline 重载已静态核对；FBO 屏幕合成仍需实现。
 - **U20 已核实**：Fabric API 0.141.3 能在 officialMojangMappings 下编译并启动。
 - **U10 已核实并规避**：Fabric `canSend()` 只反映服务端声明的通道；Paper 不保证声明，
   发送路径不再用 `canSend()` 作为门控。
@@ -192,8 +196,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 
 仍未验证：
 
-- NanoVG/FBO：`NanoVgBackend.available()` 仍为 `false`，`FboCompositor` 未实现。
-- U28–U31：NanoVG 三平台原生库、FBO 合成、预乘 alpha、1.21.6 提取/绘制状态。
+- NanoVG/FBO：初始化/FBO 绘制已在 Windows 验证；`NanoVgBackend.available()` 仍为 `false`，
+  `FboCompositor` 未实现，屏幕合成与生产打包未完成。
+- U28–U31：Linux/macOS、FBO 屏幕合成、预乘 alpha、1.21.6 提取/绘制状态。
 - image/item_icon、文本整形、裁剪/滚动、真实布局容器、其余五类面板的实际替换。
 - 当前 screen/scroll/tooltip/boss 混入只是诊断探针，尚未替换绘制或输入。
 - 前向兼容缺口：`UiCodec` 遇到未知 `surfaceId` / `BindMode` / `RenderMode` 会拒绝整帧；

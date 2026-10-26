@@ -88,6 +88,8 @@ NanoVG，不作为默认。
 - 依赖 `org.lwjgl:lwjgl-nanovg` 与 Windows/Linux/macOS natives。
 - LWJGL 版本必须与 Minecraft 自带版本对齐，避免重复类和原生库冲突。
 - 原生库从模组 jar 解压到临时目录；加载失败记录一次并回退。
+- 客户端构建已把 `lwjgl-nanovg:3.3.3` 类与 Windows/Linux/macOS 原生库并入 jar；
+  Windows x64 的 context + FBO 绘制/readback 已通过，Linux/macOS 尚未运行验证。
 - 三个平台都要跑初始化与合成测试，尤其是 macOS 的 GL 上下文限制。
 
 ## 7. 测试矩阵

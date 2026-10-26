@@ -113,7 +113,9 @@ docs/
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
 - [ ] M2 完整渲染：NanoVG/FBO、image/item_icon、裁剪/滚动、混入
 - [ ] 协议前向兼容：未知 surface/bind/render id 保留原始值并回 UI_READY(state=4)
-- [ ] M0 渲染 spike：NanoVG 三平台/FBO 合成/预乘 alpha
+- [x] M0 NanoVG 初始化 + FBO 绘制 + readback（Windows x64，`cloudcore.nanovg.spike`）
+- [x] NanoVG 类与 Windows/Linux/macOS 原生库并入客户端 jar
+- [ ] M0 渲染：FBO 屏幕合成/预乘 alpha/Linux/macOS 运行验证
 
 剩余的是实现前的验证项和待决问题，不是文档缺口。
 
@@ -123,7 +125,8 @@ docs/
    - 接近 1 MiB 的真机分片与超时/乱序注入。
    - 断线/重连后确认分片组与 pending UI 会话被清理。
 2. **M0 的 spike**（各半天到一天）：
-   - U28–U31：`lwjgl-nanovg` 三平台加载、FBO 包装合成、预乘 alpha、1.21.6 提取/绘制状态。
+   - U29/U30/U31：把已通过的 Windows FBO spike 包装成 `AbstractTexture` 并用 `GuiGraphics.blit`
+     合成到屏幕，验证预乘 alpha 与 1.21.6 提取/绘制状态；补 Linux/macOS。
    - 先做一个纯色面板 + 一张 TTF 文本的 NanoVG 合成 spike，确认没有色差和状态泄漏。
 3. **M2 实际渲染**：
    - 补齐 `image`/`item_icon`、text shaping、裁剪、scroll 和真实布局容器。

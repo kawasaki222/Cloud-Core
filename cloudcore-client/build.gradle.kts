@@ -13,6 +13,15 @@ dependencies {
 
     implementation(project(":cloudcore-api"))
     implementation(project(":cloudcore-protocol"))
+
+    val lwjglVersion = libs.versions.lwjgl.get()
+    implementation("org.lwjgl:lwjgl-nanovg:$lwjglVersion") {
+        exclude(group = "org.lwjgl", module = "lwjgl")
+    }
+    runtimeOnly("org.lwjgl:lwjgl-nanovg:$lwjglVersion:natives-windows")
+    runtimeOnly("org.lwjgl:lwjgl-nanovg:$lwjglVersion:natives-linux")
+    runtimeOnly("org.lwjgl:lwjgl-nanovg:$lwjglVersion:natives-macos")
+    runtimeOnly("org.lwjgl:lwjgl-nanovg:$lwjglVersion:natives-macos-arm64")
 }
 
 tasks.processResources {
@@ -30,4 +39,17 @@ val protocolMain = project(":cloudcore-protocol").extensions.getByType<SourceSet
 tasks.jar {
     from(apiMain.output)
     from(protocolMain.output)
+}
+
+// Fabric does not resolve Maven runtime dependencies. Bundle the NanoVG classes and the
+// three platform natives so a distributed mod jar can initialize the renderer offline.
+val nanoVgArtifacts = configurations.runtimeClasspath.get()
+        .filter { it.name.startsWith("lwjgl-nanovg-${libs.versions.lwjgl.get()}") }
+tasks.jar {
+    nanoVgArtifacts.forEach { artifact ->
+        from(zipTree(artifact)) {
+            exclude("META-INF/**")
+            exclude("module-info.class")
+        }
+    }
 }
