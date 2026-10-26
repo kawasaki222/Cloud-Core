@@ -3,9 +3,11 @@
 目标是让商业 RPG 团队用自己的插件直接构造页面、注册动作、读取状态、扩展面板，而不依赖内部类或
 YAML 反射。公共 API 是合同：1.x 不做破坏性变更。
 
-当前实现状态：`open`（按页面 id）、`registerActionHandler` / `unregisterActionHandler`、
-`isModded` 已实现并在第二个插件里真机验证（`10-risks-and-verification.md`）；
-`PageBuilder`（代码构造页面）、`PlaceholderResolver`、`PageProvider` 与 testkit 计划中。
+当前实现状态：`open`（按页面 id 或代码页）、`registerActionHandler` / `unregisterActionHandler`、
+`registerPlaceholderResolver` / `unregisterPlaceholderResolver`、
+`registerPageProvider` / `unregisterPageProvider`、`isModded` 已实现并在第二个插件里真机验证
+（`10-risks-and-verification.md`）；`PageBuilder` 已在 `cloudcore-api`；
+`SurfaceProvider`、`setState`/`getState`、事件监听与 testkit 计划中。
 
 ## 1. 稳定面与内部面
 
@@ -119,7 +121,7 @@ api.registerActionHandler("rpg_buy", new ActionHandler() {
 
 ## 6. 注册占位符
 
-计划中（M8）。目标形态：
+已实现。`%namespace_params%` 先交给注册的解析器，未命中再交给 PlaceholderAPI：
 
 ```java
 api.registerPlaceholderResolver("rpg", (player, params) -> switch (params) {
@@ -128,20 +130,30 @@ api.registerPlaceholderResolver("rpg", (player, params) -> switch (params) {
 });
 ```
 
-- 命名空间匹配 `[a-z0-9_]{1,16}`。
-- 返回 `null` 表示不处理，交回 PlaceholderAPI/其他解析器。
-- 默认主线程调用；声明线程安全的解析器可加入异步白名单（服务端配置）。
+- 命名空间匹配 `[a-z0-9_]{1,16}`，大小写不敏感；重复注册抛 `IllegalArgumentException`。
+- 令牌按第一个 `_` 拆分：`%rpg_level%` → 命名空间 `rpg`、参数 `level`；
+  `%rpg%` → 参数为空串。令牌本身不合法（空格、横线、超长）时跳过。
+- 返回 `null` 表示不处理，令牌交给下一个解析器/PlaceholderAPI，最终仍未解析则原样显示。
+- 解析器抛异常只记一次警告，令牌按原样发送。
+- 主线程、发送/刷新时调用；`placeholders.enabled: false` 只关闭 PlaceholderAPI 这一段，
+  自定义解析器仍然生效。
 
 ## 7. 动态页面提供器
 
+已实现。`open(player, "rpg_shop")` 会先查页面提供器，命中就按玩家现场构建：
+
 ```java
-api.registerPageProvider("rpg_shop", player -> buildShopFor(player));
+api.registerPageProvider("rpg_shop", player -> PageBuilder
+        .create("rpg_shop", SurfaceType.CUSTOM_SCREEN, 240, 120)
+        .panel("root", 0, 0, 240, 120, "#CC202830")
+        .label("hi", 12, 10, "hello %rpg_name%")
+        .build());
 ```
 
-- 玩家打开页面时调用；返回 `UiDocument` 或 `null`。
-- 适合按玩家等级/任务生成不同布局。
-- 结果有缓存，按修订号失效；不要每次返回新对象导致无意义重编译。
-- 抛异常 → 返回打开失败并写诊断日志。
+- 提供器优先于同名 YAML 文件；返回 `null` 或抛异常 → `OpenResult.FAILED` 并写日志。
+- 每次打开都会调用；缓存与否由提供器自己决定。
+- 构建出的页面与 `PageBuilder` 页面完全相同：动作表、占位符展开、revision 计数走同一路径；
+  没有文件可重编译，`set_state` 不会刷新它。
 
 ## 8. 自定义面板
 

@@ -304,6 +304,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   点“Run addon”后日志 `EVENT ui=probe_built element=run actions=1` 与
   `probe_grant ran ui=probe_built element=run args={amount=5}` —— 代码页的动作表按 uiId 正确接线。
   `PageBuilderTest` 覆盖元素、动作/参数、同事件多动作、state、任意属性与错误输入。
+- **占位符解析器与页面提供器已核实**：测试插件注册命名空间 `probe`
+  （`%probe_name%`、`%probe_level%`）与页面提供器 `probe_dynamic`；`/apiprobe <玩家> dynamic`
+  返回 `OPENED`，界面显示 `hello Player338`、`level 0`（`provider-page2.png`），
+  证明自定义解析器先于 PlaceholderAPI 生效、提供器构建的代码页可正常打开。
+  令牌规则由 `PlaceholderTokenTest` 覆盖（拆分、非法令牌、命名空间长度）。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
@@ -388,7 +393,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，185 个测试 / 38 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，188 个测试 / 39 个测试类，0 失败）。
 
 仍未验证：
 

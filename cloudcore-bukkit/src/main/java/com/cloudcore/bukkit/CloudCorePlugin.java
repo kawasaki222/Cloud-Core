@@ -80,7 +80,11 @@ public final class CloudCorePlugin extends JavaPlugin
     /** Addon actions registered through {@link com.cloudcore.bukkit.api.CloudCoreApi}. */
     private final Map<String, com.cloudcore.bukkit.api.ActionHandler> actionHandlers =
             new ConcurrentHashMap<>();
-    private final Placeholders placeholders = new Placeholders(this);
+    private final Map<String, com.cloudcore.bukkit.api.PlaceholderResolver> placeholderResolvers =
+            new ConcurrentHashMap<>();
+    private final Map<String, com.cloudcore.bukkit.api.PageProvider> pageProviders =
+            new ConcurrentHashMap<>();
+    private final Placeholders placeholders = new Placeholders(this, placeholderResolvers);
     private static final Set<String> BUILT_IN_ACTIONS = Set.of(
             "message", "close_ui", "close", "set_state", "if", "delay", "command");
     private final com.cloudcore.bukkit.api.CloudCoreApi api = new Api();
@@ -149,6 +153,8 @@ public final class CloudCorePlugin extends JavaPlugin
     public void onDisable() {
         getServer().getServicesManager().unregisterAll(this);
         actionHandlers.clear();
+        placeholderResolvers.clear();
+        pageProviders.clear();
         if (pageWatcher != null) {
             pageWatcher.close();
             pageWatcher = null;
@@ -408,12 +414,10 @@ public final class CloudCorePlugin extends JavaPlugin
         return false;
     }
 
-    /** Applies PlaceholderAPI to the visible text when enabled in the config. */
+    /** Applies addon resolvers and PlaceholderAPI to the visible text. */
     private UiDocument expandPlaceholders(Player player, UiDocument document) {
-        if (!getConfig().getBoolean("placeholders.enabled", true)) {
-            return document;
-        }
-        return placeholders.expand(player, document);
+        return placeholders.expand(player, document,
+                getConfig().getBoolean("placeholders.enabled", true));
     }
 
     /** Recompiles the page with the current state and sends it as a document update. */
@@ -1840,6 +1844,21 @@ public final class CloudCorePlugin extends JavaPlugin
             if (!isModded(player)) {
                 return com.cloudcore.bukkit.api.OpenResult.NOT_MODDED;
             }
+            com.cloudcore.bukkit.api.PageProvider provider = pageProviders.get(pageId);
+            if (provider != null) {
+                try {
+                    com.cloudcore.api.page.PageLoader.CompiledPage built = provider.build(player);
+                    if (built == null) {
+                        getLogger().warning("Page provider '" + pageId + "' returned null");
+                        return com.cloudcore.bukkit.api.OpenResult.FAILED;
+                    }
+                    return open(player, built, effective);
+                } catch (Exception exception) {
+                    getLogger().log(Level.WARNING, "Page provider '" + pageId + "' failed",
+                            exception);
+                    return com.cloudcore.bukkit.api.OpenResult.FAILED;
+                }
+            }
             java.nio.file.Path pageFile = resolvePageFile(pageId);
             if (pageFile == null) {
                 getLogger().warning("API open: unknown page '" + pageId + "'");
@@ -1928,6 +1947,59 @@ public final class CloudCorePlugin extends JavaPlugin
                     com.cloudcore.server.action.ActionNames.normalise(name)) != null;
             if (removed) {
                 getLogger().info("Unregistered action handler '" + name + "'");
+            }
+            return removed;
+        }
+
+        @Override
+        public void registerPlaceholderResolver(String namespace,
+                com.cloudcore.bukkit.api.PlaceholderResolver resolver) {
+            java.util.Objects.requireNonNull(resolver, "resolver");
+            String key = namespace == null ? ""
+                    : namespace.trim().toLowerCase(java.util.Locale.ROOT);
+            if (!com.cloudcore.server.placeholder.PlaceholderToken.isValidNamespace(key)) {
+                throw new IllegalArgumentException("Invalid placeholder namespace '" + namespace
+                        + "': expected [a-z0-9_]{1,16}");
+            }
+            if (placeholderResolvers.putIfAbsent(key, resolver) != null) {
+                throw new IllegalArgumentException("Placeholder namespace '" + key
+                        + "' is registered");
+            }
+            getLogger().info("Registered placeholder resolver '" + key + "'");
+        }
+
+        @Override
+        public boolean unregisterPlaceholderResolver(String namespace) {
+            if (namespace == null) {
+                return false;
+            }
+            String key = namespace.trim().toLowerCase(java.util.Locale.ROOT);
+            boolean removed = placeholderResolvers.remove(key) != null;
+            if (removed) {
+                getLogger().info("Unregistered placeholder resolver '" + key + "'");
+            }
+            return removed;
+        }
+
+        @Override
+        public void registerPageProvider(String pageId,
+                com.cloudcore.bukkit.api.PageProvider provider) {
+            java.util.Objects.requireNonNull(provider, "provider");
+            if (pageId == null || pageId.isBlank() || pageId.length() > 64) {
+                throw new IllegalArgumentException("Invalid page id '" + pageId + "'");
+            }
+            if (pageProviders.putIfAbsent(pageId, provider) != null) {
+                throw new IllegalArgumentException("Page provider '" + pageId
+                        + "' is registered");
+            }
+            getLogger().info("Registered page provider '" + pageId + "'");
+        }
+
+        @Override
+        public boolean unregisterPageProvider(String pageId) {
+            boolean removed = pageId != null && pageProviders.remove(pageId) != null;
+            if (removed) {
+                getLogger().info("Unregistered page provider '" + pageId + "'");
             }
             return removed;
         }

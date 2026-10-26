@@ -9,12 +9,12 @@
 
 **M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集已完成并在真机联调。**
 
-- 构建：`./gradlew build` 通过（JDK 21，185 个测试 / 38 个测试类，0 失败）。
+- 构建：`./gradlew build` 通过（JDK 21，188 个测试 / 39 个测试类，0 失败）。
 - 协议：信封、DEFLATE、分片/重组、HELLO/HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED、
   `EVENT`/`EVENT_RESULT`、`TEXTURE_REF`、`DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
   真机验证：830 KB 文档拆成 27 片重组、断线/重连清理、1,000,000 随机帧解码。
 - 附属插件 API：`CloudCoreApi`（`open`/`registerActionHandler`/`isModded`，经 `ServicesManager`），
-  第二个插件注册自定义动作、权限校验与错误返回已在真机验证；`PageBuilder` 可在代码里构造页面
+  第二个插件注册自定义动作、占位符解析器、页面提供器与代码页，权限校验与错误返回已在真机验证；`PageBuilder` 可在代码里构造页面
   再 `open`，动作表与 YAML 页面走同一条发送路径。
 - 文本里的 `%占位符%` 在发送/刷新时由 PlaceholderAPI 展开（软依赖，可关闭）。
 - 服务端：Paper 插件（自包含 jar）、`managed`/`readonly`/`passthrough` 点击策略、

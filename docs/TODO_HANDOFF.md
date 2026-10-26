@@ -14,7 +14,7 @@
   `set_state` 重编译后推送更高 revision。
 - 客户端：六类面板 + RenderList（文字/富文本/图片/九宫格/背景贴图/裁剪/滚动/悬停/物品图标/GIF/URL 贴图）；
   NanoVG 后端与 FBO 合成（opt-in）；客户端日志与诊断码。
-- 构建：`./gradlew build` 通过，185 个测试 / 38 个类，0 失败。
+- 构建：`./gradlew build` 通过，188 个测试 / 39 个类，0 失败。
 
 ## 已有内容
 
@@ -124,7 +124,9 @@ docs/
       `ServicesManager`（第二个插件真机验证，含 SCHEDULED / UNKNOWN_PAGE / 权限拒绝）
 - [x] 内置动作 `permission:` 参数；缺权限拒绝整次点击并记日志
 - [x] `PageBuilder` 代码构造页面 + `api.open(player, CompiledPage)`（第二个插件真机验证）
-- [ ] 附属 API 剩余：`PlaceholderResolver`、`PageProvider`、testkit
+- [x] `PlaceholderResolver`：`%ns_params%` 自定义解析器（先于 PlaceholderAPI，真机验证）
+- [x] `PageProvider`：`open(player, id)` 现场构建页面（真机验证）
+- [ ] 附属 API 剩余：`SurfaceProvider`、`setState`/`getState`、事件监听、testkit
 - [x] `scroll` 事件回传：滚轮后上报绝对偏移，`scroll_y` 由状态驱动（真机验证 + 单测 `UiElementsTest`）
 - [x] `hover_enter` / `hover_leave`：跨边界各一次，仅对声明了事件的元素（真机验证）
 - [x] `set_state` 等值保护：写入相同值不重编译推送（避免悬停/滚动到边界时抖动）

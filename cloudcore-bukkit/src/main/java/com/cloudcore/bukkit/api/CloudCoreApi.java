@@ -55,6 +55,29 @@ public interface CloudCoreApi {
      */
     boolean unregisterActionHandler(String name);
 
+    /**
+     * Resolves {@code %namespace_params%} tokens in page text. The namespace is
+     * {@code [a-z0-9_]{1,16}} and case-insensitive; custom resolvers run before
+     * PlaceholderAPI, so a namespace may deliberately shadow an expansion.
+     *
+     * @throws IllegalArgumentException for an invalid or already registered namespace
+     */
+    void registerPlaceholderResolver(String namespace, PlaceholderResolver resolver);
+
+    /** @return true when a resolver was removed */
+    boolean unregisterPlaceholderResolver(String namespace);
+
+    /**
+     * Serves {@link #open(Player, String)} for a page id with a page built on demand. The
+     * provider wins over a YAML file with the same id.
+     *
+     * @throws IllegalArgumentException for an invalid or already registered page id
+     */
+    void registerPageProvider(String pageId, PageProvider provider);
+
+    /** @return true when a provider was removed */
+    boolean unregisterPageProvider(String pageId);
+
     /** @return true when the player's client completed the Cloud Core handshake */
     boolean isModded(Player player);
 
