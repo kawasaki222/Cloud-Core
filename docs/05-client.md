@@ -436,7 +436,7 @@ interface RenderBackend {
   仍由 `super` 处理。
 - `padding` 用外层布局补偿原版内建的文本偏移。
 - 占位符由我们绘制（`setHint` 置空），这样颜色和字体可配；值非空或聚焦时隐藏。
-- `invalid` 来自 `ELEMENT_UPDATE`，切换 `border.invalid`。
+- `invalid` 今天来自文档属性（服务端 `set_state` 后重发文档）；`ELEMENT_UPDATE` 实现后同样可以推送，切换 `border.invalid`。
 - 清除按钮是独立点击区域，点击后清空并触发 `change`。
 - `sensitive: true` 时显示掩码，但 `getValue()` 仍是原文；提交时按文档声明发送。
 - `cursor_color` / `selection_color` 需要混入或重写渲染；不支持时回退原版并记录。

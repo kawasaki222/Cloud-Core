@@ -345,7 +345,8 @@ transport.send(player, UiPackets.openPersistent(session, SurfaceType.HUD, layerN
 transport.send(player, UiPackets.definition(session));
 ```
 
-HUD 文档不允许声明槽位。状态更新与普通会话一致，走 `ELEMENT_UPDATE`。
+HUD 文档不允许声明槽位。状态更新与普通会话一致：重编译并下发更高 revision 的完整文档
+（`ELEMENT_UPDATE` 增量计划中）。
 
 ### 7.4 Tooltip 面板
 
@@ -390,7 +391,8 @@ Boss 血条的 `surfaceKey` 是 16 进制 token，不是 Paper 的 `NamespacedKe
   `List`、`Map`。
 - 模板求值时先展开 `repeat`：根据 `source` 列表生成实例，再对每个实例求值。
 - 每个元素的已渲染属性保存在 `Map<String, Map<Property, WireValue>>`。
-- 每 tick 收集变化，合并成一个 `ELEMENT_UPDATE`；空差异不发。
+- 当前实现：变化后整页重编译，下发更高 revision 的完整文档；等值写入不发送（`set_state` 保护）。
+- 计划：每 tick 收集变化合并成一个 `ELEMENT_UPDATE`，空差异不发。
 - 实例数量变化时，v1 提升修订号并下发完整文档；后续动作引擎版本改为增量增删元素。
 - 客户端发送缓冲拥塞时丢弃更新；下一 tick 从权威状态重算，自动恢复。
 

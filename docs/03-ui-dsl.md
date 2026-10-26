@@ -733,7 +733,8 @@ elements:
 - 嵌套模板由内向外解析：`"${state.balance - ${entry.price}}"` 先变成
   `"${state.balance - 120}"`，运行期再算出数字。`repeat` 里给每个商品写同一个按钮模板就靠这个。
 
-属性变化以 `ELEMENT_UPDATE` 下发；遍历实例数量变化时提升修订号并下发完整文档。
+属性变化当前以**更高 revision 的完整 `UI_DEFINITION`** 下发（客户端替换界面）；
+只发送差异的 `ELEMENT_UPDATE` 已定义在 `02-protocol.md`，实现排在下一步。
 
 `state` 只存在于服务端；下发文档里没有 `state`，只有求值后的文本、布尔值和属性。
 
@@ -783,7 +784,7 @@ placeholders:
 
 - 默认**同步**：主线程批量解析，每玩家 2 ms/tick、全局 10 ms/tick 预算；超出的元素推迟到下一 tick。
 - 同一 tick 内相同原始字符串只解析一次，按玩家缓存。
-- 只把变化的值作为 `ELEMENT_UPDATE` 下发，不重发整份文档。
+- 只把变化的值作为 `ELEMENT_UPDATE` 下发，不重发整份文档（计划中；当前重发完整文档）。
 - `async: true` 是高级选项：解析放到工作线程，结果在下一 tick 应用到主线程。PlaceholderAPI 的扩展
   不保证线程安全，因此只有服务端 `placeholders.async-namespaces` 中显式列出的命名空间才允许异步；
   未声明的命名空间仍走同步。

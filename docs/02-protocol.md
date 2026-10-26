@@ -204,7 +204,7 @@ state=4)` 中回传；`cloudcore-api` 内部用 `SurfaceType.UNKNOWN` 表示，�
 | `0x10` | `UI_OPEN` | 见下 |
 | `0x11` | `UI_CLOSE` | `string uiId, u8 reason` |
 | `0x12` | `UI_DEFINITION` | `string uiId, varint revision, u8 encoding, bytes data` |
-| `0x14` | `ELEMENT_UPDATE` | `string uiId, varint revision, varint count, entry[count]` |
+| `0x14` | `ELEMENT_UPDATE` | `string uiId, varint revision, varint count, entry[count]`（**未实现**：只有常量，编解码与发送计划中） |
 | `0x15` | `EVENT_RESULT` | `varint requestId, u8 status, string message`（已实现，`EventResultCodec`） |
 | `0x16` | `NOTIFICATION` | `u8 kind, string title, string body, varint durationMs` |
 | `0x17` | `DIAGNOSTIC` | `u8 severity, string code, u32 traceId, string scope, string message, string detail` |
