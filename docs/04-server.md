@@ -274,7 +274,8 @@ actions:
 `/cloudcore page <名字> [玩家]`：从 `plugins/CloudCore/pages/<名字>/page.yml`（或 `<名字>.yml`）
 加载 YAML，经 `PageLoader` 组合与展开后下发 `UI_OPEN` + `UI_DEFINITION`。当前只接受
 `surface: custom_screen`；容器/HUD/Tooltip/Boss 仍走各自的演示与后续策略实现。
-插件首次启动会把示例页写到 `pages/example.yml`。
+插件首次启动会把示例页写到 `pages/`（`example`、`shop`、`progress_demo`、`scroll_demo`、
+`actions_demo`、`papi_demo`），已存在的文件不会被覆盖。
 
 ### 6.6 会话状态持久化
 

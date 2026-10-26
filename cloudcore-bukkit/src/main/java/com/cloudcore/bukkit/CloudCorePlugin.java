@@ -89,6 +89,9 @@ public final class CloudCorePlugin extends JavaPlugin
     private static final Set<String> BUILT_IN_ACTIONS = Set.of(
             "message", "close_ui", "close", "set_state", "if", "delay", "command",
             "open_page", "sound");
+    /** Demo pages copied into {@code plugins/CloudCore/pages/} when missing. */
+    private static final java.util.List<String> DEMO_PAGES = java.util.List.of(
+            "example", "shop", "progress_demo", "scroll_demo", "actions_demo", "papi_demo");
     private final com.cloudcore.bukkit.api.CloudCoreApi api = new Api();
 
     @Override
@@ -112,19 +115,23 @@ public final class CloudCorePlugin extends JavaPlugin
     }
 
     /**
-     * Creates {@code plugins/CloudCore/pages/} and drops the example page there once, so an
-     * admin can start from a working YAML file instead of the JSON demo documents.
+     * Creates {@code plugins/CloudCore/pages/} and drops the demo pages there once each, so an
+     * admin can start from working YAML instead of the JSON probe documents. Existing files are
+     * never overwritten: a server's own edits win.
      */
     private void preparePagesDirectory() {
         pagesRoot = getDataFolder().toPath().resolve("pages");
         try {
             java.nio.file.Files.createDirectories(pagesRoot);
-            java.nio.file.Path example = pagesRoot.resolve("example.yml");
-            if (java.nio.file.Files.notExists(example)) {
-                try (java.io.InputStream input = getResource("pages/example.yml")) {
+            for (String name : DEMO_PAGES) {
+                java.nio.file.Path file = pagesRoot.resolve(name + ".yml");
+                if (java.nio.file.Files.exists(file)) {
+                    continue;
+                }
+                try (java.io.InputStream input = getResource("pages/" + name + ".yml")) {
                     if (input != null) {
-                        java.nio.file.Files.copy(input, example);
-                        getLogger().info("Wrote example page to " + example);
+                        java.nio.file.Files.copy(input, file);
+                        getLogger().info("Wrote demo page " + file.getFileName() + " to " + pagesRoot);
                     }
                 }
             }

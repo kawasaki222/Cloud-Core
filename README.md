@@ -9,7 +9,7 @@
 
 **M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集已完成并在真机联调。**
 
-- 构建：`./gradlew build` 通过（JDK 21，202 个测试 / 40 个测试类，0 失败）。
+- 构建：`./gradlew build` 通过（JDK 21，208 个测试 / 42 个测试类，0 失败）。
 - 协议：信封、DEFLATE、分片/重组、HELLO/HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED、
   `EVENT`/`EVENT_RESULT`、`TEXTURE_REF`、`DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
   真机验证：830 KB 文档拆成 27 片重组、断线/重连清理、1,000,000 随机帧解码。
@@ -37,8 +37,21 @@
   SQLite/MySQL 持久化实现（当前是 JSON 文件存储）、滑块拖动与 `min`/`max`/`step`、文本 shaping。
   详见 `docs/TODO_HANDOFF.md` 与 `docs/10-risks-and-verification.md`。
 
-## 目标技术栈
+## 示例页面
 
+首次启动把下面这些页面写到 `plugins/CloudCore/pages/`（已存在的不覆盖），
+用 `/cloudcore page <名字> <玩家>` 打开：
+
+| 页面 | 演示内容 |
+| --- | --- |
+| `example` | `repeat`、模板与表达式、九宫格、滑块、输入框、复选框、图标按钮、URL 贴图、`if`/`else`、`delay`、`command` 闸门 |
+| `shop` | 商店：`repeat` + 行布局 + 物品图标 + 逐项价格与动作 + 余额条 + 状态持久化 |
+| `progress_demo` | 进度条四个方向、贴图背景/填充按进度裁剪、滑块驱动数值 |
+| `scroll_demo` | 滚动容器与 `scroll` 事件回传、`hover_enter`/`hover_leave`、数字过滤与 `sensitive` 掩码 |
+| `actions_demo` | `open_page` / `sound` / `close_ui`、`enabled: false` 禁用态、`right_click` |
+| `papi_demo` | PlaceholderAPI 展开与未安装扩展时令牌原样显示 |
+
+## 目标技术栈
 | 组件 | 版本 / 说明 |
 | --- | --- |
 | Minecraft | 1.21.11 |
