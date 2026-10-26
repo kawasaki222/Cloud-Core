@@ -452,6 +452,27 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
+    void disabledButtonIsDimmedAndIgnoredByHover() {
+        Map<String, Object> style = Map.of("background", "#FF111111",
+                "hover", Map.of("background", "#FF222222"));
+        UiElement enabled = new UiElement("a", "button", 0, 0, "60", "20",
+                true, true, 0, Map.of(), List.of(), Map.of("style", style, "text", "A"));
+        UiElement disabled = new UiElement("b", "button", 0, 30, "60", "20",
+                true, false, 0, Map.of(), List.of(), Map.of("style", style, "text", "B"));
+        UiDocument document = new UiDocument(1, "states", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(enabled, disabled));
+
+        List<RenderCommand> commands = DocumentRenderListBuilder
+                .buildAt(document, 200, 100, 0, 0, id -> 0, "b").commands();
+
+        assertEquals(0xFF111111, ((RenderCommand.FillRect) commands.get(0)).argb(),
+                "the enabled button is not hovered");
+        assertEquals(0x7F111111, ((RenderCommand.FillRect) commands.get(2)).argb(),
+                "a disabled button is dimmed and never uses its hover style");
+    }
+
+    @Test
     void resolvesPercentAndFillDimensions() {
         UiElement panel = new UiElement("root", "panel", 0, 0, "50%", "fill",
                 true, true, 0, Map.of(), List.of(), Map.of());

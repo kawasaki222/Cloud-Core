@@ -89,6 +89,11 @@ public final class ElementHitTester {
         if (deepest != null) {
             return deepest;
         }
+        // A disabled element is drawn dimmed and never receives events; its children are
+        // still searched above, so a disabled panel can hold enabled buttons.
+        if (!element.enabled()) {
+            return null;
+        }
         return element.events().containsKey(event) ? element : null;
     }
 

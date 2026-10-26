@@ -5,7 +5,7 @@ id: actions_demo
 surface: custom_screen
 title: "Actions Demo"
 theme: dark
-size: [220, 118]
+size: [220, 126]
 state: {}
 includes: []
 elements:
@@ -74,3 +74,21 @@ elements:
     on:
       click:
         - action: close_ui
+
+  # enabled: false → 变暗、失去悬停态、点击不触发（服务端收不到事件）
+  - type: button
+    id: sold_out
+    x: 12
+    y: 102
+    width: 196
+    height: 16
+    text: "已售罄（disabled，点不动）"
+    enabled: false
+    style:
+      background: "#FF6E3C3C"
+      hover:
+        background: "#FFB05C5C"
+    on:
+      click:
+        - action: message
+          value: "不应该收到这条消息"

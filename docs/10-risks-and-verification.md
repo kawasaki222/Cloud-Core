@@ -331,6 +331,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   仍按自身 x/y”的缺陷：新增 `ContainerCursor` 与 `Geometry`，渲染、命中、焦点/输入框共用同一套
   布局，`ElementHitTesterTest` 覆盖行内间隙与网格单元。`PageLoaderTest` 覆盖属性表达式、
   标签表达式与嵌套模板的由内向外解析。
+- **禁用态已核实**：`/cloudcore page actions_demo` 的“已售罄”按钮写 `enabled: false`，
+  画面上整体变暗（背景 `#FF6E3C3C` 以一半 alpha 绘制，编辑框不可编辑），点击不产生 `EVENT`
+  （服务端日志无记录），同页“关闭”按钮点击正常（`disabled-demo.png`）。
+  `ElementHitTesterTest` 覆盖禁用元素不接收事件，`DocumentRenderListBuilderTest` 覆盖变暗与不使用悬停样式。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
@@ -415,7 +419,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，200 个测试 / 40 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，202 个测试 / 40 个测试类，0 失败）。
 
 仍未验证：
 

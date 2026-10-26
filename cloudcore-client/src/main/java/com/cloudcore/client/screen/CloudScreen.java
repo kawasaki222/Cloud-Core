@@ -80,6 +80,7 @@ public final class CloudScreen extends Screen {
             EditBox edit = new EditBox(font, box.x(), box.y(), Math.max(20, box.width()),
                     Math.max(12, box.height()), Component.empty());
             edit.setBordered(false);
+            edit.setEditable(element.enabled());
             edit.setMaxLength(maxLength(element));
             edit.setFilter(filterPredicate(stringAttribute(element, "filter")));
             Object hint = element.attributes().get("placeholder");
@@ -216,11 +217,12 @@ public final class CloudScreen extends Screen {
         return super.keyPressed(event);
     }
 
-    /** Clickable controls in document order; only elements that declare a click event. */
+    /** Clickable controls in document order; enabled elements that declare a click event. */
     private List<LayoutBoxes.Box> focusables() {
         List<LayoutBoxes.Box> boxes = LayoutBoxes.ofTypes(document, width, height,
                 java.util.Set.of("button", "icon_button"));
-        boxes.removeIf(box -> !box.element().events().containsKey("click"));
+        boxes.removeIf(box -> !box.element().enabled()
+                || !box.element().events().containsKey("click"));
         return boxes;
     }
 

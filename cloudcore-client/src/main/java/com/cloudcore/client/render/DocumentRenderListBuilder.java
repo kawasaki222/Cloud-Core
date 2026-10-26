@@ -118,14 +118,14 @@ public final class DocumentRenderListBuilder {
             case "button" -> {
                 int w = width > 0 ? width : Math.max(40, text(element).length() * 6 + 12);
                 int h = height > 0 ? height : 20;
-                boolean hovered = element.id().equals(hoveredId);
+                boolean hovered = element.enabled() && element.id().equals(hoveredId);
                 Object background = styled(element, "background", hovered);
                 if (background instanceof String reference && isSupportedTexture(reference)) {
                     addImage(commands, reference, x, y, w, h,
                             intArray(styled(element, "nine_slice", hovered)));
                 } else {
-                    addFill(commands, x, y, w, h, color(background,
-                            hovered ? DEFAULT_BUTTON_HOVER : DEFAULT_BUTTON));
+                    addFill(commands, x, y, w, h, dim(element, color(background,
+                            hovered ? DEFAULT_BUTTON_HOVER : DEFAULT_BUTTON)));
                 }
                 int textX = x + 6;
                 if (attribute(element, "icon") != null) {
@@ -133,21 +133,22 @@ public final class DocumentRenderListBuilder {
                     textX = x + 21;
                 }
                 addText(commands, text(element), textX, y + Math.max(2, (h - 8) / 2),
-                        color(styleText(element), DEFAULT_TEXT), fontPath(element, fonts));
+                        dim(element, color(styleText(element), DEFAULT_TEXT)),
+                        fontPath(element, fonts));
                 childWidth = w;
                 childHeight = h;
             }
             case "icon_button" -> {
                 int w = width > 0 ? width : 20;
                 int h = height > 0 ? height : 20;
-                boolean hovered = element.id().equals(hoveredId);
+                boolean hovered = element.enabled() && element.id().equals(hoveredId);
                 Object background = styled(element, "background", hovered);
                 if (background instanceof String reference && isSupportedTexture(reference)) {
                     addImage(commands, reference, x, y, w, h,
                             intArray(styled(element, "nine_slice", hovered)));
                 } else {
-                    addFill(commands, x, y, w, h, color(background,
-                            hovered ? DEFAULT_BUTTON_HOVER : DEFAULT_BUTTON));
+                    addFill(commands, x, y, w, h, dim(element, color(background,
+                            hovered ? DEFAULT_BUTTON_HOVER : DEFAULT_BUTTON)));
                 }
                 addIcon(commands, element, x + 2, y + 2, Math.max(4, Math.min(w, h) - 4));
                 childWidth = w;
@@ -174,7 +175,7 @@ public final class DocumentRenderListBuilder {
                     addImage(commands, reference, x, y, w, h,
                             intArray(style(element, "nine_slice")));
                 } else {
-                    addFill(commands, x, y, w, h, color(background, DEFAULT_FIELD));
+                    addFill(commands, x, y, w, h, dim(element, color(background, DEFAULT_FIELD)));
                 }
                 addFrame(commands, x, y, w, h, truthy(attribute(element, "invalid"))
                         ? color(styleBorder(element, "invalid"), DEFAULT_INVALID_BORDER)
@@ -572,6 +573,15 @@ public final class DocumentRenderListBuilder {
 
     private static int color(Object value, int fallback) {
         return Colors.parse(value, fallback);
+    }
+
+    /** Halves the alpha of a colour for a disabled element; textures keep their look. */
+    private static int dim(UiElement element, int argb) {
+        if (element.enabled()) {
+            return argb;
+        }
+        int alpha = (argb >>> 24) & 0xFF;
+        return ((alpha / 2) << 24) | (argb & 0xFFFFFF);
     }
 
     private static double number(Object value, double fallback) {

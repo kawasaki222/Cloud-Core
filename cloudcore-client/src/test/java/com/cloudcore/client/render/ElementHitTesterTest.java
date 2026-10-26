@@ -107,6 +107,16 @@ class ElementHitTesterTest {
         assertTrue(ElementHitTester.hasAnyEvent(document.elements(), "click"));
     }
 
+    @Test
+    void disabledElementsDoNotReceiveClicks() {
+        UiElement disabled = new UiElement("off", "button", 0, 0, "40", "20",
+                true, false, 0, Map.of("click", 1), List.of(), Map.of("text", "off"));
+        UiDocument document = document(disabled);
+
+        assertNull(ElementHitTester.findWithEvent(document, 320, 180, 110 + 20, 40 + 10,
+                id -> 0, "click"));
+    }
+
     private static UiDocument document(UiElement element) {
         return new UiDocument(1, "hit", SurfaceType.CUSTOM_SCREEN, TextRuns.plain("t"),
                 "default", 100, 100, 1.0f, null, Map.of(), Map.of(), List.of(element));
