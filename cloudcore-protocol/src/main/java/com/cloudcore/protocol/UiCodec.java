@@ -130,6 +130,25 @@ public final class UiCodec {
         return new UiClose(uiId, reason);
     }
 
+    public static byte[] encodeClosed(UiClosed closed, Limits limits) {
+        Objects.requireNonNull(closed, "closed");
+        Objects.requireNonNull(limits, "limits");
+        ArrayByteSink sink = new ArrayByteSink();
+        ProtocolText.write(sink, closed.uiId(), limits);
+        sink.writeByte(closed.reason());
+        return sink.toByteArray();
+    }
+
+    public static UiClosed decodeClosed(byte[] data, Limits limits) {
+        Objects.requireNonNull(data, "data");
+        Objects.requireNonNull(limits, "limits");
+        ArrayByteSource source = new ArrayByteSource(data);
+        String uiId = ProtocolText.read(source, limits);
+        int reason = source.readUnsignedByte();
+        requireFullyConsumed(source, "UI_CLOSED");
+        return new UiClosed(uiId, reason);
+    }
+
     private static SurfaceType surface(int id) {
         try {
             return SurfaceType.fromId(id);

@@ -27,6 +27,8 @@ import com.cloudcore.protocol.Pong;
 import com.cloudcore.protocol.ProtocolException;
 import com.cloudcore.protocol.ProtocolVersion;
 import com.cloudcore.protocol.UiClose;
+import com.cloudcore.protocol.UiClosed;
+import com.cloudcore.protocol.UiClosedReason;
 import com.cloudcore.protocol.UiCodec;
 import com.cloudcore.protocol.UiDefinition;
 import com.cloudcore.protocol.UiOpen;
@@ -58,7 +60,7 @@ public final class CloudCoreClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        surfaceRegistry = SurfaceRegistry.createDefault();
+        surfaceRegistry = SurfaceRegistry.createDefault(this::sendPlayerClosed);
         PayloadTypeRegistry.playS2C().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
         PayloadTypeRegistry.playC2S().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
 
@@ -219,6 +221,12 @@ public final class CloudCoreClient implements ClientModInitializer {
                     exception.getMessage());
             LOGGER.error("Failed to open ui=" + definition.uiId(), exception);
         }
+    }
+
+    private void sendPlayerClosed(String uiId) {
+        UiClosed closed = new UiClosed(uiId, UiClosedReason.PLAYER);
+        sendFrame(new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_CLOSED,
+                UiCodec.encodeClosed(closed, Limits.C2S)));
     }
 
     private void handleUiClose(Frame frame) {

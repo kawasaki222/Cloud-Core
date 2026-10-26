@@ -14,6 +14,7 @@ import com.cloudcore.protocol.Ping;
 import com.cloudcore.protocol.Pong;
 import com.cloudcore.protocol.ProtocolException;
 import com.cloudcore.protocol.ProtocolVersion;
+import com.cloudcore.protocol.UiClosed;
 import com.cloudcore.protocol.UiCodec;
 import com.cloudcore.protocol.UiReady;
 import java.security.SecureRandom;
@@ -97,6 +98,7 @@ public final class CloudCorePlugin extends JavaPlugin
             case Opcode.HELLO -> handleHello(player, session, frame);
             case Opcode.PONG -> handlePong(player, session, frame);
             case Opcode.UI_READY -> handleUiReady(player, frame);
+            case Opcode.UI_CLOSED -> handleUiClosed(player, frame);
             default -> getLogger().info("Unhandled C2S opcode=0x"
                     + Integer.toHexString(frame.opcode()) + " bytes=" + frame.bodyLength()
                     + " player=" + player.getUniqueId());
@@ -116,6 +118,12 @@ public final class CloudCorePlugin extends JavaPlugin
                 + " scaled=" + hello.scaledWidth() + "x" + hello.scaledHeight()
                 + (compatible ? "" : " (incompatible major)"));
         sendHelloAck(player);
+    }
+
+    private void handleUiClosed(Player player, Frame frame) {
+        UiClosed closed = UiCodec.decodeClosed(frame.body(), Limits.C2S);
+        getLogger().info("UI_CLOSED from " + player.getName()
+                + " ui=" + closed.uiId() + " reason=" + closed.reason());
     }
 
     private void handleUiReady(Player player, Frame frame) {

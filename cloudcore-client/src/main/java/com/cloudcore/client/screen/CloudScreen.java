@@ -15,10 +15,18 @@ public final class CloudScreen extends Screen {
     private static final int TITLE_COLOR = 0xFFFFFFFF;
 
     private final UiDocument document;
+    private final Runnable onCloseAction;
+    private boolean closed;
 
     public CloudScreen(UiDocument document) {
+        this(document, () -> {
+        });
+    }
+
+    public CloudScreen(UiDocument document, Runnable onCloseAction) {
         super(Component.literal(Objects.requireNonNull(document, "document").title().plainText()));
         this.document = document;
+        this.onCloseAction = Objects.requireNonNull(onCloseAction, "onCloseAction");
     }
 
     public String uiId() {
@@ -51,6 +59,15 @@ public final class CloudScreen extends Screen {
 
     @Override
     public void onClose() {
+        if (!closed) {
+            closed = true;
+            try {
+                onCloseAction.run();
+            } finally {
+                minecraft.setScreen(null);
+            }
+            return;
+        }
         minecraft.setScreen(null);
     }
 }

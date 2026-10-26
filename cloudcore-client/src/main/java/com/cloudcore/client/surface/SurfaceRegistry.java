@@ -5,6 +5,7 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
 
 /**
@@ -49,8 +50,13 @@ public final class SurfaceRegistry {
     }
 
     public static SurfaceRegistry createDefault() {
+        return createDefault(ignored -> {
+        });
+    }
+
+    public static SurfaceRegistry createDefault(Consumer<String> onPlayerClosed) {
         SurfaceRegistry registry = new SurfaceRegistry();
-        registry.register(new CustomScreenAdapter());
+        registry.register(new CustomScreenAdapter(onPlayerClosed));
         for (SurfaceType type : SurfaceType.values()) {
             if (type != SurfaceType.CUSTOM_SCREEN) {
                 registry.register(new UnsupportedSurfaceAdapter(type));

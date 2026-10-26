@@ -3,6 +3,7 @@ package com.cloudcore.client.surface;
 import com.cloudcore.api.SurfaceType;
 import com.cloudcore.client.screen.CloudScreen;
 import java.util.Objects;
+import java.util.function.Consumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 
@@ -10,6 +11,16 @@ import net.minecraft.client.gui.screens.Screen;
  * Opens an independent page through {@code Minecraft#setScreen}.
  */
 public final class CustomScreenAdapter implements SurfaceAdapter {
+    private final Consumer<String> onPlayerClosed;
+
+    public CustomScreenAdapter() {
+        this(ignored -> {
+        });
+    }
+
+    public CustomScreenAdapter(Consumer<String> onPlayerClosed) {
+        this.onPlayerClosed = Objects.requireNonNull(onPlayerClosed, "onPlayerClosed");
+    }
 
     @Override
     public SurfaceType type() {
@@ -26,7 +37,8 @@ public final class CustomScreenAdapter implements SurfaceAdapter {
         Objects.requireNonNull(request, "request");
         Objects.requireNonNull(runtime, "runtime");
         Minecraft minecraft = runtime.minecraft();
-        minecraft.execute(() -> minecraft.setScreen(new CloudScreen(runtime.document())));
+        minecraft.execute(() -> minecraft.setScreen(new CloudScreen(runtime.document(),
+                () -> onPlayerClosed.accept(request.uiId()))));
     }
 
     @Override

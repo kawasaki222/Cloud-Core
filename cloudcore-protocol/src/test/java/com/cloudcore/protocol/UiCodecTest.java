@@ -55,6 +55,13 @@ class UiCodecTest {
     }
 
     @Test
+    void closedRoundTrips() {
+        UiClosed closed = new UiClosed("shop", UiClosedReason.PLAYER);
+        assertEquals(closed, UiCodec.decodeClosed(
+                UiCodec.encodeClosed(closed, Limits.C2S), Limits.C2S));
+    }
+
+    @Test
     void rejectsUnknownSurfaceId() {
         byte[] body = UiCodec.encodeOpen(new UiOpen("a", 1, SurfaceType.CUSTOM_SCREEN,
                 BindMode.NONE, 1, RenderMode.SCREEN, 0, ""), Limits.S2C);
