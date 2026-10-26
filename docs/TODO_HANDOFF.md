@@ -107,6 +107,7 @@ docs/
 - [x] M2 文档链路：UI_DEFINITION 解码、校验、`CloudScreen` 打开
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
 - [ ] M2 完整渲染：NanoVG/FBO、image/item_icon、裁剪/滚动、混入
+- [ ] 协议前向兼容：未知 surface/bind/render id 保留原始值并回 UI_READY(state=4)
 - [ ] M0 渲染 spike：NanoVG 三平台/FBO 合成/预乘 alpha
 
 剩余的是实现前的验证项和待决问题，不是文档缺口。
