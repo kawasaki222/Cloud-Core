@@ -568,11 +568,23 @@ public final class PageLoader {
             if (value == null && keepUnknown) {
                 result.append("${").append(expression).append('}');
             } else {
-                result.append(value == null ? "" : String.valueOf(value));
+                result.append(value == null ? "" : formatValue(value));
             }
             cursor = end + 1;
         }
         return result.toString();
+    }
+
+    /** Whole doubles render without a trailing {@code .0} so labels stay tidy. */
+    private static String formatValue(Object value) {
+        if (value instanceof Number number) {
+            double asDouble = number.doubleValue();
+            if (asDouble == Math.floor(asDouble) && !Double.isInfinite(asDouble)) {
+                return String.valueOf((long) asDouble);
+            }
+            return String.valueOf(asDouble);
+        }
+        return String.valueOf(value);
     }
 
     private static Object lookup(String path, Map<String, Object> scope) {

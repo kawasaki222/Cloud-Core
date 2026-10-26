@@ -10,6 +10,7 @@ state:
   title: "示例页面"
   clicks: 0
   notify: false
+  balance: 100
   entries:
     - { id: sword, name: "铁剑", price: 120 }
     - { id: shield, name: "盾牌", price: 80 }
@@ -90,7 +91,7 @@ elements:
           value: "输入：${value}"
   - type: image
     id: remote_image
-    x: 240
+    x: 160
     y: 120
     width: 56
     height: 56
@@ -114,7 +115,35 @@ elements:
       click:
         - action: set_state
           key: clicks
-          value: 1
+          value: "${state.clicks + 1}"
+  - type: label
+    id: balance_label
+    x: 232
+    y: 140
+    text: "余额：${state.balance}"
+    color: "#FFFFD479"
+  - type: button
+    id: buy_button
+    x: 232
+    y: 152
+    width: 72
+    height: 20
+    text: "购买(100)"
+    style:
+      background: "#FF6E3C9F"
+    on:
+      click:
+        - action: if
+          condition: "${state.balance >= 100}"
+          then:
+            - action: set_state
+              key: balance
+              value: "${state.balance - 100}"
+            - action: message
+              value: "购买成功，余额 ${state.balance - 100}"
+          else:
+            - action: message
+              value: "余额不足"
   - type: button
     id: say_button
     x: 232

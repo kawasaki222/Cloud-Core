@@ -228,6 +228,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **动作表达式与 if 已核实**：示例页“购买(100)”用 `if condition: ${state.balance >= 100}`，
+  首次点击把余额从 100 减到 0（日志 `state={balance=0.0}`，界面“余额：0”），再点一次走 `else`
+  只发消息、不再改状态（`if-demo5.png`）。`ExpressionEvaluatorTest` 覆盖算术/比较/布尔/字符串与错误。
 - **row/column/grid 布局已核实**：`/cloudcore demo-layout` 中三个横向面板、两个纵向面板与
   2×2 网格按 `gap`/`cell` 正确排布（`layout-demo2.png`）；`DocumentRenderListBuilderTest`
   覆盖三种容器的坐标推算（期间修掉了 row/column 未叠加父级原点的问题）。

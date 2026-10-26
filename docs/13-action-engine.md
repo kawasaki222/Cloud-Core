@@ -27,7 +27,11 @@
 - `command`：`command: "say hi"`（可带前导斜杠），`as: player|console`（默认 player）。
   默认关闭：`config.yml` 的 `actions.commands.enabled: false`；开启后只有
   `actions.commands.allowlist` 里的第一个词能执行，其余回 `REJECTED` 并写警告日志。
-- 尚未支持：条件、等待、表达式求值（`${state.clicks + 1}` 仍是字面量）。
+- 表达式：`${state.balance - 100}`、比较、`&&`/`||`/`!`、字符串拼接由
+  `ExpressionEvaluator` 求值（`set_state`/`message`/`if` 的条件都走它，整数值不显示 `.0`）。
+- `if`：`condition` + `then`/`else` 动作列表；`delay`：`ticks` + `then` 延迟执行。
+  表达式变量 = 文档默认 state 叠加玩家状态，再叠加事件载荷（`value`/`checked`/`index` 等）。
+- 尚未支持：`wait`/超时、动作预算与串联限制、`EVENT_RESULT` 之外的执行报告。
 
 ## 1. 目标与非目标
 

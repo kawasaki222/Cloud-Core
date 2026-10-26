@@ -241,16 +241,20 @@ public final class CloudCorePlugin extends JavaPlugin
             com.cloudcore.api.page.PageLoader.PageAction action,
             Map<String, com.cloudcore.protocol.WireValue> payload) {
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
-        Map<String, Object> state = session.pageState.computeIfAbsent(
+        Map<String, Object> sessionState = session.pageState.computeIfAbsent(
                 session.pageNames.getOrDefault(page.document().id(), page.document().id()),
                 ignored -> new ConcurrentHashMap<>());
+        // Expressions see document defaults overlaid with the player's changes; writes go
+        // to the session map only.
+        Map<String, Object> state = new java.util.LinkedHashMap<>(page.state());
+        state.putAll(sessionState);
         switch (action.type().toLowerCase(java.util.Locale.ROOT)) {
             case "close_ui", "close" -> sendClose(player);
             case "message" -> {
                 Object text = action.params().getOrDefault("value",
                         action.params().getOrDefault("text", ""));
                 player.sendMessage(Component.text(
-                        resolveState(String.valueOf(text), state, payload)));
+                        String.valueOf(evaluateOrResolve(String.valueOf(text), state, payload))));
             }
             case "command" -> {
                 Object raw = action.params().getOrDefault("command",
@@ -277,9 +281,31 @@ public final class CloudCorePlugin extends JavaPlugin
                 }
                 Object raw = action.params().get("value");
                 Object value = raw instanceof String text
-                        ? resolveState(text, state, payload) : raw;
-                state.put(String.valueOf(key), normalise(value));
+                        ? evaluateOrResolve(text, state, payload) : raw;
+                sessionState.put(String.valueOf(key), normalise(value));
                 refreshPage(player, session, page);
+            }
+            case "if" -> {
+                boolean condition = truthy(evaluateCondition(
+                        action.params().get("condition"), state, payload));
+                Object branch = action.params().get(condition ? "then" : "else");
+                for (com.cloudcore.api.page.PageLoader.PageAction nested : toActions(branch)) {
+                    executeAction(player, page, nested, payload);
+                }
+            }
+            case "delay" -> {
+                Object ticksValue = action.params().getOrDefault("ticks", 20);
+                long ticks = ticksValue instanceof Number number
+                        ? Math.max(1, number.longValue()) : 20;
+                java.util.List<com.cloudcore.api.page.PageLoader.PageAction> nested =
+                        toActions(action.params().get("then"));
+                getServer().getScheduler().runTaskLater(this, () -> {
+                    if (player.isOnline()) {
+                        for (com.cloudcore.api.page.PageLoader.PageAction delayed : nested) {
+                            executeAction(player, page, delayed, payload);
+                        }
+                    }
+                }, ticks);
             }
             default -> {
                 getLogger().warning("Unsupported action '" + action.type()
@@ -359,6 +385,93 @@ public final class CloudCorePlugin extends JavaPlugin
             result = result.replace("${" + entry.getKey() + "}", String.valueOf(entry.getValue()));
         }
         return result;
+    }
+
+    /** Variables visible to expressions: page state plus the event payload. */
+    private static Map<String, Object> expressionVariables(Map<String, Object> state,
+            Map<String, com.cloudcore.protocol.WireValue> payload) {
+        Map<String, Object> variables = new java.util.LinkedHashMap<>();
+        variables.put("state", state);
+        for (Map.Entry<String, com.cloudcore.protocol.WireValue> entry : payload.entrySet()) {
+            variables.put(entry.getKey(), plainValue(entry.getValue()));
+        }
+        return variables;
+    }
+
+    private static Object plainValue(com.cloudcore.protocol.WireValue value) {
+        return switch (value) {
+            case com.cloudcore.protocol.WireValue.StringValue string -> string.value();
+            case com.cloudcore.protocol.WireValue.IntValue number -> (double) number.value();
+            case com.cloudcore.protocol.WireValue.LongValue number -> (double) number.value();
+            case com.cloudcore.protocol.WireValue.FloatValue number -> (double) number.value();
+            case com.cloudcore.protocol.WireValue.DoubleValue number -> number.value();
+            case com.cloudcore.protocol.WireValue.BoolValue flag -> flag.value();
+            default -> "";
+        };
+    }
+
+    /** Evaluates {@code ${expr}} with the expression engine, falling back to substitution. */
+    private static Object evaluateOrResolve(String text, Map<String, Object> state,
+            Map<String, com.cloudcore.protocol.WireValue> payload) {
+        String trimmed = text.trim();
+        if (trimmed.startsWith("${") && trimmed.endsWith("}")) {
+            String expression = trimmed.substring(2, trimmed.length() - 1);
+            try {
+                return com.cloudcore.server.surface.ExpressionEvaluator.evaluate(expression,
+                        expressionVariables(state, payload));
+            } catch (com.cloudcore.server.surface.ExpressionEvaluator.ExpressionException ignored) {
+                // Not an expression (plain path or literal): fall through to substitution.
+            }
+        }
+        return resolveState(text, state, payload);
+    }
+
+    private static boolean truthy(Object value) {
+        if (value instanceof Boolean flag) {
+            return flag;
+        }
+        if (value instanceof Number number) {
+            return number.doubleValue() != 0.0;
+        }
+        return value != null && !"false".equalsIgnoreCase(String.valueOf(value));
+    }
+
+    private static boolean evaluateCondition(Object raw, Map<String, Object> state,
+            Map<String, com.cloudcore.protocol.WireValue> payload) {
+        if (raw == null) {
+            return false;
+        }
+        if (raw instanceof Boolean flag) {
+            return flag;
+        }
+        return truthy(evaluateOrResolve(String.valueOf(raw), state, payload));
+    }
+
+    /** Converts a nested {@code then}/{@code else} list into executable actions. */
+    private static java.util.List<com.cloudcore.api.page.PageLoader.PageAction> toActions(
+            Object raw) {
+        java.util.List<com.cloudcore.api.page.PageLoader.PageAction> actions =
+                new java.util.ArrayList<>();
+        if (!(raw instanceof java.util.List<?> list)) {
+            return actions;
+        }
+        for (Object entry : list) {
+            if (!(entry instanceof Map<?, ?> map)) {
+                continue;
+            }
+            Object type = map.get("action");
+            if (!(type instanceof String name) || name.isBlank()) {
+                continue;
+            }
+            Map<String, Object> params = new java.util.LinkedHashMap<>();
+            for (Map.Entry<?, ?> param : map.entrySet()) {
+                if (!"action".equals(String.valueOf(param.getKey()))) {
+                    params.put(String.valueOf(param.getKey()), param.getValue());
+                }
+            }
+            actions.add(new com.cloudcore.api.page.PageLoader.PageAction(name, params));
+        }
+        return actions;
     }
 
     /** Booleans and numbers arrive from payloads as text after substitution. */
