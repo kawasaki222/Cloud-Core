@@ -310,8 +310,9 @@ public final class CloudCoreClient implements ClientModInitializer {
 
     private static void sendFrame(Frame frame) {
         try {
+            Frame outbound = compressIfUseful(frame);
             int fragmentId = Fragmenter.randomFragmentId(java.util.concurrent.ThreadLocalRandom.current());
-            for (Frame part : Fragmenter.fragment(frame, Limits.C2S, fragmentId)) {
+            for (Frame part : Fragmenter.fragment(outbound, Limits.C2S, fragmentId)) {
                 byte[] data = FrameCodec.encode(part, Limits.C2S);
                 // Paper does not necessarily advertise channels through minecraft:register,
                 // so canSend() is not a reliable gate for a plugin-message transport.
@@ -321,6 +322,15 @@ public final class CloudCoreClient implements ClientModInitializer {
             LOGGER.warn("Failed to send opcode 0x{}: {}",
                     Integer.toHexString(frame.opcode()), exception.getMessage());
         }
+    }
+
+    private static Frame compressIfUseful(Frame frame) {
+        if (frame.bodyLength() >= HandshakeCodec.COMPRESSION_THRESHOLD
+                && (frame.flags() & (FrameFlags.COMPRESSED | FrameFlags.FRAGMENT)) == 0) {
+            return new Frame(frame.version(), frame.flags() | FrameFlags.COMPRESSED,
+                    frame.opcode(), frame.body());
+        }
+        return frame;
     }
 
     private static String modVersion() {

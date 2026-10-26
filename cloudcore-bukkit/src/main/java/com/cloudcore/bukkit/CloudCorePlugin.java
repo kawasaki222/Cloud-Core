@@ -25,6 +25,7 @@ import com.cloudcore.protocol.UiOpen;
 import com.cloudcore.protocol.UiReady;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -196,7 +197,7 @@ public final class CloudCorePlugin extends JavaPlugin
     private void sendFrame(Player player, Frame frame) {
         try {
             int fragmentId = Fragmenter.randomFragmentId(random);
-            for (Frame part : Fragmenter.fragment(frame, Limits.S2C, fragmentId)) {
+            for (Frame part : Fragmenter.fragment(compressIfUseful(frame), Limits.S2C, fragmentId)) {
                 byte[] data = FrameCodec.encode(part, Limits.S2C);
                 player.sendPluginMessage(this, CHANNEL, data);
                 if (getConfig().getBoolean("debug", false)) {
@@ -210,6 +211,15 @@ public final class CloudCorePlugin extends JavaPlugin
             getLogger().warning("Failed to encode opcode 0x" + Integer.toHexString(frame.opcode())
                     + " for " + player.getName() + ": " + exception.getMessage());
         }
+    }
+
+    private static Frame compressIfUseful(Frame frame) {
+        if (frame.bodyLength() >= HandshakeCodec.COMPRESSION_THRESHOLD
+                && (frame.flags() & (FrameFlags.COMPRESSED | FrameFlags.FRAGMENT)) == 0) {
+            return new Frame(frame.version(), frame.flags() | FrameFlags.COMPRESSED,
+                    frame.opcode(), frame.body());
+        }
+        return frame;
     }
 
     @Override
@@ -264,7 +274,13 @@ public final class CloudCorePlugin extends JavaPlugin
 
     private void sendDemoOpen(Player player, boolean big) {
         String uiId = big ? "cloudcore_demo_big" : "cloudcore_demo";
-        String padding = big ? ", \"debug_padding\": \"" + "x".repeat(32_000) + "\"" : "";
+        String padding = "";
+        if (big) {
+            byte[] bytes = new byte[48_000];
+            random.nextBytes(bytes);
+            padding = ", \"debug_padding\": \""
+                    + Base64.getEncoder().encodeToString(bytes) + "\"";
+        }
         int token = random.nextInt();
         UiOpen open = new UiOpen(uiId, 1, SurfaceType.CUSTOM_SCREEN,
                 BindMode.NONE, token, RenderMode.SCREEN, 0, big ? "demo-big" : "demo");

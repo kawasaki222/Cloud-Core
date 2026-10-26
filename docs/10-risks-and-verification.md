@@ -151,8 +151,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **PING/PONG 已核实**：`/cloudcore ping` 经客户端回包，服务端报告 `rtt=9ms`。
 - **UI_OPEN / UI_DEFINITION / UI_READY / UI_CLOSED 已核实**：服务端发送 demo 文档，客户端
   解码、校验并打开 `CloudScreen`，回 `UI_READY`；按 Escape 后回 `UI_CLOSED(reason=0)`。
-- **真机分片已核实**：`/cloudcore demo-big` 发送 32,776 字节文档，服务端拆成 2 个 FRAGMENT
-  （24,018 + 8,816 字节），客户端重组并回 `UI_READY`。
+- **真机分片与压缩已核实**：`/cloudcore demo-big` 发送 64,776 字节文档，压缩后拆成 3 个
+  FRAGMENT（24,018 + 24,018 + 1,002 字节），客户端重组并回 `UI_READY`。
 - **原生 RenderList 已核实**：demo 页面实际显示 panel、label、button；截图与客户端日志一致。
 - **U20 已核实**：Fabric API 0.141.3 能在 officialMojangMappings 下编译并启动。
 - **U10 已核实并规避**：Fabric `canSend()` 只反映服务端声明的通道；Paper 不保证声明，

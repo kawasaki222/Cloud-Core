@@ -95,7 +95,7 @@ docs/
 - [x] M1：分片与重组、握手、PING/PONG、UI_OPEN/UI_READY 编解码、黄金向量、随机帧测试
 - [x] M1 接线：Paper 与 Fabric 的 HELLO/PING/PONG/分片/UI_OPEN 处理
 - [x] M1 真实联调：Paper + Fabric 握手、`/cloudcore ping`（RTT 9ms）、UI 打开/关闭
-- [x] M1 真机大报文：32,776 字节文档拆成 2 片并重组成功
+- [x] M1 真机大报文：64,776 字节文档压缩后拆成 3 片并重组成功
 - [ ] M1 压力：100 万随机帧、断线清理
 - [x] M2 骨架：SurfaceRegistry/SurfaceAdapter/SurfaceProvider、UiDocument、RenderBackend、CloudScreen
 - [x] M2 文档链路：UI_DEFINITION 解码、校验、`CloudScreen` 打开
