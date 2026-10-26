@@ -153,19 +153,13 @@ public final class UiCodec {
     }
 
     private static BindMode bindMode(int id) {
-        try {
-            return BindMode.fromId(id);
-        } catch (IllegalArgumentException exception) {
-            throw new ProtocolException("Unknown bind mode id: " + id);
-        }
+        // Forward compatible: a newer server may bind in a way this client cannot honour;
+        // the client answers UI_READY(state=4) instead of dropping the frame.
+        return BindMode.fromIdOrUnknown(id);
     }
 
     private static RenderMode renderMode(int id) {
-        try {
-            return RenderMode.fromId(id);
-        } catch (IllegalArgumentException exception) {
-            throw new ProtocolException("Unknown render mode id: " + id);
-        }
+        return RenderMode.fromIdOrUnknown(id);
     }
 
     private static void requireFullyConsumed(ByteSource source, String message) {

@@ -137,7 +137,8 @@ body（flags |= FRAGMENT）:
 
 客户端遇到未知 `surface` 值时不丢弃整帧，而是保留原始 `u8` 并在 `UI_READY(surface=原值,
 state=4)` 中回传；`cloudcore-api` 内部用 `SurfaceType.UNKNOWN` 表示，不能当作可打开面板。
-`BindMode` / `RenderMode` 的未知值仍先拒绝，后续版本按需扩展。
+`BindMode` / `RenderMode` 的未知值同样不丢弃整帧：解码为 `UNKNOWN(255)`，客户端回
+`UI_READY(surface=原值, state=4)` 并在日志里记录原始行为，服务端据此知道该客户端版本过旧。
 
 `BindMode`（`u8`）：
 
@@ -147,6 +148,7 @@ state=4)` 中回传；`cloudcore-api` 内部用 `SurfaceType.UNKNOWN` 表示，�
 | `1` | `NEXT_CONTAINER` | 下一个 `AbstractContainerScreen` 归我们 |
 | `2` | `CURRENT_CONTAINER` | 替换当前已打开的容器界面 |
 | `3` | `PERSISTENT` | 持久会话，不随单次打开结束 |
+| `255` | `UNKNOWN` | 本客户端不认识的绑定方式；拒绝打开并回 `UI_READY(state=4)` |
 
 `RenderMode`（`u8`）：
 
@@ -156,6 +158,7 @@ state=4)` 中回传；`cloudcore-api` 内部用 `SurfaceType.UNKNOWN` 表示，�
 | `1` | `OVERLAY` —— 绘制在当前界面之上 |
 | `2` | `REPLACE_CURRENT` —— 替换当前任意界面 |
 | `3` | `SURFACE_NATIVE` —— 由面板适配器决定绘制位置（HUD/Tooltip/Boss） |
+| `255` | `UNKNOWN` —— 本客户端不认识；拒绝打开并回 `UI_READY(state=4)` |
 
 `UI_OPEN.flags`：
 

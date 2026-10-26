@@ -74,4 +74,21 @@ class UiCodecTest {
         assertEquals(ready, UiCodec.decodeReady(
                 UiCodec.encodeReady(ready, Limits.C2S), Limits.C2S));
     }
+
+    @Test
+    void unknownBindAndRenderModesDecodeInsteadOfFailing() {
+        byte[] body = UiCodec.encodeOpen(new UiOpen("a", 1, SurfaceType.CUSTOM_SCREEN,
+                BindMode.NONE, 1, RenderMode.SCREEN, 0, ""), Limits.S2C);
+        // Layout: text uiId ("a" = 1 length byte + 1 data byte), varint revision,
+        // surfaceId, bindMode, int token, renderMode, flags, text surfaceKey.
+        int bindIndex = 2 + 1 + 1;
+        int renderIndex = bindIndex + 1 + 4;
+        body[bindIndex] = (byte) 0x7E;
+        body[renderIndex] = (byte) 0x7D;
+
+        UiOpen decoded = UiCodec.decodeOpen(body, Limits.S2C);
+
+        assertEquals(BindMode.UNKNOWN, decoded.bindMode());
+        assertEquals(RenderMode.UNKNOWN, decoded.renderMode());
+    }
 }

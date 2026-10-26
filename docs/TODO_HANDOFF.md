@@ -129,7 +129,7 @@ docs/
 - [ ] 容器点击策略补充：`passthrough`、`allow_player_inventory`、`InventoryDragEvent` 的真机验证
 - [ ] 玩家背包配方书（v1 隐藏；v2 再补 `skinned`/`custom`）与玩家模型/状态效果选项
 - [x] 协议前向兼容：未知 `surfaceId` 保留原始值并回 `UI_READY(state=4)`
-- [ ] 协议前向兼容：未知 `BindMode` / `RenderMode`（仍拒绝）
+- [x] 协议前向兼容：未知 `BindMode` / `RenderMode` 解码为 `UNKNOWN` 并回 `UI_READY(state=4)`
 - [x] M0 NanoVG 初始化 + FBO 绘制 + readback（Windows x64，`cloudcore.nanovg.spike`）
 - [x] NanoVG 类与 Windows/Linux/macOS 原生库并入客户端 jar
 - [x] M0 渲染：FBO 纹理经 `GUI_TEXTURED` blit（显式贴图尺寸）合成上屏（Windows x64，截图验证）

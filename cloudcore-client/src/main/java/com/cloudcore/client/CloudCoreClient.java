@@ -156,6 +156,16 @@ public final class CloudCoreClient implements ClientModInitializer {
                 open.flags(),
                 open.surfaceKey());
         Minecraft minecraft = Minecraft.getInstance();
+        if (request.hasUnknownMode()) {
+            UiReady ready = new UiReady(open.uiId(), open.revision(), open.token(),
+                    open.surface(), open.surfaceId(), UiReadyState.SURFACE_UNSUPPORTED,
+                    "Unsupported bind/render mode");
+            sendFrame(new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_READY,
+                    UiCodec.encodeReady(ready, Limits.C2S)));
+            LOGGER.warn("Rejected UI_OPEN for unknown mode bind={} render={} ui={}",
+                    open.bindMode(), open.renderMode(), open.uiId());
+            return;
+        }
         if (!surfaceRegistry.canHandle(request, minecraft)) {
             UiReady ready = new UiReady(open.uiId(), open.revision(), open.token(),
                     open.surface(), open.surfaceId(), UiReadyState.SURFACE_UNSUPPORTED,
