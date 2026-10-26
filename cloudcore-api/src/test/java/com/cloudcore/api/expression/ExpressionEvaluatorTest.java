@@ -63,4 +63,12 @@ class ExpressionEvaluatorTest {
                 () -> ExpressionEvaluator.evaluate("'unterminated", VARS));
         assertTrue(true);
     }
+
+    @Test
+    void malformedNumbersAreParseErrorsNotCrashes() {
+        assertThrows(ExpressionEvaluator.ExpressionException.class,
+                () -> ExpressionEvaluator.evaluate("1.2.3", VARS));
+        assertThrows(ExpressionEvaluator.ExpressionException.class,
+                () -> ExpressionEvaluator.evaluate(".5.6 + 1", VARS));
+    }
 }

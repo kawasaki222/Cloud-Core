@@ -301,7 +301,14 @@ public final class ExpressionEvaluator {
                         || expression.charAt(index) == '.')) {
                     index++;
                 }
-                tokens.add(new Token(Kind.NUMBER, expression.substring(start, index)));
+                String number = expression.substring(start, index);
+                try {
+                    Double.parseDouble(number);
+                } catch (NumberFormatException exception) {
+                    // "1.2.3" tokenizes as one number; report it as a parse error, not a crash.
+                    throw new ExpressionException("Malformed number: " + number);
+                }
+                tokens.add(new Token(Kind.NUMBER, number));
                 continue;
             }
             if (Character.isLetter(character) || character == '_') {
