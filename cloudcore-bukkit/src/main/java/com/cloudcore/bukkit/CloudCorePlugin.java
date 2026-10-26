@@ -482,6 +482,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 sendDemoContainer(target);
             } else if (args[0].equalsIgnoreCase("demo-readonly")) {
                 openDemoChest(target, ContainerClickPolicy.Interaction.READONLY);
+            } else if (args[0].equalsIgnoreCase("demo-passthrough")) {
+                openDemoChest(target, ContainerClickPolicy.Interaction.PASSTHROUGH);
             } else if (args[0].equalsIgnoreCase("demo-inventory")) {
                 sendDemoInventory(target);
             } else if (args[0].equalsIgnoreCase("demo-assets")) {
@@ -560,6 +562,11 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core readonly container demo sent."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("demo-passthrough")) {
+            openDemoChest(player, ContainerClickPolicy.Interaction.PASSTHROUGH);
+            sender.sendMessage(Component.text("Cloud Core passthrough container demo sent."));
+            return true;
+        }
         if (args.length == 1 && args[0].equalsIgnoreCase("demo-inventory")) {
             sendDemoInventory(player);
             sender.sendMessage(Component.text("Cloud Core inventory demo sent."));
@@ -604,6 +611,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("demo-hud-bg")
                 || action.equalsIgnoreCase("demo-container")
                 || action.equalsIgnoreCase("demo-readonly")
+                || action.equalsIgnoreCase("demo-passthrough")
                 || action.equalsIgnoreCase("demo-inventory")
                 || action.equalsIgnoreCase("demo-assets")
                 || action.equalsIgnoreCase("demo-scroll");

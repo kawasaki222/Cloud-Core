@@ -287,7 +287,7 @@ player.openInventory(inv);
 | --- | --- |
 | `managed` | 除非原始槽位映射到已声明网格槽位，否则取消 |
 | `readonly` | 全部取消，除非 `allow_player_inventory: true` |
-| `passthrough` | 永不取消；旧界面适配使用 |
+| `passthrough` | 永不取消；旧界面适配使用（`/cloudcore demo-passthrough` 可验证） |
 
 实现要点（`ContainerClickPolicy` + `CloudInventoryHolder`）：
 

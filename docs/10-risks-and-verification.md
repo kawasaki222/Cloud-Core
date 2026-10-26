@@ -202,7 +202,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **容器点击策略已核实**：文档声明 `inventory_grid.slots=[0,8]`，服务端从同一份文档解析出
   已声明槽位。`managed` 模式下点击 0 号槽取出钻石、点击 13 号槽被取消并写
   `CANCELLED click ... slot=13`；`/cloudcore demo-readonly` 的 `readonly` 模式点击 0 号槽同样被取消。
-  未验证：`passthrough` 真机、`allow_player_inventory: true`、拖拽（`InventoryDragEvent`）真机。
+  另测 `/cloudcore demo-passthrough`：点 0 号槽直接取走物品、无 `CANCELLED` 日志。
+  未验证：`allow_player_inventory: true`、拖拽（`InventoryDragEvent`）真机。
 - **PlayerInventory 面板已核实**：`/cloudcore demo-inventory` 下发持久皮肤后按 `E`，
   `Minecraft#setScreen` 的 `@ModifyVariable` 把原版 `InventoryScreen` 换成
   `CloudInventoryScreen`（`AbstractContainerScreen<InventoryMenu>`，复用 `player.inventoryMenu`）。

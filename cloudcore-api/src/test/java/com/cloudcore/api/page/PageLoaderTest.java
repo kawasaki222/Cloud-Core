@@ -346,6 +346,44 @@ class PageLoaderTest {
         assertEquals("value=[]", document.elements().get(0).attributes().get("text"));
     }
 
+    @Test
+    void nestedRepeatComposesInstanceIds() throws Exception {
+        Path page = write("nested.yml", """
+                schema: 1
+                id: nested
+                surface: custom_screen
+                title: "Nested"
+                size: [200, 100]
+                state:
+                  rows:
+                    - { cells: ["a", "b"] }
+                elements:
+                  - type: repeat
+                    id: rows
+                    source: "${state.rows}"
+                    as: row
+                    children:
+                      - type: repeat
+                        id: cells
+                        source: "${row.cells}"
+                        as: cell
+                        children:
+                          - type: label
+                            id: cell_label
+                            x: 0
+                            y: 0
+                            text: "${cell}"
+                """);
+
+        UiDocument document = PageLoader.loadDocument(pages, page, Map.of());
+
+        java.util.List<String> ids = document.elements().stream()
+                .map(UiElement::id).toList();
+        assertEquals(java.util.List.of("rows[0].cells[0].cell_label",
+                "rows[0].cells[1].cell_label"), ids);
+        assertEquals("b", document.elements().get(1).attributes().get("text"));
+    }
+
     private Path write(String relative, String content) throws IOException {
         Path file = pages.resolve(relative);
         Files.createDirectories(file.getParent());
