@@ -14,7 +14,7 @@
   `set_state` 重编译后推送更高 revision。
 - 客户端：六类面板 + RenderList（文字/富文本/图片/九宫格/背景贴图/裁剪/滚动/悬停/物品图标/GIF/URL 贴图）；
   NanoVG 后端与 FBO 合成（opt-in）；客户端日志与诊断码。
-- 构建：`./gradlew build` 通过，161 个测试 / 33 个类，0 失败。
+- 构建：`./gradlew build` 通过，163 个测试 / 34 个类，0 失败。
 
 ## 已有内容
 
@@ -106,6 +106,9 @@ docs/
 - [x] `text_field`：原版 EditBox 控件 + `change`/`submit` 事件与 `${value}` 替换（真机验证）
 - [x] `checkbox`：`checked` 绘制 + `change{checked}` → `set_state` 往返（真机验证）
 - [x] `slider`：`value` 填充 + 点击比例 `change{amount}` → `set_state` 往返（真机验证）
+- [x] `scroll` 事件回传：滚轮后上报绝对偏移，`scroll_y` 由状态驱动（真机验证 + 单测 `UiElementsTest`）
+- [x] `hover_enter` / `hover_leave`：跨边界各一次，仅对声明了事件的元素（真机验证）
+- [x] `set_state` 等值保护：写入相同值不重编译推送（避免悬停/滚动到边界时抖动）
 - [x] 修复属性模板一律字符串化：整串 `${...}` 保留解析类型（`value` 以数字下发），未解析下发空串
 - [ ] `slider` 剩余：拖动、`min`/`max`/`step`、`live` 连续上报
 - [x] `row`/`column`/`grid` 自动布局（gap/columns/cell，真机验证 + 单测）
@@ -116,7 +119,7 @@ docs/
 - [x] GIF 动画：本地与直连图片逐帧播放（3 帧测试图真机验证）
 - [x] 动画选项：`animated: off` 真机像素对比；`loop`/`speed` 解析层单测
 - [ ] 远端 GIF 真机验证
-- [ ] M2 渲染剩余：文本 shaping、`scroll` 事件回传
+- [ ] M2 渲染剩余：文本 shaping
 - [x] HUD / Tooltip / BossBar / Container 面板最小闭环
 - [x] HUD 三层（background/foreground/overlay）与锚点/偏移（真机验证）
 - [x] PlayerInventory 面板：持久皮肤、`CloudInventoryScreen`、`UI_CLOSE` 还原原版（真机截图验证）
@@ -148,7 +151,7 @@ docs/
      合成到屏幕，验证预乘 alpha 与 1.21.6 提取/绘制状态；补 Linux/macOS。
    - 先做一个纯色面板 + 一张 TTF 文本的 NanoVG 合成 spike，确认没有色差和状态泄漏。
 3. **M2 实际渲染**：
-   - 剩余：文本 shaping、`scroll` 事件回传、Tooltip 九宫格背景、Boss 样式字段数据化。
+   - 剩余：文本 shaping、Tooltip 九宫格背景、Boss 样式字段数据化。
    - 默认接入 `NanoVgBackend`（设备分辨率 FBO 清晰文字）；失败时整帧回退 `NativeBackend`。
    - 容器与玩家背包的点击策略（`managed`/`readonly`/`passthrough`）自动化交互测试。   - 玩家背包 v2：配方书四档、玩家模型与状态效果。
 4. 之后按 `08-roadmap.md` 的 M3–M10 推进。

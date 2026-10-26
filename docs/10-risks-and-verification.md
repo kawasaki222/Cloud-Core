@@ -251,6 +251,13 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `PageLoaderTest.attributesKeepTheTypeOfAWholePlaceholder` 覆盖。客户端 `number()` 同时接受
   字符串数字，`DocumentRenderListBuilderTest` 覆盖数字与带引号两种输入。
   拖动、`min`/`max`/`step`、`live` 未实现。
+- **scroll / hover 事件已核实**：`/cloudcore page scroll_demo` 中滚轮 3 格依次上报
+  `EVENT ... element=list`，服务端得到 `state={offset=12.0}`、`24.0`、`36.0`——每一步都基于
+  服务端保存的绝对偏移累加，说明文档 `scroll_y` 与客户端本地增量的合成正确；滚动后点击
+  命中 `list.row5` 而不是未滚动时的行（`scroll-demo1.png`、`scroll-after.png`、`scroll-click.png`）。
+  悬停“悬停这里”按钮分别触发一次 `hover_enter`、`hover_leave`，文档提示文本随之更新
+  （`hover-enter.png`）。同时给 `set_state` 加了等值保护：写入相同值不重编译、不推送，
+  避免悬停/滚动到边界时的文档抖动。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
@@ -335,14 +342,14 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，161 个测试 / 33 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，163 个测试 / 34 个测试类，0 失败）。
 
 仍未验证：
 
 - NanoVG：填充/图片/合成已在 Windows 验证（opt-in）；文字仍走原版 `Font`，未接 NanoVG 字体；
   U30 预乘 alpha、U31 状态隔离、Linux/macOS 未测；默认后端仍是 `NativeBackend`。
 - U28–U31：Linux/macOS、FBO 屏幕合成、预乘 alpha、1.21.6 提取/绘制状态。
-- 文本整形（shaping）、`scroll` 事件回传、Tooltip 九宫格背景、Boss 样式字段数据化。
+- 文本整形（shaping）、Tooltip 九宫格背景、Boss 样式字段数据化。
 - `TEXTURE_REQUEST`/`TEXTURE_PUT` 代理路径、远端 GIF 真机、`ELEMENT_UPDATE`。
 - 玩家背包配方书、SQLite 持久化、PlaceholderAPI 解析。
 - `allow_player_inventory: true` 与 `InventoryDragEvent` 真机验证。

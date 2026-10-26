@@ -1,0 +1,177 @@
+# 滚动与悬停示例：验证 scroll / hover_enter / hover_leave 事件回传
+# /cloudcore page scroll_demo <玩家>
+schema: 1
+id: scroll_demo
+surface: custom_screen
+title: "Scroll Demo"
+theme: dark
+size: [220, 140]
+state:
+  offset: 0
+  hint: "把光标移到“悬停这里”"
+includes: []
+elements:
+  - type: panel
+    id: root
+    x: 0
+    y: 0
+    width: fill
+    height: fill
+    style:
+      background: "#CC202830"
+  - type: label
+    id: offset_label
+    x: 8
+    y: 6
+    text: "offset: ${state.offset}"
+    color: "#FFFFFFFF"
+  - type: label
+    id: hint_label
+    x: 8
+    y: 20
+    text: "${state.hint}"
+    color: "#FF9AD0FF"
+
+  # 滚动区：滚轮后把新的偏移量作为 scroll 事件载荷上报，服务端 set_state 后
+  # 文档带新的 scroll_y 回来，客户端本地滚动量归零、从上一次的偏移继续。
+  - type: scroll
+    id: list
+    x: 8
+    y: 34
+    width: 204
+    height: 76
+    scroll_y: "${state.offset}"
+    style:
+      background: "#66101820"
+    on:
+      scroll:
+        - action: set_state
+          key: offset
+          value: "${scroll}"
+    children:
+      - type: button
+        id: row0
+        x: 0
+        y: 0
+        width: 204
+        height: 18
+        text: "第 0 行"
+        style:
+          background: "#FF3C6E9F"
+        on:
+          click:
+            - action: message
+              value: "点击了第 0 行"
+      - type: button
+        id: row1
+        x: 0
+        y: 20
+        width: 204
+        height: 18
+        text: "第 1 行"
+        style:
+          background: "#FF335F8C"
+        on:
+          click:
+            - action: message
+              value: "点击了第 1 行"
+      - type: button
+        id: row2
+        x: 0
+        y: 40
+        width: 204
+        height: 18
+        text: "第 2 行"
+        style:
+          background: "#FF3C6E9F"
+        on:
+          click:
+            - action: message
+              value: "点击了第 2 行"
+      - type: button
+        id: row3
+        x: 0
+        y: 60
+        width: 204
+        height: 18
+        text: "第 3 行"
+        style:
+          background: "#FF335F8C"
+        on:
+          click:
+            - action: message
+              value: "点击了第 3 行"
+      - type: button
+        id: row4
+        x: 0
+        y: 80
+        width: 204
+        height: 18
+        text: "第 4 行"
+        style:
+          background: "#FF3C6E9F"
+        on:
+          click:
+            - action: message
+              value: "点击了第 4 行"
+      - type: button
+        id: row5
+        x: 0
+        y: 100
+        width: 204
+        height: 18
+        text: "第 5 行"
+        style:
+          background: "#FF335F8C"
+        on:
+          click:
+            - action: message
+              value: "点击了第 5 行"
+      - type: button
+        id: row6
+        x: 0
+        y: 120
+        width: 204
+        height: 18
+        text: "第 6 行"
+        style:
+          background: "#FF3C6E9F"
+        on:
+          click:
+            - action: message
+              value: "点击了第 6 行"
+      - type: button
+        id: row7
+        x: 0
+        y: 140
+        width: 204
+        height: 18
+        text: "第 7 行"
+        style:
+          background: "#FF335F8C"
+        on:
+          click:
+            - action: message
+              value: "点击了第 7 行"
+
+  # 悬停目标：进入/离开各上报一次
+  - type: button
+    id: hover_target
+    x: 8
+    y: 118
+    width: 120
+    height: 16
+    text: "悬停这里"
+    style:
+      background: "#FF2F7F6F"
+      hover:
+        background: "#FF3FAF8F"
+    on:
+      hover_enter:
+        - action: set_state
+          key: hint
+          value: "hover_enter 已上报"
+      hover_leave:
+        - action: set_state
+          key: hint
+          value: "hover_leave 已上报"

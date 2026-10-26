@@ -282,8 +282,12 @@ public final class CloudCorePlugin extends JavaPlugin
                 Object raw = action.params().get("value");
                 Object value = raw instanceof String text
                         ? evaluateOrResolve(text, state, payload) : raw;
-                sessionState.put(String.valueOf(key), normalise(value));
-                refreshPage(player, session, page);
+                Object previous = sessionState.put(String.valueOf(key), normalise(value));
+                // Recompiling and pushing an identical document would redraw the screen for
+                // nothing; repeat events (hover, scroll at the ends) depend on this guard.
+                if (!java.util.Objects.equals(previous, sessionState.get(String.valueOf(key)))) {
+                    refreshPage(player, session, page);
+                }
             }
             case "if" -> {
                 boolean condition = truthy(evaluateCondition(

@@ -109,6 +109,16 @@ final class ClientSession {
 - 同一 `uiId` 收到更高 revision 的 `UI_DEFINITION` 时按“更新”处理：重新解析、校验并
   `SurfaceAdapter.open`（`CloudScreen` 会换成新文档），不再发 `UI_READY` 失败。
 - 点击带 `click` 事件的元素时发 `EVENT`（actionId 来自文档）；未命中的点击交给 `Screen` 默认处理。
+  点击载荷带 `button` 与 `shift`，滑块带 `amount`（点击横坐标在轨道内的比例，`0..1`），
+  复选框带 `checked`（取反后的新值）。
+- `hover_enter` / `hover_leave` 只在光标跨过元素边界时各上报一次，且只对声明了事件的元素上报
+  （没有悬停处理器的页面不会产生任何流量）。实现用 `ElementHitTester` 找悬停目标，
+  `CloudScreen#updateHoverEvents` 比较前后目标：先给旧元素发 `hover_leave`，再给新元素发
+  `hover_enter`，载荷为空。
+- `scroll` 事件：滚轮改变 `scroll` 元素的偏移后上报**绝对**偏移（文档像素，`scroll` 键）。
+  渲染时滚动量 = 文档属性 `scroll_y` + 本屏滚轮增量；`scroll_y` 通常由服务端状态驱动，
+  所以新 revision 到达时本地增量归零、从服务端保存的偏移继续。命中测试用同一个合成值，
+  滚动后点击仍落在正确的行上。未声明 `scroll` 事件的滚动元素只做本地滚动，不发包。
 - `text_field` 用原版 `EditBox` 控件：`CloudScreen.init` 按 `LayoutBoxes` 计算位置并 `addRenderableWidget`，
   `render` 里自行绘制控件；文档只画背景。输入法/选择/剪贴板沿用原版，`change` 事件带 `value`，
   ENTER 触发 `submit`。

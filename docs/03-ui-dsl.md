@@ -736,8 +736,10 @@ placeholders:
 | `drag_end` | 可拖拽元素 | `dx`、`dy` |
 | `tooltip_scroll` | Tooltip 面板 | `scroll` |
 
-`hover_enter`/`hover_leave` 默认只在本机处理；`sync_hover: true` 才转发并受服务端限流。
-`tooltip_scroll` 默认不上报；`surface_options.tooltip.sync_scroll: true` 才转发。
+`hover_enter`/`hover_leave` 只在元素声明了对应事件时上报（页面作者显式选择，没有声明就没有流量），
+每次跨过元素边界各一次，受服务端事件限流约束。`scroll` 的载荷是滚动后的**绝对**偏移
+（文档像素）；服务端通常 `set_state` 保存它，文档再用 `scroll_y: "${state.offset}"` 渲染回去。
+`tooltip_scroll` 默认不上报，Tooltip 的滚轮只改本地偏移。
 
 ### 8.2 动作
 
