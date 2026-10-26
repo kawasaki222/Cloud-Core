@@ -192,16 +192,74 @@ public final class CloudCorePlugin extends JavaPlugin
     private void executeAction(Player player,
             com.cloudcore.api.page.PageLoader.CompiledPage page,
             com.cloudcore.api.page.PageLoader.PageAction action) {
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        Map<String, Object> state = session.pageState.computeIfAbsent(
+                session.pageNames.getOrDefault(page.document().id(), page.document().id()),
+                ignored -> new ConcurrentHashMap<>());
         switch (action.type().toLowerCase(java.util.Locale.ROOT)) {
             case "close_ui", "close" -> sendClose(player);
             case "message" -> {
                 Object text = action.params().getOrDefault("value",
                         action.params().getOrDefault("text", ""));
-                player.sendMessage(Component.text(String.valueOf(text)));
+                player.sendMessage(Component.text(resolveState(String.valueOf(text), state)));
+            }
+            case "set_state" -> {
+                Object key = action.params().get("key");
+                if (key == null) {
+                    getLogger().warning("set_state without key in page " + page.document().id());
+                    return;
+                }
+                Object value = action.params().get("value");
+                state.put(String.valueOf(key), value);
+                refreshPage(player, session, page);
             }
             default -> getLogger().warning("Unsupported action '" + action.type()
                     + "' from page " + page.document().id() + " (planned for the action engine)");
         }
+    }
+
+    /** Recompiles the page with the current state and sends it as a document update. */
+    private void refreshPage(Player player, Session session,
+            com.cloudcore.api.page.PageLoader.CompiledPage previous) {
+        String uiId = previous.document().id();
+        String name = session.pageNames.get(uiId);
+        if (name == null) {
+            return;
+        }
+        java.nio.file.Path pageFile = resolvePageFile(name);
+        if (pageFile == null) {
+            getLogger().warning("Cannot refresh page '" + name + "': file missing");
+            return;
+        }
+        Map<String, Object> state = session.pageState.computeIfAbsent(name,
+                ignored -> new ConcurrentHashMap<>());
+        com.cloudcore.api.page.PageLoader.CompiledPage compiled;
+        try {
+            compiled = com.cloudcore.api.page.PageLoader.load(pagesRoot, pageFile, state);
+        } catch (com.cloudcore.api.page.PageLoadException exception) {
+            getLogger().warning("Refresh of '" + name + "' failed: " + exception.getMessage());
+            return;
+        }
+        compiledPages.put(uiId, compiled);
+        int revision = session.pageRevisions.merge(uiId, 1, Integer::sum);
+        String json = com.cloudcore.api.document.UiDocumentJson.write(compiled.document());
+        UiDefinition definition = new UiDefinition(uiId, revision, 0,
+                json.getBytes(StandardCharsets.UTF_8));
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
+                UiCodec.encodeDefinition(definition, Limits.S2C)));
+        getLogger().info("Updated page '" + name + "' revision=" + revision
+                + " state=" + state + " for " + player.getName());
+    }
+
+    /** Replaces {@code ${state.key}} and {@code ${key}} with current state values. */
+    private static String resolveState(String text, Map<String, Object> state) {
+        String result = text;
+        for (Map.Entry<String, Object> entry : state.entrySet()) {
+            result = result.replace("${state." + entry.getKey() + "}",
+                    String.valueOf(entry.getValue()));
+            result = result.replace("${" + entry.getKey() + "}", String.valueOf(entry.getValue()));
+        }
+        return result;
     }
 
     private void handleHello(Player player, Session session, Frame frame) {
@@ -889,15 +947,19 @@ public final class CloudCorePlugin extends JavaPlugin
             getLogger().warning("Page not found: " + name + " under " + pagesRoot);
             return;
         }
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        Map<String, Object> state = session.pageState.computeIfAbsent(name,
+                ignored -> new ConcurrentHashMap<>());
         com.cloudcore.api.page.PageLoader.CompiledPage compiled;
         try {
-            compiled = com.cloudcore.api.page.PageLoader.load(pagesRoot, pageFile, Map.of());
+            compiled = com.cloudcore.api.page.PageLoader.load(pagesRoot, pageFile, state);
         } catch (com.cloudcore.api.page.PageLoadException exception) {
             getLogger().warning("Page '" + name + "' failed to load: " + exception.getMessage());
             return;
         }
         UiDocument document = compiled.document();
         compiledPages.put(document.id(), compiled);
+        session.pageNames.put(document.id(), name);
         if (document.surface() != SurfaceType.CUSTOM_SCREEN) {
             getLogger().warning("Page '" + name + "' uses surface " + document.surface()
                     + "; /cloudcore page only opens custom screens");
@@ -906,14 +968,14 @@ public final class CloudCorePlugin extends JavaPlugin
         // The protocol requires UI_OPEN.uiId and document.id to match.
         String uiId = document.id();
         int token = random.nextInt();
-        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
         session.lastUiId = uiId;
-        UiOpen open = new UiOpen(uiId, 1, SurfaceType.CUSTOM_SCREEN, BindMode.NONE, token,
+        int revision = session.pageRevisions.merge(uiId, 1, Integer::sum);
+        UiOpen open = new UiOpen(uiId, revision, SurfaceType.CUSTOM_SCREEN, BindMode.NONE, token,
                 RenderMode.SCREEN, 0, name);
         sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
                 UiCodec.encodeOpen(open, Limits.S2C)));
         String json = com.cloudcore.api.document.UiDocumentJson.write(document);
-        UiDefinition definition = new UiDefinition(uiId, 1, 0,
+        UiDefinition definition = new UiDefinition(uiId, revision, 0,
                 json.getBytes(StandardCharsets.UTF_8));
         getServer().getScheduler().runTaskLater(this, () -> {
             if (player.isOnline()) {
@@ -1089,5 +1151,10 @@ public final class CloudCorePlugin extends JavaPlugin
         private long pingSentNanos;
         private BossBar bossBar;
         private String lastUiId;
+        /** Per-page state overrides, keyed by page name, then by state key. */
+        private final Map<String, Map<String, Object>> pageState = new ConcurrentHashMap<>();
+        /** uiId -> page name, so a set_state action can recompile the right page. */
+        private final Map<String, String> pageNames = new ConcurrentHashMap<>();
+        private final Map<String, Integer> pageRevisions = new ConcurrentHashMap<>();
     }
 }

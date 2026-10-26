@@ -227,6 +227,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **状态更新链路已核实**：示例页点 `+1` 后服务端日志
+  `Updated page 'example' revision=2 state={clicks=1}`，客户端
+  `Updating ui=example revision=2` 并重新打开页面；会话状态按玩家保存，重开页面沿用。
 - **事件链路已核实**：示例页点击 `repeat` 行后服务端日志
   `EVENT ui=example element=rows[0].row`，聊天收到编译期替换后的
   `选择了 铁剑（120 金）`；点“关闭”按钮触发 `close_ui`，服务端发 `UI_CLOSE`，界面关闭

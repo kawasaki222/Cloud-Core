@@ -106,6 +106,9 @@ final class ClientSession {
 - `uiId` 在单条连接内唯一；同一 id 的第二次 `UI_OPEN` 替换会话。
 - 未知 `uiId` 的 `UI_DEFINITION` 进入 `pendingDefinitions`（最多 8 个，LRU，60 秒），不直接丢弃。
 - 文档 `revision` 必须严格大于缓存值；元素更新若更旧则丢弃。
+- 同一 `uiId` 收到更高 revision 的 `UI_DEFINITION` 时按“更新”处理：重新解析、校验并
+  `SurfaceAdapter.open`（`CloudScreen` 会换成新文档），不再发 `UI_READY` 失败。
+- 点击带 `click` 事件的元素时发 `EVENT`（actionId 来自文档）；未命中的点击交给 `Screen` 默认处理。
 - 断线清空全部会话，并释放 NanoVG image handle / 原生纹理。
   实现：`ClientPlayConnectionEvents.JOIN/DISCONNECT` 调用 `resetSessionState`，清空重组器、
   `pendingOpens`、`pendingDefinitions`，并 `SurfaceRegistry#reset(DISCONNECT)` 让每个面板丢弃文档

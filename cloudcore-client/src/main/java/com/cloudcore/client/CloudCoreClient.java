@@ -66,6 +66,8 @@ public final class CloudCoreClient implements ClientModInitializer {
     private static final java.util.concurrent.atomic.AtomicInteger EVENT_REQUEST_ID =
             new java.util.concurrent.atomic.AtomicInteger();
     private final Map<String, OpenRequest> pendingOpens = new HashMap<>();
+    private final Map<String, OpenRequest> openRequests = new HashMap<>();
+    private final Map<String, Integer> openRevisions = new HashMap<>();
     private final Map<String, UiDefinition> pendingDefinitions = new HashMap<>();
     private static volatile boolean handshakeComplete;
 
@@ -106,6 +108,8 @@ public final class CloudCoreClient implements ClientModInitializer {
         assembler.clear();
         pendingOpens.clear();
         pendingDefinitions.clear();
+        openRequests.clear();
+        openRevisions.clear();
         surfaceRegistry.reset(CloseReason.DISCONNECT);
         LOGGER.info("Cleared session state on {}", cause);
     }
@@ -192,6 +196,19 @@ public final class CloudCoreClient implements ClientModInitializer {
         UiDefinition definition = UiCodec.decodeDefinition(frame.body(), Limits.S2C);
         OpenRequest request = pendingOpens.get(definition.uiId());
         if (request == null) {
+            OpenRequest open = openRequests.get(definition.uiId());
+            if (open != null) {
+                int current = openRevisions.getOrDefault(definition.uiId(), -1);
+                if (definition.revision() <= current) {
+                    LOGGER.debug("Ignoring stale update ui={} revision={} current={}",
+                            definition.uiId(), definition.revision(), current);
+                    return;
+                }
+                LOGGER.info("Updating ui={} revision={}", definition.uiId(),
+                        definition.revision());
+                openDefinition(open, definition);
+                return;
+            }
             if (pendingDefinitions.size() < 64) {
                 pendingDefinitions.put(definition.uiId(), definition);
             }
@@ -251,6 +268,8 @@ public final class CloudCoreClient implements ClientModInitializer {
         try {
             adapter.open(request, new UiRuntime(minecraft, request, document));
             pendingOpens.remove(definition.uiId());
+            openRequests.put(definition.uiId(), request);
+            openRevisions.put(definition.uiId(), definition.revision());
             sendReady(request, definition.revision(), UiReadyState.OK, "");
             LOGGER.info("Opened ui={} surface={} revision={}",
                     definition.uiId(), request.surface(), definition.revision());
@@ -306,6 +325,8 @@ public final class CloudCoreClient implements ClientModInitializer {
         UiClose close = UiCodec.decodeClose(frame.body(), Limits.S2C);
         pendingOpens.remove(close.uiId());
         pendingDefinitions.remove(close.uiId());
+        openRequests.remove(close.uiId());
+        openRevisions.remove(close.uiId());
         CloseReason reason = switch (close.reason()) {
             case 0, 1 -> CloseReason.SERVER;
             case 2 -> CloseReason.REPLACED;

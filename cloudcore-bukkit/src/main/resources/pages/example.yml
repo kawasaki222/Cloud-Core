@@ -8,6 +8,7 @@ theme: dark
 size: [320, 180]
 state:
   title: "示例页面"
+  clicks: 0
   entries:
     - { id: sword, name: "铁剑", price: 120 }
     - { id: shield, name: "盾牌", price: 80 }
@@ -61,6 +62,26 @@ elements:
           click:
             - action: message
               value: "选择了 ${entry.name}（${entry.price} 金）"
+  - type: label
+    id: clicks_label
+    x: 232
+    y: 44
+    text: "点击次数：${state.clicks}"
+    color: "#FFE8E8E8"
+  - type: button
+    id: add_click
+    x: 232
+    y: 58
+    width: 72
+    height: 20
+    text: "+1"
+    style:
+      background: "#FF4A9F6E"
+    on:
+      click:
+        - action: set_state
+          key: clicks
+          value: 1
   - type: button
     id: close_button
     x: 232

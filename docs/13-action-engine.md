@@ -20,8 +20,10 @@
 
 - 文档编译：`PageLoader` 把 `on:` 编译成 actionId + 服务端动作表；动作体不下发客户端。
 - 客户端：点击命中带 `click` 事件的元素后发 `EVENT`（`actionId` 来自文档）。
-- 服务端：`message`（聊天消息，含 `${...}` 编译期替换）与 `close_ui` 已可执行；
-  `set_state`、`command`、条件、等待、`EVENT_RESULT` 仍待实现。
+- 服务端：`message`（聊天消息，含编译期模板 + 运行期 `${state.x}` 替换）、`close_ui`、
+  `set_state`（写会话状态 → 重新编译页面 → 以更高 revision 重发 `UI_DEFINITION`）已可执行；
+  客户端收到同一 `uiId` 的更高 revision 会替换界面。
+- 尚未支持：`command`、条件、等待、表达式求值（`${state.clicks + 1}` 仍是字面量）、`EVENT_RESULT`。
 
 ## 1. 目标与非目标
 
