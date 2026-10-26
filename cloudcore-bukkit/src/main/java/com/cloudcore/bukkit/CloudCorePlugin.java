@@ -508,8 +508,10 @@ public final class CloudCorePlugin extends JavaPlugin
         if (args.length != 1 || !args[0].equalsIgnoreCase("ping")) {
             sender.sendMessage(Component.text(
                     "Usage: /" + label
-                            + " <ping|demo|demo-big|demo-hud|demo-tooltip|demo-container"
-                            + "|demo-readonly|demo-inventory|probe|boss|close|diagnostic>"));
+                            + " <page <name> [player]|validate|reload"
+                            + "|ping|demo|demo-big|demo-huge|demo-scroll|demo-assets"
+                            + "|demo-hud|demo-tooltip|demo-container|demo-readonly"
+                            + "|demo-inventory|probe|boss|close|diagnostic>"));
             return true;
         }
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
