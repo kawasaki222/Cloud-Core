@@ -74,6 +74,11 @@ public final class CloudCoreClient implements ClientModInitializer {
         PayloadTypeRegistry.playS2C().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
         PayloadTypeRegistry.playC2S().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
 
+        net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(
+                net.minecraft.resources.Identifier.fromNamespaceAndPath(MOD_ID, "hud"),
+                (graphics, tickCounter) -> com.cloudcore.client.surface.HudSurfaceAdapter
+                        .render(graphics));
+
         ClientPlayNetworking.registerGlobalReceiver(CloudFramePayload.TYPE,
                 (payload, context) -> handlePayload(payload));
 

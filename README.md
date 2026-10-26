@@ -16,7 +16,8 @@ M2 的面板注册表、最小 `UiDocument`、`UI_DEFINITION` 解码/校验、`C
   私有 `BossHealthOverlay#drawBar` 的 `@WrapOperation` 与 Paper BossBar 哨兵标题、
   `GuiGraphics#renderTooltip` 命中、服务端主动 `UI_CLOSE`、`DIAGNOSTIC` 下发链路；
   Windows x64 上 NanoVG 初始化/FBO 绘制/readback 已通过（`(255,0,0,255)`），NanoVG 类与三平台原生库
-  已并入客户端 jar；本地 `local:` PNG 已能加载并显示；FBO 纹理注册成功，但 `GuiGraphics.blit` 画面仍不可见。
+  已并入客户端 jar；本地 `local:` PNG、HUD 面板与 HUD 关闭已能正常显示；FBO 纹理注册成功，
+  但 `GuiGraphics.blit` 画面仍不可见。
 未知 `surfaceId` 会保留原值并回 `UI_READY(state=4)`；FBO 屏幕合成、图片/物品图标、Linux/macOS、
 完整面板替换和压力测试尚未验证，见 `docs/TODO_HANDOFF.md`。
 

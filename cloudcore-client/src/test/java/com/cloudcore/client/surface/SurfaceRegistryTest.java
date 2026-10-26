@@ -22,20 +22,23 @@ class SurfaceRegistryTest {
         assertInstanceOf(CustomScreenAdapter.class,
                 registry.get(SurfaceType.CUSTOM_SCREEN));
         for (SurfaceType type : SurfaceType.values()) {
-            if (type != SurfaceType.CUSTOM_SCREEN) {
+            if (type == SurfaceType.HUD) {
+                assertInstanceOf(HudSurfaceAdapter.class, registry.get(type));
+            } else if (type != SurfaceType.CUSTOM_SCREEN) {
                 assertInstanceOf(UnsupportedSurfaceAdapter.class, registry.get(type));
             }
         }
     }
 
     @Test
-    void supportsCustomScreenAndRejectsUnimplementedSurfaces() {
+    void supportsCustomAndHudAndRejectsUnimplementedSurfaces() {
         SurfaceRegistry registry = SurfaceRegistry.createDefault();
         OpenRequest custom = request(SurfaceType.CUSTOM_SCREEN);
         OpenRequest hud = request(SurfaceType.HUD);
 
         assertTrue(registry.canHandle(custom, null));
-        assertFalse(registry.canHandle(hud, null));
+        assertTrue(registry.canHandle(hud, null));
+        assertFalse(registry.canHandle(request(SurfaceType.TOOLTIP), null));
     }
 
     @Test

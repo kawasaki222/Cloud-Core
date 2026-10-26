@@ -177,6 +177,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   并记录 `UI_CLOSE ui=cloudcore_demo reason=0`；服务端日志显示对应 S2C 帧。
 - **DIAGNOSTIC 链路已核实**：`/cloudcore diagnostic` 下发 `CC-PROBE-001`，客户端文件日志写入
   `ERROR [cloudcore] [CC-PROBE-001] scope=probe trace=...`。
+- **HUD 面板已核实**：`/cloudcore demo-hud` 通过 Fabric `HudElementRegistry` 注册的 HUD 元素
+  实际显示 panel/label；`UI_CLOSE` 后清除文档，HUD 消失。当前使用原生 RenderList，不支持 HUD 输入。
 - **本地贴图已核实**：`LocalTextureRegistry` 从
   `resourcepacks/CloudCore/test/red.png` 读取 PNG、注册 `DynamicTexture`，demo 页面实际显示绿色图片；
   路径逃逸/缺失分别记录 `CC-ASSET-001/002`。

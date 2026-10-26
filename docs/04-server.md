@@ -128,6 +128,7 @@ debug: false
 /cloudcore ping [player]                发送 PING 并报告 RTT（控制台可指定玩家）
 /cloudcore demo [player]                发送最小自绘演示页，验证传输与渲染链路
 /cloudcore demo-big [player]            发送 >24 KiB 文档，验证真机分片与重组
+/cloudcore demo-hud [player]            发送持久 HUD 文档，验证 HudElementRegistry 绘制
 /cloudcore probe [player]               打开测试箱子，验证 InventoryOpenEvent 时序（需配置）
 /cloudcore boss [player]                发送带哨兵的测试 BossBar，验证客户端匹配
 /cloudcore close [player]               关闭最近发送的测试 UI，验证服务端主动关闭

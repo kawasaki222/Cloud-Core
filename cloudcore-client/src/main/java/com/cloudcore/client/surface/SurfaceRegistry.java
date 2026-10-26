@@ -57,8 +57,9 @@ public final class SurfaceRegistry {
     public static SurfaceRegistry createDefault(Consumer<String> onPlayerClosed) {
         SurfaceRegistry registry = new SurfaceRegistry();
         registry.register(new CustomScreenAdapter(onPlayerClosed));
+        registry.register(new HudSurfaceAdapter());
         for (SurfaceType type : SurfaceType.values()) {
-            if (type != SurfaceType.CUSTOM_SCREEN) {
+            if (type != SurfaceType.CUSTOM_SCREEN && type != SurfaceType.HUD) {
                 registry.register(new UnsupportedSurfaceAdapter(type));
             }
         }
