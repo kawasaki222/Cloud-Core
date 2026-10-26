@@ -247,6 +247,13 @@ public record UiSession(
 - 同类型临时面板每玩家最多一个；持久面板每类型最多一个。
 - 关闭会话发送 `UI_CLOSE(reason)`；容器由 Bukkit 关闭。
 
+### 6.5 页面命令
+
+`/cloudcore page <名字> [玩家]`：从 `plugins/CloudCore/pages/<名字>/page.yml`（或 `<名字>.yml`）
+加载 YAML，经 `PageLoader` 组合与展开后下发 `UI_OPEN` + `UI_DEFINITION`。当前只接受
+`surface: custom_screen`；容器/HUD/Tooltip/Boss 仍走各自的演示与后续策略实现。
+插件首次启动会把示例页写到 `pages/example.yml`。
+
 ## 7. 面板提供器
 
 ### 7.1 容器面板

@@ -23,11 +23,114 @@ import java.util.Set;
  * element fields in {@link UiElement#attributes()} for forward compatibility.
  */
 public final class UiDocumentJson {
+    private static final com.google.gson.Gson GSON = new com.google.gson.GsonBuilder()
+            .serializeNulls()
+            .create();
     private static final Set<String> ELEMENT_STRUCTURE_FIELDS = Set.of(
             "id", "type", "x", "y", "width", "height", "visible", "enabled", "z",
             "events", "children");
 
     private UiDocumentJson() {
+    }
+
+    /**
+     * Serialises a compiled document back to the JSON the client receives. Round-trips with
+     * {@link #parse(String)}; the output contains no actions, permissions or raw URLs.
+     */
+    public static String write(UiDocument document) {
+        Objects.requireNonNull(document, "document");
+        JsonObject root = new JsonObject();
+        root.addProperty("schema", document.schema());
+        root.addProperty("id", document.id());
+        root.addProperty("surface", document.surface().name().toLowerCase(Locale.ROOT));
+        root.add("title", new JsonPrimitive(document.title().plainText()));
+        if (document.theme() != null) {
+            root.addProperty("theme", document.theme());
+        }
+        JsonArray size = new JsonArray();
+        size.add(document.width());
+        size.add(document.height());
+        root.add("size", size);
+        if (document.scale() != 1.0f) {
+            root.addProperty("scale", document.scale());
+        }
+        if (document.container() != null) {
+            JsonObject container = new JsonObject();
+            container.addProperty("rows", document.container().rows());
+            container.addProperty("interaction", document.container().interaction());
+            root.add("container", container);
+        }
+        if (!document.surfaceOptions().isEmpty()) {
+            root.add("surface_options", GSON.toJsonTree(document.surfaceOptions()));
+        }
+        if (!document.fonts().isEmpty()) {
+            JsonObject fonts = new JsonObject();
+            for (Map.Entry<String, FontSpec> entry : document.fonts().entrySet()) {
+                FontSpec spec = entry.getValue();
+                JsonObject font = new JsonObject();
+                font.addProperty("provider", spec.provider());
+                font.addProperty("source", spec.source());
+                font.addProperty("id", spec.id());
+                if (spec.fallback() != null) {
+                    font.addProperty("fallback", spec.fallback());
+                }
+                if (spec.lineGap() != 0) {
+                    font.addProperty("line_gap", spec.lineGap());
+                }
+                if (spec.shadow()) {
+                    font.addProperty("shadow", true);
+                }
+                fonts.add(entry.getKey(), font);
+            }
+            root.add("fonts", fonts);
+        }
+        JsonArray elements = new JsonArray();
+        for (UiElement element : document.elements()) {
+            elements.add(writeElement(element));
+        }
+        root.add("elements", elements);
+        return GSON.toJson(root);
+    }
+
+    private static JsonElement writeElement(UiElement element) {
+        JsonObject object = new JsonObject();
+        object.addProperty("id", element.id());
+        object.addProperty("type", element.type());
+        object.addProperty("x", element.x());
+        object.addProperty("y", element.y());
+        if (element.width() != null) {
+            object.addProperty("width", element.width());
+        }
+        if (element.height() != null) {
+            object.addProperty("height", element.height());
+        }
+        if (!element.visible()) {
+            object.addProperty("visible", false);
+        }
+        if (!element.enabled()) {
+            object.addProperty("enabled", false);
+        }
+        if (element.z() != 0) {
+            object.addProperty("z", element.z());
+        }
+        for (Map.Entry<String, Object> entry : element.attributes().entrySet()) {
+            object.add(entry.getKey(), GSON.toJsonTree(entry.getValue()));
+        }
+        if (!element.events().isEmpty()) {
+            JsonObject events = new JsonObject();
+            for (Map.Entry<String, Integer> entry : element.events().entrySet()) {
+                events.addProperty(entry.getKey(), entry.getValue());
+            }
+            object.add("events", events);
+        }
+        if (!element.children().isEmpty()) {
+            JsonArray children = new JsonArray();
+            for (UiElement child : element.children()) {
+                children.add(writeElement(child));
+            }
+            object.add("children", children);
+        }
+        return object;
     }
 
     public static UiDocument parse(byte[] json) throws PageLoadException {

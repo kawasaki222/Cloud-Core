@@ -71,6 +71,7 @@ public final class CloudCorePlugin extends JavaPlugin
 
     private final Map<UUID, Session> sessions = new ConcurrentHashMap<>();
     private final SecureRandom random = new SecureRandom();
+    private java.nio.file.Path pagesRoot;
 
     @Override
     public void onEnable() {
@@ -82,8 +83,31 @@ public final class CloudCorePlugin extends JavaPlugin
         } else {
             getLogger().warning("Command 'cloudcore' is missing from plugin.yml");
         }
+        preparePagesDirectory();
         getLogger().info("Cloud Core transport online on " + CHANNEL
                 + " (protocol " + ProtocolVersion.MAJOR + "." + ProtocolVersion.MINOR + ")");
+    }
+
+    /**
+     * Creates {@code plugins/CloudCore/pages/} and drops the example page there once, so an
+     * admin can start from a working YAML file instead of the JSON demo documents.
+     */
+    private void preparePagesDirectory() {
+        pagesRoot = getDataFolder().toPath().resolve("pages");
+        try {
+            java.nio.file.Files.createDirectories(pagesRoot);
+            java.nio.file.Path example = pagesRoot.resolve("example.yml");
+            if (java.nio.file.Files.notExists(example)) {
+                try (java.io.InputStream input = getResource("pages/example.yml")) {
+                    if (input != null) {
+                        java.nio.file.Files.copy(input, example);
+                        getLogger().info("Wrote example page to " + example);
+                    }
+                }
+            }
+        } catch (java.io.IOException exception) {
+            getLogger().log(Level.WARNING, "Cannot prepare pages directory", exception);
+        }
     }
 
     @Override
@@ -238,6 +262,20 @@ public final class CloudCorePlugin extends JavaPlugin
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission(PING_PERMISSION)) {
             sender.sendMessage(Component.text("No permission."));
+            return true;
+        }
+        if (args.length >= 2 && args[0].equalsIgnoreCase("page")) {
+            Player target = args.length >= 3
+                    ? getServer().getPlayerExact(args[2])
+                    : sender instanceof Player self ? self : null;
+            if (target == null) {
+                sender.sendMessage(Component.text(
+                        "Usage: /cloudcore page <name> [player]"));
+                return true;
+            }
+            sendPage(target, args[1]);
+            sender.sendMessage(Component.text("Cloud Core page '" + args[1] + "' sent to "
+                    + target.getName()));
             return true;
         }
         if (args.length == 2 && isKnownAction(args[0])) {
@@ -789,6 +827,69 @@ public final class CloudCorePlugin extends JavaPlugin
      * Demonstrates {@code scroll}: children are clipped to the box and offset by
      * {@code scroll_y}. Rows outside the box must be cut in both render backends.
      */
+    /**
+     * Loads an authored YAML page, expands it against an empty state snapshot and sends the
+     * compiled JSON to the client. Only custom screens are bound here; other surfaces keep
+     * their dedicated flows (container/HUD/tooltip/boss).
+     */
+    private void sendPage(Player player, String name) {
+        if (pagesRoot == null) {
+            getLogger().warning("Pages directory unavailable; cannot send page " + name);
+            return;
+        }
+        java.nio.file.Path pageFile = resolvePageFile(name);
+        if (pageFile == null) {
+            getLogger().warning("Page not found: " + name + " under " + pagesRoot);
+            return;
+        }
+        UiDocument document;
+        try {
+            document = com.cloudcore.api.page.PageLoader.load(pagesRoot, pageFile, Map.of());
+        } catch (com.cloudcore.api.page.PageLoadException exception) {
+            getLogger().warning("Page '" + name + "' failed to load: " + exception.getMessage());
+            return;
+        }
+        if (document.surface() != SurfaceType.CUSTOM_SCREEN) {
+            getLogger().warning("Page '" + name + "' uses surface " + document.surface()
+                    + "; /cloudcore page only opens custom screens");
+            return;
+        }
+        // The protocol requires UI_OPEN.uiId and document.id to match.
+        String uiId = document.id();
+        int token = random.nextInt();
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        session.lastUiId = uiId;
+        UiOpen open = new UiOpen(uiId, 1, SurfaceType.CUSTOM_SCREEN, BindMode.NONE, token,
+                RenderMode.SCREEN, 0, name);
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
+                UiCodec.encodeOpen(open, Limits.S2C)));
+        String json = com.cloudcore.api.document.UiDocumentJson.write(document);
+        UiDefinition definition = new UiDefinition(uiId, 1, 0,
+                json.getBytes(StandardCharsets.UTF_8));
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (player.isOnline()) {
+                sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
+                        UiCodec.encodeDefinition(definition, Limits.S2C)));
+            }
+        }, 1L);
+        getLogger().info("Sent page '" + name + "' to " + player.getName()
+                + " elements=" + document.elements().size() + " bytes=" + json.length());
+    }
+
+    private java.nio.file.Path resolvePageFile(String name) {
+        for (String candidate : new String[]{
+                name + "/page.yml", name + "/page.yaml", name + ".yml", name + ".yaml"}) {
+            java.nio.file.Path file = pagesRoot.resolve(candidate).normalize();
+            if (!file.startsWith(pagesRoot)) {
+                continue;
+            }
+            if (java.nio.file.Files.isRegularFile(file)) {
+                return file;
+            }
+        }
+        return null;
+    }
+
     private void sendDemoScroll(Player player) {
         String uiId = "cloudcore_demo_scroll";
         int token = random.nextInt();

@@ -227,6 +227,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **YAML 页面链路已核实**：`/cloudcore page example <玩家>` 从 `plugins/CloudCore/pages/example.yml`
+  加载（含 `state`、`repeat`、`${...}` 模板与九宫格图片），3 条 `repeat` 实例按高度+gap 堆叠显示，
+  中文文本正常（`page-example3.png`）。`PageLoaderTest` 覆盖合并顺序、片段禁用字段、循环引用、
+  repeat 源类型；`UiDocumentJsonTest` 覆盖 JSON 往返。
 - **未知 BindMode/RenderMode 已核实（解码）**：`UiCodecTest` 把 `UI_OPEN` 的绑定/渲染模式
   字节改成未定义值后仍能解码为 `UNKNOWN`，不再抛 `ProtocolException`；客户端的
   `OpenRequest#hasUnknownMode` 有单元测试，命中时回 `UI_READY(state=4)`。

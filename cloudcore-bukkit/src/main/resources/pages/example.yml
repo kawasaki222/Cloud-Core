@@ -1,0 +1,59 @@
+# Cloud Core 示例页面：复制到 plugins/CloudCore/pages/ 后可用
+# /cloudcore page example <玩家>
+schema: 1
+id: example
+surface: custom_screen
+title: "Cloud Core Example"
+theme: dark
+size: [320, 180]
+state:
+  title: "示例页面"
+  entries:
+    - { id: sword, name: "铁剑", price: 120 }
+    - { id: shield, name: "盾牌", price: 80 }
+    - { id: potion, name: "药水", price: 35 }
+includes: []
+elements:
+  - type: panel
+    id: root
+    x: 0
+    y: 0
+    width: fill
+    height: fill
+    style:
+      background: "#CC202830"
+  - type: label
+    id: heading
+    x: 16
+    y: 12
+    text: "${state.title}"
+    color: "#FFFFFFFF"
+  - type: label
+    id: hint
+    x: 16
+    y: 28
+    text: "repeat + template + nine-slice"
+    color: "#FF9AD0FF"
+  - type: image
+    id: frame
+    x: 16
+    y: 44
+    width: 200
+    height: 40
+    texture: "pack:minecraft:block/diamond_block"
+    nine_slice: [4, 4, 4, 4]
+  - type: repeat
+    id: rows
+    source: "${state.entries}"
+    as: entry
+    index: i
+    children:
+      - type: button
+        id: row
+        x: 16
+        y: 96
+        width: 200
+        height: 18
+        text: "${i}. ${entry.name} - ${entry.price}"
+        style:
+          background: "#FF3C6E9F"

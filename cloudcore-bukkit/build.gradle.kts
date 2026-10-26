@@ -18,6 +18,19 @@ tasks.jar {
     from(serverCoreMain.output)
 }
 
+// SnakeYAML is used by the page loader and must ship inside the plugin jar: Paper does not
+// expose its own copy to plugin classloaders.
+val snakeYamlJars = configurations.runtimeClasspath.get()
+        .filter { it.name.startsWith("snakeyaml-") }
+tasks.jar {
+    snakeYamlJars.forEach { artifact ->
+        from(zipTree(artifact)) {
+            exclude("META-INF/**")
+            exclude("module-info.class")
+        }
+    }
+}
+
 tasks.processResources {
     inputs.property("version", project.version)
     filesMatching("plugin.yml") {

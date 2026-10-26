@@ -98,4 +98,37 @@ class UiDocumentJsonTest {
                 }
                 """));
     }
+
+    @Test
+    void writeRoundTripsWithParse() throws Exception {
+        String json = """
+                {
+                  "schema": 1,
+                  "id": "round",
+                  "surface": "container",
+                  "title": { "runs": [ { "text": "Round" } ] },
+                  "size": [176, 166],
+                  "container": { "rows": 3, "interaction": "readonly" },
+                  "fonts": { "body": { "provider": "nanovg_ttf", "source": "local",
+                                       "id": "body.ttf" } },
+                  "elements": [
+                    { "id": "panel", "type": "panel", "x": 0, "y": 0,
+                      "width": "fill", "height": "fill",
+                      "style": { "background": "#FF000000" } }
+                  ]
+                }
+                """;
+        UiDocument parsed = UiDocumentJson.parse(json);
+
+        UiDocument reparsed = UiDocumentJson.parse(UiDocumentJson.write(parsed));
+
+        assertEquals(parsed.id(), reparsed.id());
+        assertEquals(parsed.surface(), reparsed.surface());
+        assertEquals(parsed.width(), reparsed.width());
+        assertEquals(parsed.elements().size(), reparsed.elements().size());
+        assertEquals(parsed.elements().get(0).attributes().get("style"),
+                reparsed.elements().get(0).attributes().get("style"));
+        assertEquals(parsed.fonts().keySet(), reparsed.fonts().keySet());
+        assertEquals("readonly", reparsed.container().interaction());
+    }
 }

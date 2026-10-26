@@ -14,6 +14,17 @@
 
 组合是**静态**的（加载期），展开是**动态**的（状态变化时）。
 
+实现状态（v1）：
+
+- `cloudcore-api` 的 `PageLoader` 读取 YAML、合并 `includes`（深度 8、文件数 64、单文件 256 KiB）、
+  展开 `repeat`（实例 id `<repeatId>[n].<childId>`、`gap` 堆叠、上限 256）、替换
+  `${state.x}`/`${item.field}`/`${i}`，最后走同一套 `UiDocumentValidator`。
+- 片段不得声明 `id`/`surface`/`container`/`size`/`scale`/`title`/`permission`/`theme`，否则报错。
+- `UiDocumentJson.write` 把编译结果写回线上下发的 JSON；已做往返测试。
+- Paper 插件启动时创建 `plugins/CloudCore/pages/` 并写入示例页；`/cloudcore page <名字> [玩家]`
+  加载并下发（当前只处理 `custom_screen`）。
+- 尚未实现：WatchService 热重载、依赖图增量编译、`/cloudcore validate`、动作绑定（`on:` 目前丢弃）。
+
 ## 2. 目录结构
 
 ```
