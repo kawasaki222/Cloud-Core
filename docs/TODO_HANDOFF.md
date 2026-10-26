@@ -4,16 +4,21 @@
 
 ## 当前状态
 
-**M1 协议核心、M2 面板链路、M3 页面加载与基础动作均已完成真机联调。**
+**M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集均已完成真机联调；
+附属插件 API、键盘导航、状态持久化已落地。**
 
 - 协议：信封/DEFLATE/分片重组/握手/PING-PONG/UI_OPEN-READY-CLOSE-CLOSED/EVENT-EVENT_RESULT/
   TEXTURE_REF/DIAGNOSTIC 全部实现并有测试；未知 surface 与 bind/render 模式前向兼容。
 - 服务端：Paper 插件自包含；容器三种点击策略、`inventory_grid` 槽位重排、事件限流（20/s 突发 40）、
-  `command` 动作闸门、`/cloudcore validate|reload|page|demo-*`。
+  `command` 动作闸门、`open_page`/`sound` 动作、PlaceholderAPI 展开（软依赖）、
+  会话状态持久化（`state/<uuid>.json`，异步写）、`/cloudcore validate|reload|page|demo-*`。
+- 附属 API：`CloudCoreApi` 的 `open`（YAML 或代码页）、`registerActionHandler`、
+  `registerPlaceholderResolver`、`registerPageProvider`、`isModded`；`PageBuilder` 在 `cloudcore-api`。
 - 页面：YAML 单文件/`includes`/`repeat`（含嵌套）/模板；动作编译成 actionId 并只留在服务端；
-  `set_state` 重编译后推送更高 revision。
-- 客户端：六类面板 + RenderList（文字/富文本/图片/九宫格/背景贴图/裁剪/滚动/悬停/物品图标/GIF/URL 贴图）；
-  NanoVG 后端与 FBO 合成（opt-in）；客户端日志与诊断码。
+  `set_state` 重编译后推送更高 revision（等值写入不推送）。
+- 客户端：六类面板 + RenderList（文字/富文本/图片/九宫格/背景贴图/裁剪/滚动/悬停/物品图标/GIF/URL 贴图/
+  滑块/复选框/输入框状态/进度条四方向/图标按钮/键盘焦点）；NanoVG 后端与 FBO 合成（opt-in）；
+  客户端日志与诊断码。
 - 构建：`./gradlew build` 通过，196 个测试 / 40 个类，0 失败。
 
 ## 已有内容
@@ -169,17 +174,19 @@ docs/
 
 ## 下一步动作（按顺序）
 
-1. **M1 剩余压力**：
-   - 超时/乱序/重复分片的真机注入（单元测试已覆盖，真机未做）。
-2. **M0 的 spike**（各半天到一天）：
-   - U29/U30/U31：把已通过的 Windows FBO spike 包装成 `AbstractTexture` 并用 `GuiGraphics.blit`
-     合成到屏幕，验证预乘 alpha 与 1.21.6 提取/绘制状态；补 Linux/macOS。
-   - 先做一个纯色面板 + 一张 TTF 文本的 NanoVG 合成 spike，确认没有色差和状态泄漏。
-3. **M2 实际渲染**：
-   - 剩余：文本 shaping、Tooltip 九宫格背景、Boss 样式字段数据化。
-   - 默认接入 `NanoVgBackend`（设备分辨率 FBO 清晰文字）；失败时整帧回退 `NativeBackend`。
-   - 容器与玩家背包的点击策略（`managed`/`readonly`/`passthrough`）自动化交互测试。   - 玩家背包 v2：配方书四档、玩家模型与状态效果。
-4. 之后按 `08-roadmap.md` 的 M3–M10 推进。
+1. **协议增量**：`ELEMENT_UPDATE`（只发改动的元素/属性，替换当前“每次状态变化重发整份文档”），
+   需要服务端 diff、客户端可变的元素表与 revision 顺序测试；`Limits`、黄金向量与
+   `docs/02-protocol.md` 同步。
+2. **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto`，服务端允许列表、
+   哈希缓存；配合远端 GIF 真机验证。
+3. **持久化后端**：在 `PlayerStateStore` 后面实现 SQLite（默认）与 MySQL（可选），
+   含连接池、迁移脚本与容量上限；文件实现对单服仍可用。
+4. **NanoVG 默认化**：设备分辨率 FBO（清晰文字）、U31 状态隔离、失败整帧回退、Linux/macOS 验证。
+5. **玩家背包 v2**：配方书四档（`skinned`/`custom`）、玩家模型与状态效果；`allow_player_inventory`
+   与 `InventoryDragEvent` 的真机验证顺带补上。
+6. **渲染与交互剩余**：文本 shaping、滑块拖动与 `min`/`max`/`step`、按钮 `pressed`/`disabled`、
+   滚动容器内元素的焦点/输入框定位（当前按未滚动位置计算）。
+7. 之后按 `08-roadmap.md` 的 M4–M10 推进（动作引擎 v2、占位符周期刷新、加固与发布）。
 
 ## 环境搭建
 
@@ -204,7 +211,8 @@ docs/
   模组只留最小回退。
 - 字体来自本地 CloudCore 目录/资源包，不能运行时推送；NanoVG 用 TTF/OTF，原版文本用 `Font`。
 - 所有错误写客户端日志，默认脱敏；`F10`/`dump` 生成诊断包。
-- 默认渲染后端是 NanoVG：`NVGContext`、FBO、字体创建和合成只能在渲染线程。
+- 当前默认渲染后端是原生 `NativeBackend`；NanoVG 后端通过 `-PcloudcoreNanoVg`（客户端运行属性）
+  启用，默认化计划中。`NVGContext`、FBO、字体创建和合成只能在渲染线程。
 - NanoVG 原生库随模组打包，加载失败必须回退 `NativeBackend`。
 - FBO 按逻辑分辨率整数倍分配，单层显存上限 8 MiB，窗口/GUI 缩放变化才重建。
 - URL 贴图只允许 https；直连模式由客户端执行私网/回环/大小/超时策略，代理模式由服务端执行允许列表。

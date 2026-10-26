@@ -102,6 +102,9 @@ Windows 用 `gradlew.bat`。如果 `JAVA_HOME` 不是 21，设置为本机 JDK 2
 
 ## 9. 当前状态
 
-- 文档基线完成；代码从 M0 开始。
-- 当前目标：Gradle 多模块脚手架、协议核心、Paper 通道、Fabric 入口、CLAUDE.md、推送。
-- 后续：M0 spike（U1/U2/U28–U31）→ M1 协议 → M2 面板框架。
+- M0/M1/M2 完成并在真实 Paper + Fabric 开发客户端联调；M3 页面加载、动作引擎子集、
+  附属插件 API、键盘导航、状态持久化（JSON 文件实现）已落地。详见 `README.md`
+  「当前状态」、`docs/10-risks-and-verification.md` 第 2.1 节与 `docs/TODO_HANDOFF.md`。
+- 后续：NanoVG 默认化与设备分辨率清晰文字、`ELEMENT_UPDATE` 增量更新、贴图代理
+  （`TEXTURE_REQUEST`/`TEXTURE_PUT`）、玩家背包配方书、SQLite/MySQL 存储实现、Linux/macOS 验证。
+- 每次改动仍按第 0 节：构建 → 提交 → 推送；验证结论写进 `docs/10`。

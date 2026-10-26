@@ -9,9 +9,15 @@ import java.util.Map;
 import java.util.Objects;
 
 /**
- * Converts the currently supported subset of a document into backend-independent
- * instructions. Layout containers with explicit coordinates and simple content elements
- * are supported; images, item icons, clipping and text shaping remain pending.
+ * Converts a document into backend-independent draw commands.
+ *
+ * <p>Geometry is absolute: element positions are relative to their parent, and
+ * {@code fill}/{@code %}/pixel sizes resolve against the parent box, matching
+ * {@link ElementHitTester} and {@code LayoutBoxes}. Every element the DSL documents is
+ * rendered here — panels/buttons (colour, texture or nine-slice background), labels and rich
+ * text, text fields (background, borders), checkboxes, sliders, progress bars, images (with
+ * animation options), item icons, icon buttons, scroll containers with clipping, and the
+ * row/column/grid layouts.
  */
 public final class DocumentRenderListBuilder {
     private static final int DEFAULT_PANEL = 0x66000000;
