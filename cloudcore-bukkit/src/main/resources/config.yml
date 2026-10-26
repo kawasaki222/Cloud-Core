@@ -8,6 +8,11 @@ pages:
   # 页面文件变化后自动重载（400ms 合并窗口），并给正在查看的玩家推送新文档
   watch: true
 
+placeholders:
+  # 安装了 PlaceholderAPI 时，在发送/刷新页面时解析可见文本里的 %占位符%。
+  # 关闭后 %token% 原样显示。只解析 text/placeholder 与标题，不碰颜色、尺寸和贴图引用。
+  enabled: true
+
 actions:
   commands:
     # 关闭时，页面里的 command 动作一律拒绝（返回 EVENT_RESULT=REJECTED）

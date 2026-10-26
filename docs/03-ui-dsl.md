@@ -724,6 +724,18 @@ elements:
 
 `%foo%` 与 `${placeholder:foo}` 都由服务端解析，客户端不解析任何占位符。
 
+已实现（PlaceholderAPI，软依赖）：
+
+- 安装了 PlaceholderAPI 时，`text` 与 `placeholder` 属性（含富文本 `runs[].text`）和文档标题里的
+  `%token%` 在**发送与刷新时**各展开一次；颜色、尺寸、贴图引用与事件不会被改写。
+- 配置 `placeholders.enabled: false` 可关闭；没有安装 PlaceholderAPI 时 `%token%` 原样显示，
+  启动日志写 `PlaceholderAPI not installed; %placeholders% stay as text`。
+- 未知令牌（未安装的扩展）保持原样；扩展抛异常时写一次警告，文本按未展开发送。
+- 展开只作用于 YAML 页面（`/cloudcore page` 与 `set_state` 刷新）；诊断用的内置 demo 文档不展开。
+
+计划中：下面这套周期刷新/预算/异步白名单（`interval`、`tick`、`event` 模式与 `ELEMENT_UPDATE`）。
+在它落地前，页面重开或 `set_state` 刷新时才会重新解析一次占位符。
+
 页面级默认：
 
 ```yaml

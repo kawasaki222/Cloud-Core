@@ -255,6 +255,8 @@ public record UiSession(
 inventory-probe: false      # 打开后每次 InventoryOpenEvent 发一个 PING（排查容器时序）
 pages:
   watch: true               # 页面文件变化后自动重载（400ms 合并）并推送更新
+placeholders:
+  enabled: true             # 安装了 PlaceholderAPI 时展开页面文本里的 %占位符%
 actions:
   commands:
     enabled: false          # command 动作总开关
@@ -510,10 +512,19 @@ public void onInventoryOpen(InventoryOpenEvent event) {
 
 ## 12. PlaceholderAPI
 
-模板中的 `${placeholder:...}` 委托给 `PlaceholderAPI.setPlaceholders`，结果按玩家每 tick 缓存。
-未闭合的占位符是编译期错误。
+已实现（软依赖，通过反射访问 `PlaceholderAPI.setPlaceholders`）：
+
+- 页面发送（`/cloudcore page`、API `open`）与刷新（`set_state` 后重编译）时，把 `text`、
+  `placeholder` 属性（含富文本 `runs[].text`）与文档标题里的 `%token%` 交给 PlaceholderAPI 展开。
+- 开关 `placeholders.enabled`（默认 `true`）。没装 PlaceholderAPI 时页面照常工作，`%token%` 原样显示，
+  日志写 `PlaceholderAPI not installed; %placeholders% stay as text`。
+- 未知令牌保持原样；扩展抛异常只记一次警告，文本按未展开发送。颜色/尺寸/贴图引用不会被改写。
+- 每次发送/刷新各解析一次（无周期刷新）；`${placeholder:...}` 形式尚未接入，先用 `%token%`。
 
 ## 13. 公共 Java API
+
+已实现：`open(Player, String pageId[, OpenOptions])`、`registerActionHandler`、
+`unregisterActionHandler`、`isModded`（详见 `19-addon-api.md`）。下面其余方法为计划形态。
 
 ```java
 public interface CloudCoreApi {

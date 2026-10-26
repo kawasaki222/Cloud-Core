@@ -287,6 +287,12 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   是拉伸后的钻石块九宫格、文本仍由原版绘制（`tooltip-nine-slice2.png`、放大图 `tooltip-crop.png`）；
   服务端日志 `Custom tooltip rendered lines=1 size=34x16`。演示文档随后还原为颜色背景，
   贴图路径由同一段代码处理（`NativeBackend.drawTexture` 被渲染列表与提示框共用）。
+- **PlaceholderAPI 已核实**：测试服装上 PlaceholderAPI 2.12.3 与 `player` 扩展后，日志写
+  `PlaceholderAPI found; page text is expanded on send`；`/cloudcore page papi_demo` 的
+  `%player_name%`、`%player_level%`、`%player_world%` 渲染为 `Player532`、`0`、`world`；
+  未安装扩展的 `%server_online%` 与不存在的 `%no_such_placeholder%` 原样显示
+  （`papi-demo2.png`）。`DocumentTextTest` 覆盖文本/富文本/标题展开、颜色与贴图引用不被改写、
+  未知令牌保留；`DocumentText` 只在发送与刷新时各执行一次。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
@@ -371,7 +377,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，175 个测试 / 36 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，179 个测试 / 37 个测试类，0 失败）。
 
 仍未验证：
 

@@ -80,6 +80,7 @@ public final class CloudCorePlugin extends JavaPlugin
     /** Addon actions registered through {@link com.cloudcore.bukkit.api.CloudCoreApi}. */
     private final Map<String, com.cloudcore.bukkit.api.ActionHandler> actionHandlers =
             new ConcurrentHashMap<>();
+    private final Placeholders placeholders = new Placeholders(this);
     private static final Set<String> BUILT_IN_ACTIONS = Set.of(
             "message", "close_ui", "close", "set_state", "if", "delay", "command");
     private final com.cloudcore.bukkit.api.CloudCoreApi api = new Api();
@@ -407,6 +408,14 @@ public final class CloudCorePlugin extends JavaPlugin
         return false;
     }
 
+    /** Applies PlaceholderAPI to the visible text when enabled in the config. */
+    private UiDocument expandPlaceholders(Player player, UiDocument document) {
+        if (!getConfig().getBoolean("placeholders.enabled", true)) {
+            return document;
+        }
+        return placeholders.expand(player, document);
+    }
+
     /** Recompiles the page with the current state and sends it as a document update. */
     private void refreshPage(Player player, Session session,
             com.cloudcore.api.page.PageLoader.CompiledPage previous) {
@@ -431,7 +440,8 @@ public final class CloudCorePlugin extends JavaPlugin
         }
         compiledPages.put(uiId, compiled);
         int revision = session.pageRevisions.merge(uiId, 1, Integer::sum);
-        String json = com.cloudcore.api.document.UiDocumentJson.write(compiled.document());
+        String json = com.cloudcore.api.document.UiDocumentJson.write(
+                expandPlaceholders(player, compiled.document()));
         UiDefinition definition = new UiDefinition(uiId, revision, 0,
                 json.getBytes(StandardCharsets.UTF_8));
         sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
@@ -1360,6 +1370,7 @@ public final class CloudCorePlugin extends JavaPlugin
                     + "; /cloudcore page only opens custom screens");
             return;
         }
+        document = expandPlaceholders(player, document);
         // The protocol requires UI_OPEN.uiId and document.id to match.
         String uiId = document.id();
         int token = random.nextInt();

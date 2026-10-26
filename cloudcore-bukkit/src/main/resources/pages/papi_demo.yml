@@ -1,0 +1,57 @@
+# PlaceholderAPI 示例：可见文本里的 %占位符% 在发送前由服务端解析
+# /cloudcore page papi_demo <玩家>
+# 需要安装 PlaceholderAPI（软依赖）；玩家相关占位符需要 Player 扩展，
+# 没有扩展时 %token% 按原样显示。
+schema: 1
+id: papi_demo
+surface: custom_screen
+title: "PAPI Demo"
+theme: dark
+size: [240, 120]
+state: {}
+includes: []
+elements:
+  - type: panel
+    id: root
+    x: 0
+    y: 0
+    width: fill
+    height: fill
+    style:
+      background: "#CC202830"
+  - type: label
+    id: heading
+    x: 12
+    y: 10
+    text: "PlaceholderAPI"
+    color: "#FFFFFFFF"
+  - type: label
+    id: name
+    x: 12
+    y: 30
+    text: "玩家：%player_name%"
+    color: "#FF9AD0FF"
+  - type: label
+    id: level
+    x: 12
+    y: 46
+    text: "等级：%player_level%"
+    color: "#FF9AD0FF"
+  - type: label
+    id: world
+    x: 12
+    y: 62
+    text: "世界：%player_world%"
+    color: "#FF9AD0FF"
+  - type: label
+    id: online
+    x: 12
+    y: 78
+    text: "在线：%server_online%"
+    color: "#FFFFD479"
+  - type: label
+    id: unknown
+    x: 12
+    y: 94
+    text: "未安装的占位符：%no_such_placeholder%"
+    color: "#FF8FD0A0"
