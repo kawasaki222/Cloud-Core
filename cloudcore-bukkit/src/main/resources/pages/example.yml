@@ -135,6 +135,23 @@ elements:
         - action: set_state
           key: notify
           value: "${checked}"
+  - type: icon_button
+    id: gem_button
+    x: 150
+    y: 196
+    width: 20
+    height: 20
+    icon:
+      item: minecraft:diamond
+      count: 3
+    style:
+      background: "#FF3C6E9F"
+      hover:
+        background: "#FF5C8EBF"
+    on:
+      click:
+        - action: message
+          value: "点到了物品图标按钮"
 
   # ---- URL 贴图（客户端直连，失败则占位） ----
   - type: image
@@ -173,6 +190,8 @@ elements:
     width: 72
     height: 18
     text: "喊话"
+    icon:
+      item: minecraft:emerald
     style:
       background: "#FF3C9F9F"
     on:

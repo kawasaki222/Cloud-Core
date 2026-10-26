@@ -391,7 +391,24 @@ YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范�
 
 ### 5.4 `icon_button`
 
-只有图标的方形按钮，事件与 `button` 相同。
+只有图标的方形按钮，事件与 `button` 相同。`icon` 接受两种写法：
+
+- 贴图引用：`local:`、`pack:`、`builtin:`、`inline:`，居中缩放，四周留 2px；
+- 物品描述：`{ item: "minecraft:diamond", count: 1 }`，用原版物品渲染（数量可选，不显示角标）。
+
+```yaml
+- type: icon_button
+  id: close
+  width: 20
+  height: 20
+  icon: "pack:cloudcore:ui/close"
+  on:
+    click:
+      - action: close_ui
+```
+
+`button` 也可以带同一格式的 `icon`：图标画在左侧 14px，文字从 `x + 21` 开始。
+已实现：背景（颜色/贴图/九宫格）、`style.hover`、图标与事件；未实现：`pressed`/`disabled` 样式。
 
 ### 5.5 `text_field`
 

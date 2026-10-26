@@ -263,6 +263,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   掩码显示，ENTER 上报 `EVENT ... element=pin_input`（`pin-focus.png`、`pin-typed.png`）。
   示例页 `name_input` 配了 normal/focused 边框，点击后同样显示焦点框（`example-focus.png`）。
   `filter` 取值与 `CC-INPUT-001/002` 写进 `03`/`18`；`Colors` 解析与 `invalid` 边框有单元测试。
+- **icon_button 与按钮图标已核实**：示例页的 `icon_button`（`icon: {item: minecraft:diamond}`）
+  画成带背景与悬停态的物品图标按钮，点击记录 `EVENT ui=example element=gem_button`；
+  “喊话”按钮的 `icon: {item: minecraft:emerald}` 画在左侧、文字右移到 `x + 21`
+  （`icon-button.png`）。`DocumentRenderListBuilderTest` 覆盖贴图图标、物品图标缩放与文字偏移。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
@@ -347,7 +351,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，168 个测试 / 35 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，170 个测试 / 35 个测试类，0 失败）。
 
 仍未验证：
 

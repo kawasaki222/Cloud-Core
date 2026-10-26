@@ -14,7 +14,7 @@
   `set_state` 重编译后推送更高 revision。
 - 客户端：六类面板 + RenderList（文字/富文本/图片/九宫格/背景贴图/裁剪/滚动/悬停/物品图标/GIF/URL 贴图）；
   NanoVG 后端与 FBO 合成（opt-in）；客户端日志与诊断码。
-- 构建：`./gradlew build` 通过，168 个测试 / 35 个类，0 失败。
+- 构建：`./gradlew build` 通过，170 个测试 / 35 个类，0 失败。
 
 ## 已有内容
 
@@ -108,6 +108,8 @@ docs/
       `filter`（含 `regex:`）、`sensitive` 掩码（真机验证 + 单测）
 - [ ] `text_field` 剩余：`padding` 补偿、光标/选区颜色、清除按钮
 - [x] `checkbox`：`checked` 绘制 + `change{checked}` → `set_state` 往返（真机验证）
+- [x] `icon_button` 与 `button.icon`：贴图引用或 `{item, count}`，物品图标按按钮缩放（真机验证 + 单测）
+- [ ] `button`/`icon_button` 剩余：`pressed` / `disabled` 样式
 - [x] `slider`：`value` 填充 + 点击比例 `change{amount}` → `set_state` 往返（真机验证）
 - [x] `scroll` 事件回传：滚轮后上报绝对偏移，`scroll_y` 由状态驱动（真机验证 + 单测 `UiElementsTest`）
 - [x] `hover_enter` / `hover_leave`：跨边界各一次，仅对声明了事件的元素（真机验证）

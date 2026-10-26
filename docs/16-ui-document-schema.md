@@ -107,8 +107,8 @@
 | --- | --- |
 | `label` | `text`(TextRuns)、`font`、`color`、`shadow`、`align`、`wrap`、`max_lines` |
 | `image` | `texture`、`fit`、`tint`、`nine_slice`、`animated`、`loop`、`speed` |
-| `button` | `text`(TextRuns)、`icon`、`style`、`events` |
-| `icon_button` | `icon`、`events` |
+| `button` | `text`(TextRuns)、`icon`（贴图引用或 `{item, count}`）、`style`、`events` |
+| `icon_button` | `icon`、`style`、`events` |
 | `text_field` | `placeholder`、`max_length`、`filter`、`sensitive`、`invalid`、`style`、`events` |
 | `checkbox` | `text`(TextRuns)、`checked`、`events` |
 | `slider` | `value`（`0..1`，已实现）、`min`/`max`/`step`/`live`（计划）、`events` |

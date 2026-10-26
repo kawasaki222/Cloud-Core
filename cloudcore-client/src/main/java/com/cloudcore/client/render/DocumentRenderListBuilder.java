@@ -121,8 +121,29 @@ public final class DocumentRenderListBuilder {
                     addFill(commands, x, y, w, h, color(background,
                             hovered ? DEFAULT_BUTTON_HOVER : DEFAULT_BUTTON));
                 }
-                addText(commands, text(element), x + 6, y + Math.max(2, (h - 8) / 2),
+                int textX = x + 6;
+                if (attribute(element, "icon") != null) {
+                    addIcon(commands, element, x + 3, y + Math.max(1, (h - 14) / 2), 14);
+                    textX = x + 21;
+                }
+                addText(commands, text(element), textX, y + Math.max(2, (h - 8) / 2),
                         color(styleText(element), DEFAULT_TEXT), fontPath(element, fonts));
+                childWidth = w;
+                childHeight = h;
+            }
+            case "icon_button" -> {
+                int w = width > 0 ? width : 20;
+                int h = height > 0 ? height : 20;
+                boolean hovered = element.id().equals(hoveredId);
+                Object background = styled(element, "background", hovered);
+                if (background instanceof String reference && isSupportedTexture(reference)) {
+                    addImage(commands, reference, x, y, w, h,
+                            intArray(styled(element, "nine_slice", hovered)));
+                } else {
+                    addFill(commands, x, y, w, h, color(background,
+                            hovered ? DEFAULT_BUTTON_HOVER : DEFAULT_BUTTON));
+                }
+                addIcon(commands, element, x + 2, y + 2, Math.max(4, Math.min(w, h) - 4));
                 childWidth = w;
                 childHeight = h;
             }
@@ -330,6 +351,32 @@ public final class DocumentRenderListBuilder {
         addFill(commands, x, y + height - 1, width, 1, argb);
         addFill(commands, x, y + 1, 1, height - 2, argb);
         addFill(commands, x + width - 1, y + 1, 1, height - 2, argb);
+    }
+
+    /**
+     * Draws a button icon: a texture reference ({@code local:}/{@code pack:}/{@code builtin:}/
+     * {@code inline:}), or {@code {item: "minecraft:diamond", count: 3}} for an item icon.
+     */
+    private static void addIcon(List<RenderCommand> commands, UiElement element, int x, int y,
+            int size) {
+        Object icon = attribute(element, "icon");
+        if (icon instanceof String reference) {
+            if (isSupportedTexture(reference)) {
+                addImage(commands, reference, x, y, size, size);
+            }
+            return;
+        }
+        if (!(icon instanceof Map<?, ?> map)) {
+            return;
+        }
+        Object item = map.get("item");
+        String itemId = item instanceof String id ? id
+                : item instanceof Map<?, ?> descriptor && descriptor.get("id") instanceof String id
+                ? id : null;
+        if (itemId != null) {
+            int count = (int) Math.round(number(map.get("count"), 1.0));
+            addItem(commands, itemId, count, false, x, y, size / 16.0f);
+        }
     }
 
     private static void addText(List<RenderCommand> commands, String text, int x, int y,

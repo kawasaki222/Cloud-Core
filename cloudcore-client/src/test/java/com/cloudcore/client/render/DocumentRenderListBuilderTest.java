@@ -351,6 +351,48 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
+    void iconButtonDrawsATextureOrItemIconCentred() {
+        UiElement texture = new UiElement("close", "icon_button", 0, 0, "24", "24",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("icon", "pack:cloudcore:ui/close"));
+        UiElement item = new UiElement("gem", "icon_button", 30, 0, "20", "20",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("icon", Map.of("item", "minecraft:diamond", "count", 2)));
+        UiDocument document = new UiDocument(1, "icons", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(texture, item));
+
+        List<RenderCommand> commands = DocumentRenderListBuilder.build(document, 200, 100)
+                .commands();
+        RenderCommand.Image image = (RenderCommand.Image) commands.get(1);
+        assertEquals("pack:cloudcore:ui/close", image.texture());
+        assertEquals(2, image.x(), "icon is inset by 2px");
+        assertEquals(20, image.width(), "icon fills the button minus the inset");
+        RenderCommand.ItemIcon icon = (RenderCommand.ItemIcon) commands.get(3);
+        assertEquals("minecraft:diamond", icon.itemId());
+        assertEquals(2, icon.count());
+        assertEquals(1.0f, icon.scale(), 0.001f, "a 20x20 button shows the item at 16px");
+    }
+
+    @Test
+    void buttonWithIconShiftsItsTextRight() {
+        UiElement button = new UiElement("go", "button", 0, 0, "80", "20",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("text", "Go",
+                        "icon", Map.of("item", "minecraft:emerald")));
+        UiDocument document = new UiDocument(1, "buttons", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(button));
+
+        List<RenderCommand> commands = DocumentRenderListBuilder.build(document, 200, 100)
+                .commands();
+        assertEquals("minecraft:emerald", ((RenderCommand.ItemIcon) commands.get(1)).itemId());
+        RenderCommand.Text text = (RenderCommand.Text) commands.get(2);
+        assertEquals("Go", text.text());
+        assertEquals(21, text.x(), "text starts after the icon");
+    }
+
+    @Test
     void resolvesPercentAndFillDimensions() {
         UiElement panel = new UiElement("root", "panel", 0, 0, "50%", "fill",
                 true, true, 0, Map.of(), List.of(), Map.of());
