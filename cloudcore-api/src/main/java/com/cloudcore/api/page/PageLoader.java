@@ -410,7 +410,7 @@ public final class PageLoader {
             // Action bodies stay on the server; the document only carries events map.
             if (!STRUCTURE_FIELDS.contains(entry.getKey()) && !"on".equals(entry.getKey())) {
                 attributes.put(entry.getKey(),
-                        context.rewriteUrls(applyTemplate(entry.getValue(), scope)));
+                        context.rewriteUrls(resolveValue(entry.getValue(), scope)));
             }
         }
         List<UiElement> children = new ArrayList<>();
@@ -529,6 +529,24 @@ public final class PageLoader {
             return result;
         }
         return value;
+    }
+
+    /**
+     * Resolves an attribute value. A whole {@code ${...}} placeholder keeps the type of what
+     * it resolves to, so numeric and boolean attributes ({@code value}, {@code checked})
+     * reach the client typed instead of as text. An unresolved placeholder becomes empty
+     * rather than leaking the expression into the document.
+     */
+    static Object resolveValue(Object value, Map<String, Object> scope) {
+        if (value instanceof String text) {
+            String trimmed = text.trim();
+            // Only a lone placeholder keeps its type; "${a} ${b}" is ordinary interpolation.
+            if (trimmed.startsWith("${") && trimmed.indexOf('}') == trimmed.length() - 1) {
+                Object resolved = lookup(trimmed.substring(2, trimmed.length() - 1), scope);
+                return resolved == null ? "" : resolved;
+            }
+        }
+        return applyTemplate(value, scope);
     }
 
     static Object resolveTemplate(Object value, Map<String, Object> scope) {

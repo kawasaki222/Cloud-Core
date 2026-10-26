@@ -459,6 +459,45 @@ class PageLoaderTest {
                 .get("checked")));
     }
 
+    @Test
+    void attributesKeepTheTypeOfAWholePlaceholder() throws Exception {
+        Path page = write("typed.yml", """
+                schema: 1
+                id: typed
+                surface: custom_screen
+                title: "Typed"
+                size: [100, 100]
+                state:
+                  volume: 0.4
+                  notify: true
+                elements:
+                  - type: slider
+                    id: volume
+                    x: 0
+                    y: 0
+                    width: 100
+                    height: 6
+                    value: "${state.volume}"
+                  - type: checkbox
+                    id: toggle
+                    x: 0
+                    y: 10
+                    checked: "${state.notify}"
+                  - type: label
+                    id: missing
+                    x: 0
+                    y: 20
+                    text: "${state.nope}"
+                """);
+
+        UiDocument document = PageLoader.loadDocument(pages, page, Map.of());
+
+        assertEquals(0.4, document.elements().get(0).attributes().get("value"));
+        assertEquals(true, document.elements().get(1).attributes().get("checked"));
+        assertEquals("", document.elements().get(2).attributes().get("text"),
+                "an unresolved placeholder must not leak into the document");
+    }
+
     private static String manyLabels(int count) {
         StringBuilder yaml = new StringBuilder("schema: 1\nid: many\n"
                 + "surface: custom_screen\ntitle: \"Many\"\nsize: [200, 100]\nelements:\n");
