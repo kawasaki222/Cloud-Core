@@ -42,6 +42,12 @@ public final class SurfaceRegistry {
                 .orElse(false);
     }
 
+    public void close(String uiId, CloseReason reason) {
+        for (SurfaceAdapter adapter : adapters.values()) {
+            adapter.close(uiId, reason);
+        }
+    }
+
     public static SurfaceRegistry createDefault() {
         SurfaceRegistry registry = new SurfaceRegistry();
         registry.register(new CustomScreenAdapter());

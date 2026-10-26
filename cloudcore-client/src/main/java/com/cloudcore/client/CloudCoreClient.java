@@ -7,6 +7,7 @@ import com.cloudcore.api.document.ValidationIssue;
 import com.cloudcore.api.document.ValidationResult;
 import com.cloudcore.api.page.PageLoadException;
 import com.cloudcore.client.net.CloudFramePayload;
+import com.cloudcore.client.surface.CloseReason;
 import com.cloudcore.client.surface.OpenRequest;
 import com.cloudcore.client.surface.SurfaceAdapter;
 import com.cloudcore.client.surface.SurfaceRegistry;
@@ -25,6 +26,7 @@ import com.cloudcore.protocol.Ping;
 import com.cloudcore.protocol.Pong;
 import com.cloudcore.protocol.ProtocolException;
 import com.cloudcore.protocol.ProtocolVersion;
+import com.cloudcore.protocol.UiClose;
 import com.cloudcore.protocol.UiCodec;
 import com.cloudcore.protocol.UiDefinition;
 import com.cloudcore.protocol.UiOpen;
@@ -106,6 +108,7 @@ public final class CloudCoreClient implements ClientModInitializer {
             case Opcode.PING -> handlePing(frame);
             case Opcode.UI_OPEN -> handleUiOpen(frame);
             case Opcode.UI_DEFINITION -> handleUiDefinition(frame);
+            case Opcode.UI_CLOSE -> handleUiClose(frame);
             case Opcode.DIAGNOSTIC -> LOGGER.warn("Server diagnostic at opcode 0x{} ({} bytes)",
                     Integer.toHexString(frame.opcode()), frame.bodyLength());
             default -> LOGGER.info("Unhandled S2C opcode=0x{} bytes={}",
@@ -216,6 +219,19 @@ public final class CloudCoreClient implements ClientModInitializer {
                     exception.getMessage());
             LOGGER.error("Failed to open ui=" + definition.uiId(), exception);
         }
+    }
+
+    private void handleUiClose(Frame frame) {
+        UiClose close = UiCodec.decodeClose(frame.body(), Limits.S2C);
+        pendingOpens.remove(close.uiId());
+        pendingDefinitions.remove(close.uiId());
+        CloseReason reason = switch (close.reason()) {
+            case 0, 1 -> CloseReason.SERVER;
+            case 2 -> CloseReason.REPLACED;
+            default -> CloseReason.ERROR;
+        };
+        surfaceRegistry.close(close.uiId(), reason);
+        LOGGER.info("UI_CLOSE ui={} reason={}", close.uiId(), close.reason());
     }
 
     private void failOpen(OpenRequest request, int revision, int state, String detail) {

@@ -111,6 +111,25 @@ public final class UiCodec {
         return new UiDefinition(uiId, revision, encoding, document);
     }
 
+    public static byte[] encodeClose(UiClose close, Limits limits) {
+        Objects.requireNonNull(close, "close");
+        Objects.requireNonNull(limits, "limits");
+        ArrayByteSink sink = new ArrayByteSink();
+        ProtocolText.write(sink, close.uiId(), limits);
+        sink.writeByte(close.reason());
+        return sink.toByteArray();
+    }
+
+    public static UiClose decodeClose(byte[] data, Limits limits) {
+        Objects.requireNonNull(data, "data");
+        Objects.requireNonNull(limits, "limits");
+        ArrayByteSource source = new ArrayByteSource(data);
+        String uiId = ProtocolText.read(source, limits);
+        int reason = source.readUnsignedByte();
+        requireFullyConsumed(source, "UI_CLOSE");
+        return new UiClose(uiId, reason);
+    }
+
     private static SurfaceType surface(int id) {
         try {
             return SurfaceType.fromId(id);
