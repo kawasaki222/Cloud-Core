@@ -4,13 +4,19 @@
 
 ## 当前状态
 
-**文档基线完成，M0 脚手架与协议核心已开始落地。**
+**文档基线完成；M1 协议核心已实现，M2 客户端/服务端面板骨架已落地；真实 Paper/Fabric 联调未运行。**
 
 - Gradle 9.2.0 wrapper、5 模块、JDK 21 toolchain、Loom 1.14 + Mojang 映射。
-- `cloudcore-protocol`：Frame/FrameCodec/Deflate/VarInt/WireValue + JUnit 测试。
-- `cloudcore-bukkit`：Paper 通道注册与 C2S 帧解码。
-- `cloudcore-client`：Fabric 入口、`CustomPacketPayload`/`StreamCodec`、S2C 帧解码。
-- 下一步：分片/重组、握手、NanoVG/FBO spike。
+- `cloudcore-protocol`：Frame/FrameCodec/Deflate/VarInt/WireValue、分片/重组、Hello/HelloAck/Ping/Pong、
+  UI_OPEN/UI_READY + JUnit 测试（含黄金向量、10,000 随机帧）。
+- `cloudcore-bukkit`：Paper 通道、HELLO/HELLO_ACK、PING/PONG、`/cloudcore ping`、
+  每玩家分片重组、UI_READY 日志。
+- `cloudcore-client`：Fabric 入口、payload 注册、JOIN 发送 HELLO、PONG、S2C 分片重组、
+  UI_OPEN 分发、未实现面板回 UI_READY(state=4)。
+- `cloudcore-api`：`UiDocument`/`UiElement`/`TextRuns` 最小模型、校验器、单文件页面载入接口。
+- M2 骨架：客户端 `SurfaceRegistry`/`SurfaceAdapter`/`CloudScreen`、`RenderBackend`/`NativeBackend`、
+  `NanoVgBackend`/`FboCompositor` 空实现；服务端 `SurfaceProvider`/`SurfaceProviderRegistry`。
+- 未验证：真实 Minecraft 客户端连接、Paper 服务端、NanoVG/FBO、混入签名、U1/U2/U3/U28–U31。
 
 - 客户端与服务端统一使用 **Mojang 映射**，不使用 Yarn。
 - 六类面板：HUD、箱子界面、玩家背包界面、ItemTooltip、自定义页面、Boss 血条。
@@ -78,31 +84,34 @@ docs/
 - [x] 客户端日志、错误码、服务端诊断、诊断包（`18`）
 - [x] 附属插件 API、代码构造页面、兼容策略（`19`）
 - [x] M0：Gradle 多模块/协议核心/Paper 通道/Fabric payload 骨架
-- [ ] M1 剩余：分片与重组、握手、黄金向量
+- [x] M1：分片与重组、握手、PING/PONG、UI_OPEN/UI_READY 编解码、黄金向量、随机帧测试
+- [x] M1 接线：Paper 与 Fabric 的 HELLO/PING/PONG/分片/UI_OPEN 处理（仅编译与单元测试）
+- [ ] M1 真实联调：Paper + Fabric 客户端握手、`/cloudcore ping`、100 万随机帧压测
+- [x] M2 骨架：SurfaceRegistry/SurfaceAdapter/SurfaceProvider、UiDocument、RenderBackend、CloudScreen
+- [ ] M2 实际渲染：NanoVG/FBO、UI_DEFINITION 解码、元素绘制、混入
 - [ ] M0 渲染 spike：NanoVG 三平台/FBO 合成/预乘 alpha
 
 剩余的是实现前的验证项和待决问题，不是文档缺口。
 
 ## 下一步动作（按顺序）
 
-1. **M0 的 spike**（各半天到一天），在写其他代码之前：
-   - U1：Paper 发送 `PING` 帧，Fabric 客户端收到并回 `PONG`。
+1. **真实联调 M1**（优先，当前唯一阻塞验收的点）：
+   - 下载/启动 Paper 1.21.11，安装插件 jar；启动 Fabric 1.21.11 客户端并安装模组 jar。
+   - 验证 JOIN 后客户端日志出现 `Sent HELLO`，服务端日志出现 `HELLO from`，客户端收到 `HELLO_ACK`。
+   - 执行 `/cloudcore ping`，确认服务端 `PONG` 与 RTT。
+   - 用大报文验证分片；确认断开后组被清理。
+2. **M0 的 spike**（各半天到一天）：
    - U2：`InventoryOpenEvent` 中的插件消息早于 `OpenScreen`，重复 100 次。
    - U3/U12/U13：`GuiGraphics` 的 blit/tooltip 重载、`Screen#mouseScrolled`、
      `BossHealthOverlay#drawBar`。
    - U28–U31：`lwjgl-nanovg` 三平台加载、FBO 包装合成、预乘 alpha、1.21.6 提取/绘制状态。
    - 先做一个纯色面板 + 一张 TTF 文本的 NanoVG 合成 spike，确认没有色差和状态泄漏。
-2. **M0 脚手架**：
-   - Gradle 多模块，Java 21。
-   - 客户端 `loom.officialMojangMappings()`，无 `yarn_mappings`。
-   - `lwjgl-nanovg` 依赖与三平台 natives，版本对齐 Minecraft 自带 LWJGL。
-   - `CloudCoreClient` 空入口、`cloudcore.mixins.json`。
-   - 客户端日志骨架：文件、轮转、级别、脱敏、`CC-*` 占位。
-   - Paper 插件空 `onEnable`，注册通道。
-   - CI。
-3. **M1 协议核心**：信封、分片、`WireValue`、协议 1.1 的 `SurfaceType`/`BindMode`、
-   `CustomPacketPayload` + `StreamCodec`、黄金向量、模糊测试。
-4. 之后按 `08-roadmap.md` 的 M2–M10 推进。
+3. **M2 实际渲染**：
+   - 解码 `UI_DEFINITION` JSON，校验后交给 `UiRuntime`。
+   - `CustomScreenAdapter` 收到文档后打开 `CloudScreen`，用 `RenderList` 绘制最小元素。
+   - 接入 `NanoVgBackend`/`FboCompositor`；失败时整帧回退 `NativeBackend`。
+   - 增加四个混入和客户端日志/诊断。
+4. 之后按 `08-roadmap.md` 的 M3–M10 推进。
 
 ## 环境搭建
 

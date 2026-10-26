@@ -123,12 +123,10 @@ public final class UiDocumentValidator {
                 result.add(ValidationIssue.error("CC-DOC-014", path + ".type",
                         "inventory_grid is not allowed on surface " + surface));
             }
-            if (isBlank(element.width()) || isBlank(element.height())) {
-                // A null dimension means intrinsic size; an explicitly empty string does not.
-                if ("".equals(element.width()) || "".equals(element.height())) {
-                    result.add(ValidationIssue.error("CC-DOC-012", path + ".size",
-                            "Width/height must not be empty strings"));
-                }
+            // A null dimension means intrinsic size; an explicitly empty string does not.
+            if ("".equals(element.width()) || "".equals(element.height())) {
+                result.add(ValidationIssue.error("CC-DOC-012", path + ".size",
+                        "Width/height must not be empty strings"));
             }
             element.events().forEach((event, actionId) -> {
                 if (event.isBlank()) {
@@ -143,10 +141,6 @@ public final class UiDocumentValidator {
             for (int index = 0; index < element.children().size(); index++) {
                 visit(element.children().get(index), path + ".children[" + index + "]", depth + 1);
             }
-        }
-
-        private static boolean isBlank(String value) {
-            return value == null || value.isBlank();
         }
     }
 

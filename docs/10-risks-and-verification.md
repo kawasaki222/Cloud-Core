@@ -138,6 +138,26 @@ U1: 已核实 2026-xx-xx — PingPongTest，客户端日志第 42 行
 U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 ```
 
+### 2.1 本轮实现记录（2026-10-26）
+
+已通过编译与单元测试，但**不代表真实运行时已验证**：
+
+- 分片/重组、压缩分片、乱序、重复片、组冲突、超时、4 组上限、1 MiB 上限：
+  `FragmentCodecTest`。
+- HELLO 黄金字节、HELLO_ACK、PING/PONG、UI_OPEN/UI_READY 往返与畸形输入：
+  `HandshakeCodecTest`、`UiCodecTest`。
+- 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
+  对应 JUnit 测试。
+- `./gradlew build` 通过（JDK 21）。
+
+仍未验证：
+
+- U1：真实 Paper + Fabric 的插件消息互通；当前只有编译期与帧级测试。
+- U2、U3、U12、U13、U28–U31：需要真实客户端/服务端和显卡环境。
+- NanoVG/FBO：`NanoVgBackend.available()` 仍为 `false`，`FboCompositor` 未实现，
+  不得把骨架当成渲染验证。
+- UI_DEFINITION 的 JSON 解码、元素绘制、混入替换尚未实现。
+
 ## 3. 风险登记
 
 | 编号 | 风险 | 概率 | 影响 | 缓解 |
