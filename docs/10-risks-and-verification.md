@@ -227,6 +227,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **悬停样式已核实**：示例页的“关闭”按钮在光标移入后由 `#9F3C6E` 变为 `style.hover` 的
+  `#D05C8E`（`hover.png`）；`DocumentRenderListBuilderTest` 覆盖悬停背景选择。
 - **command 动作闸门已核实**：默认配置下点“喊话”写
   `Blocked command action ...` 并回 `REJECTED`；把 `actions.commands.enabled` 设为 true、
   allowlist 加 `say` 后同一按钮执行 `say ...`（日志 `Ran action command ...`）。

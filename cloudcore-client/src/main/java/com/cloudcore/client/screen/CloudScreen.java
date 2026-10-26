@@ -28,6 +28,7 @@ public final class CloudScreen extends Screen {
     private int cachedWidth = -1;
     private int cachedHeight = -1;
     private int cachedTextureGeneration = -1;
+    private String hoveredId;
     private final java.util.Map<String, Integer> localScroll = new java.util.HashMap<>();
     private static final int SCROLL_STEP = 12;
     private boolean closed;
@@ -64,9 +65,12 @@ public final class CloudScreen extends Screen {
             int controlX = nanoVgComposite ? 80 : 8;
             graphics.fill(controlX, height - 72, controlX + 64, height - 8, 0xFFFF0000);
         }
+        String hit = hoveredElementId(mouseX, mouseY);
         if (width != cachedWidth || height != cachedHeight
                 || cachedTextureGeneration != com.cloudcore.client.render.RemoteTextureCache
-                        .generation()) {
+                        .generation()
+                || !java.util.Objects.equals(hit, hoveredId)) {
+            hoveredId = hit;
             rebuild();
         }
         backend.render(graphics, cachedList, new FrameContext(graphics, width, height,
@@ -74,9 +78,18 @@ public final class CloudScreen extends Screen {
         graphics.drawString(font, title, 8, 8, TITLE_COLOR, true);
     }
 
+    private String hoveredElementId(int mouseX, int mouseY) {
+        com.cloudcore.api.document.UiElement element =
+                com.cloudcore.client.render.ElementHitTester.findWithEvent(document, width,
+                        height, mouseX, mouseY, id -> localScroll.getOrDefault(id, 0), "click");
+        return element == null ? null : element.id();
+    }
+
     private void rebuild() {
-        cachedList = DocumentRenderListBuilder.build(document, width, height,
-                id -> localScroll.getOrDefault(id, 0));
+        cachedList = DocumentRenderListBuilder.buildAt(document, width, height,
+                (width - Math.round(document.width() * document.scale())) / 2,
+                (height - Math.round(document.height() * document.scale())) / 2,
+                id -> localScroll.getOrDefault(id, 0), hoveredId);
         cachedWidth = width;
         cachedHeight = height;
         cachedTextureGeneration = com.cloudcore.client.render.RemoteTextureCache.generation();

@@ -359,7 +359,8 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
     click: []
 ```
 
-状态：`normal`、`hover`、`pressed`、`disabled`。
+状态：`normal`、`hover`、`pressed`、`disabled`。已实现 `hover`：元素声明
+`style.hover: { background: ... }` 时，客户端命中该元素就用悬停样式重绘（每帧只为变化的悬停目标重建一次列表）。
 
 `on:` 已实现：编译期把每个事件编译成 actionId 写进文档的 `events`，动作体留在服务端。
 YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范成字符串键，作者照常写 `on:`。

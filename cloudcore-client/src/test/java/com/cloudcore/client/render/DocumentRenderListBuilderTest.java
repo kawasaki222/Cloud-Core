@@ -198,6 +198,28 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
+    void hoveredButtonUsesTheHoverBackground() {
+        UiElement button = new UiElement("b", "button", 0, 0, "60", "20",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("text", "Go",
+                        "style", Map.of("background", "#FF111111",
+                                "hover", Map.of("background", "#FF222222"))));
+        UiDocument document = new UiDocument(1, "hover", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(button));
+
+        RenderCommand.FillRect normal = (RenderCommand.FillRect)
+                DocumentRenderListBuilder.buildAt(document, 200, 100, 0, 0, id -> 0, null)
+                        .commands().get(0);
+        RenderCommand.FillRect hovered = (RenderCommand.FillRect)
+                DocumentRenderListBuilder.buildAt(document, 200, 100, 0, 0, id -> 0, "b")
+                        .commands().get(0);
+
+        assertEquals(0xFF111111, normal.argb());
+        assertEquals(0xFF222222, hovered.argb());
+    }
+
+    @Test
     void resolvesPercentAndFillDimensions() {
         UiElement panel = new UiElement("root", "panel", 0, 0, "50%", "fill",
                 true, true, 0, Map.of(), List.of(), Map.of());

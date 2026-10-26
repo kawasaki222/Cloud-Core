@@ -111,6 +111,8 @@ elements:
     text: "关闭"
     style:
       background: "#FF9F3C6E"
+      hover:
+        background: "#FFD05C8E"
     on:
       click:
         - action: close_ui

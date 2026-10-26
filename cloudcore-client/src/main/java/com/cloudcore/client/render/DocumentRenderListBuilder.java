@@ -16,6 +16,7 @@ import java.util.Objects;
 public final class DocumentRenderListBuilder {
     private static final int DEFAULT_PANEL = 0x66000000;
     private static final int DEFAULT_BUTTON = 0xAA4A4A4A;
+    private static final int DEFAULT_BUTTON_HOVER = 0xCC6E6E6E;
     private static final int DEFAULT_FIELD = 0xAA202020;
     private static final int DEFAULT_TEXT = 0xFFFFFFFF;
     private static final int MAX_COMMANDS = 20_000;
@@ -31,12 +32,21 @@ public final class DocumentRenderListBuilder {
     /** Same as {@link #build} but with an explicit document origin (HUD anchors). */
     public static RenderList buildAt(UiDocument document, int screenWidth, int screenHeight,
             int originX, int originY) {
-        return buildAt(document, screenWidth, screenHeight, originX, originY, id -> 0);
+        return buildAt(document, screenWidth, screenHeight, originX, originY, id -> 0, null);
     }
 
     public static RenderList buildAt(UiDocument document, int screenWidth, int screenHeight,
             int originX, int originY,
             java.util.function.ToIntFunction<String> localScroll) {
+        return buildAt(document, screenWidth, screenHeight, originX, originY, localScroll, null);
+    }
+
+    /**
+     * @param hoveredId element that should use its {@code style.hover} overrides, or null
+     */
+    public static RenderList buildAt(UiDocument document, int screenWidth, int screenHeight,
+            int originX, int originY,
+            java.util.function.ToIntFunction<String> localScroll, String hoveredId) {
         Objects.requireNonNull(document, "document");
         Objects.requireNonNull(localScroll, "localScroll");
         if (screenWidth <= 0 || screenHeight <= 0) {
@@ -48,7 +58,7 @@ public final class DocumentRenderListBuilder {
         Map<String, FontSpec> fonts = document.fonts();
         for (UiElement element : document.elements()) {
             append(element, originX, originY, documentWidth, documentHeight,
-                    commands, 1, fonts, localScroll);
+                    commands, 1, fonts, localScroll, hoveredId);
         }
         return commands.isEmpty() ? RenderList.EMPTY : new RenderList(commands);
     }
@@ -59,28 +69,16 @@ public final class DocumentRenderListBuilder {
      */
     public static RenderList build(UiDocument document, int screenWidth, int screenHeight,
             java.util.function.ToIntFunction<String> localScroll) {
-        Objects.requireNonNull(document, "document");
-        Objects.requireNonNull(localScroll, "localScroll");
-        if (screenWidth <= 0 || screenHeight <= 0) {
-            return RenderList.EMPTY;
-        }
-        int documentWidth = Math.max(1, Math.round(document.width() * document.scale()));
-        int documentHeight = Math.max(1, Math.round(document.height() * document.scale()));
-        int originX = (screenWidth - documentWidth) / 2;
-        int originY = (screenHeight - documentHeight) / 2;
-        List<RenderCommand> commands = new ArrayList<>();
-        Map<String, FontSpec> fonts = document.fonts();
-        for (UiElement element : document.elements()) {
-            append(element, originX, originY, documentWidth, documentHeight,
-                    commands, 1, fonts, localScroll);
-        }
-        return commands.isEmpty() ? RenderList.EMPTY : new RenderList(commands);
+        return buildAt(document, screenWidth, screenHeight,
+                (screenWidth - Math.max(1, Math.round(document.width() * document.scale()))) / 2,
+                (screenHeight - Math.max(1, Math.round(document.height() * document.scale()))) / 2,
+                localScroll, null);
     }
 
     private static void append(UiElement element, int parentX, int parentY,
             int parentWidth, int parentHeight, List<RenderCommand> commands, int depth,
             Map<String, FontSpec> fonts,
-            java.util.function.ToIntFunction<String> localScroll) {
+            java.util.function.ToIntFunction<String> localScroll, String hoveredId) {
         if (!element.visible() || depth > MAX_DEPTH || commands.size() >= MAX_COMMANDS) {
             return;
         }
@@ -98,11 +96,12 @@ public final class DocumentRenderListBuilder {
             case "panel" -> {
                 int w = width > 0 ? width : parentWidth;
                 int h = height > 0 ? height : parentHeight;
-                Object background = style(element, "background");
+                boolean hovered = element.id().equals(hoveredId);
+                Object background = styled(element, "background", hovered);
                 if (background instanceof String reference && isSupportedTexture(reference)) {
                     // A texture background may stretch or use a nine-slice border.
                     addImage(commands, reference, x, y, w, h,
-                            intArray(style(element, "nine_slice")));
+                            intArray(styled(element, "nine_slice", hovered)));
                 } else {
                     addFill(commands, x, y, w, h, color(background, DEFAULT_PANEL));
                 }
@@ -112,12 +111,14 @@ public final class DocumentRenderListBuilder {
             case "button" -> {
                 int w = width > 0 ? width : Math.max(40, text(element).length() * 6 + 12);
                 int h = height > 0 ? height : 20;
-                Object background = style(element, "background");
+                boolean hovered = element.id().equals(hoveredId);
+                Object background = styled(element, "background", hovered);
                 if (background instanceof String reference && isSupportedTexture(reference)) {
                     addImage(commands, reference, x, y, w, h,
-                            intArray(style(element, "nine_slice")));
+                            intArray(styled(element, "nine_slice", hovered)));
                 } else {
-                    addFill(commands, x, y, w, h, color(background, DEFAULT_BUTTON));
+                    addFill(commands, x, y, w, h, color(background,
+                            hovered ? DEFAULT_BUTTON_HOVER : DEFAULT_BUTTON));
                 }
                 addText(commands, text(element), x + 6, y + Math.max(2, (h - 8) / 2),
                         color(styleText(element), DEFAULT_TEXT), fontPath(element, fonts));
@@ -210,7 +211,7 @@ public final class DocumentRenderListBuilder {
         }
         for (UiElement child : element.children()) {
             append(child, childX, childY, childWidth, childHeight, commands, depth + 1,
-                    fonts, localScroll);
+                    fonts, localScroll, hoveredId);
         }
         if (clipChildren && commands.size() < MAX_COMMANDS) {
             commands.add(new RenderCommand.ClipPop());
@@ -353,6 +354,21 @@ public final class DocumentRenderListBuilder {
 
     private static Object attribute(UiElement element, String key) {
         return element.attributes().get(key);
+    }
+
+    /**
+     * Style lookup that prefers {@code style.hover.<key>} when the element is hovered, so a
+     * button can declare both states in the document.
+     */
+    private static Object styled(UiElement element, String key, boolean hovered) {
+        if (hovered) {
+            Object style = element.attributes().get("style");
+            if (style instanceof Map<?, ?> map && map.get("hover") instanceof Map<?, ?> hover
+                    && hover.containsKey(key)) {
+                return hover.get(key);
+            }
+        }
+        return style(element, key);
     }
 
     private static Object style(UiElement element, String key) {
