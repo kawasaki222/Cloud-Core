@@ -52,26 +52,26 @@ public final class LayoutBoxes {
         if (types.contains(element.type())) {
             out.add(new Box(element, x, y, boxWidth, boxHeight));
         }
+        if (isLayout(element.type())) {
+            com.cloudcore.client.render.ContainerCursor cursor =
+                    new com.cloudcore.client.render.ContainerCursor(element, x, y, boxWidth,
+                            boxHeight);
+            for (UiElement child : element.children()) {
+                int[] offset = cursor.next(child);
+                collect(child, offset[0], offset[1], boxWidth, boxHeight, types, out);
+            }
+            return;
+        }
         for (UiElement child : element.children()) {
             collect(child, x, y, boxWidth, boxHeight, types, out);
         }
     }
 
+    private static boolean isLayout(String type) {
+        return "row".equals(type) || "column".equals(type) || "grid".equals(type);
+    }
+
     static int resolve(String value, int parent, int fallback) {
-        if (value == null || value.isBlank()) {
-            return fallback;
-        }
-        if (value.equalsIgnoreCase("fill")) {
-            return parent;
-        }
-        try {
-            if (value.endsWith("%")) {
-                double percent = Double.parseDouble(value.substring(0, value.length() - 1));
-                return (int) Math.round(parent * percent / 100.0);
-            }
-            return Integer.parseInt(value);
-        } catch (NumberFormatException ignored) {
-            return fallback;
-        }
+        return com.cloudcore.client.render.Geometry.resolve(value, parent, fallback);
     }
 }

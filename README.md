@@ -1,4 +1,4 @@
-﻿# Cloud Core
+# Cloud Core
 
 面向 **Minecraft 1.21.11** 的服务端权威自定义 UI 框架 —— Paper 服务端插件加 Fabric 客户端模组。
 

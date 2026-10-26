@@ -303,62 +303,18 @@ public final class DocumentRenderListBuilder {
     }
 
     /**
-     * Row/column/grid place children by their own sizes: rows advance x, columns advance y,
-     * grids wrap every {@code columns} children. {@code gap} applies between children and a
-     * child's own x/y offsets still apply on top.
+     * Row/column/grid place children by their own sizes; {@link ContainerCursor} owns the
+     * rules so hit testing and focus boxes use the same positions.
      */
     private static void layoutChildren(UiElement element, int x, int y, int width, int height,
             List<RenderCommand> commands, int depth, Map<String, FontSpec> fonts,
             java.util.function.ToIntFunction<String> localScroll, String hoveredId) {
-        int gap = (int) Math.round(number(attribute(element, "gap"), 0.0));
-        int columns = Math.max(1, (int) Math.round(number(attribute(element, "columns"), 1.0)));
-        int cursorX = x;
-        int cursorY = y;
-        int index = 0;
-        int rowHeight = 0;
+        ContainerCursor cursor = new ContainerCursor(element, x, y, width, height);
         for (UiElement child : element.children()) {
-            int childWidth = resolve(child.width(), width, 0);
-            int childHeight = resolve(child.height(), height, 0);
-            int offsetX = x;
-            int offsetY = y;
-            switch (element.type()) {
-                case "row" -> {
-                    offsetX = cursorX;
-                    cursorX += (childWidth > 0 ? childWidth : 0) + gap;
-                }
-                case "column" -> {
-                    offsetY = cursorY;
-                    cursorY += (childHeight > 0 ? childHeight : 0) + gap;
-                }
-                default -> {
-                    int column = index % columns;
-                    int row = index / columns;
-                    offsetX = x + column * (gridCellWidth(element, width) + gap);
-                    offsetY = y + row * (gridCellHeight(element, height) + gap);
-                    rowHeight = Math.max(rowHeight, childHeight);
-                }
-            }
-            index++;
-            append(child, offsetX, offsetY, width, height, commands, depth + 1, fonts,
+            int[] offset = cursor.next(child);
+            append(child, offset[0], offset[1], width, height, commands, depth + 1, fonts,
                     localScroll, hoveredId);
         }
-    }
-
-    private static int gridCellWidth(UiElement element, int width) {
-        Object cell = element.attributes().get("cell");
-        if (cell instanceof List<?> list && list.size() == 2) {
-            return (int) Math.round(number(list.get(0), 18.0));
-        }
-        return Math.max(1, width / Math.max(1, (int) Math.round(
-                number(attribute(element, "columns"), 1.0))));
-    }
-
-    private static int gridCellHeight(UiElement element, int height) {
-        Object cell = element.attributes().get("cell");
-        if (cell instanceof List<?> list && list.size() == 2) {
-            return (int) Math.round(number(list.get(1), 18.0));
-        }
-        return height;
     }
 
     private static void addFill(List<RenderCommand> commands, int x, int y, int width, int height,

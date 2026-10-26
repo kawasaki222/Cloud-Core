@@ -542,11 +542,29 @@ public final class PageLoader {
             String trimmed = text.trim();
             // Only a lone placeholder keeps its type; "${a} ${b}" is ordinary interpolation.
             if (trimmed.startsWith("${") && trimmed.indexOf('}') == trimmed.length() - 1) {
-                Object resolved = lookup(trimmed.substring(2, trimmed.length() - 1), scope);
+                String expression = trimmed.substring(2, trimmed.length() - 1);
+                Object resolved = resolveExpression(expression, scope);
                 return resolved == null ? "" : resolved;
             }
         }
         return applyTemplate(value, scope);
+    }
+
+    /**
+     * Resolves one placeholder body: a plain path first, then the expression language
+     * ({@code state.balance / 300}, {@code state.clicks + 1}). Returns {@code null} when
+     * neither understands it.
+     */
+    private static Object resolveExpression(String expression, Map<String, Object> scope) {
+        Object value = lookup(expression, scope);
+        if (value != null) {
+            return value;
+        }
+        try {
+            return com.cloudcore.api.expression.ExpressionEvaluator.evaluate(expression, scope);
+        } catch (RuntimeException exception) {
+            return null;
+        }
     }
 
     static Object resolveTemplate(Object value, Map<String, Object> scope) {
@@ -575,14 +593,24 @@ public final class PageLoader {
                 result.append(text, cursor, text.length());
                 break;
             }
-            int end = text.indexOf('}', start + 2);
+            int end = matchingBrace(text, start + 2);
             if (end < 0) {
                 result.append(text, cursor, text.length());
                 break;
             }
             result.append(text, cursor, start);
             String expression = text.substring(start + 2, end);
+            // Inner templates resolve first, so "${state.balance - ${entry.price}}" becomes
+            // "${state.balance - 120}" for the runtime expression evaluator.
+            if (expression.contains("${")) {
+                expression = interpolate(expression, scope, keepUnknown);
+            }
             Object value = lookup(expression, scope);
+            if (value == null && !keepUnknown) {
+                // Attributes and labels accept expressions; action bodies keep "${...}" so the
+                // runtime evaluates them against the state at click time.
+                value = evaluateQuietly(expression, scope);
+            }
             if (value == null && keepUnknown) {
                 result.append("${").append(expression).append('}');
             } else {
@@ -591,6 +619,33 @@ public final class PageLoader {
             cursor = end + 1;
         }
         return result.toString();
+    }
+
+    private static Object evaluateQuietly(String expression, Map<String, Object> scope) {
+        try {
+            return com.cloudcore.api.expression.ExpressionEvaluator.evaluate(expression, scope);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    /** @return the index of the {@code }} closing the placeholder that starts before {@code from} */
+    private static int matchingBrace(String text, int from) {
+        int depth = 0;
+        for (int index = from; index < text.length(); index++) {
+            if (text.startsWith("${", index)) {
+                depth++;
+                index++;
+                continue;
+            }
+            if (text.charAt(index) == '}') {
+                if (depth == 0) {
+                    return index;
+                }
+                depth--;
+            }
+        }
+        return -1;
     }
 
     /** Whole doubles render without a trailing {@code .0} so labels stay tidy. */

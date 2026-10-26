@@ -65,11 +65,25 @@ public final class ElementHitTester {
         if ("scroll".equals(element.type())) {
             childY -= localScroll.applyAsInt(element.id());
         }
-        for (UiElement child : element.children()) {
-            UiElement hit = search(child, childX, childY, boxWidth, boxHeight,
-                    mouseX, mouseY, localScroll, event);
-            if (hit != null) {
-                deepest = hit;
+        if (isLayout(element.type())) {
+            // Row/column/grid children sit where the renderer put them, not at their own x/y.
+            ContainerCursor cursor = new ContainerCursor(element, childX, childY, boxWidth,
+                    boxHeight);
+            for (UiElement child : element.children()) {
+                int[] offset = cursor.next(child);
+                UiElement hit = search(child, offset[0], offset[1], boxWidth, boxHeight,
+                        mouseX, mouseY, localScroll, event);
+                if (hit != null) {
+                    deepest = hit;
+                }
+            }
+        } else {
+            for (UiElement child : element.children()) {
+                UiElement hit = search(child, childX, childY, boxWidth, boxHeight,
+                        mouseX, mouseY, localScroll, event);
+                if (hit != null) {
+                    deepest = hit;
+                }
             }
         }
         if (deepest != null) {
@@ -78,22 +92,12 @@ public final class ElementHitTester {
         return element.events().containsKey(event) ? element : null;
     }
 
+    private static boolean isLayout(String type) {
+        return "row".equals(type) || "column".equals(type) || "grid".equals(type);
+    }
+
     private static int resolve(String value, int parent, int fallback) {
-        if (value == null || value.isBlank()) {
-            return fallback;
-        }
-        if (value.equalsIgnoreCase("fill")) {
-            return parent;
-        }
-        try {
-            if (value.endsWith("%")) {
-                double percent = Double.parseDouble(value.substring(0, value.length() - 1));
-                return (int) Math.round(parent * percent / 100.0);
-            }
-            return Integer.parseInt(value);
-        } catch (NumberFormatException ignored) {
-            return fallback;
-        }
+        return Geometry.resolve(value, parent, fallback);
     }
 
     /** @return true when any element in the list declares the event (used for cursor hints) */

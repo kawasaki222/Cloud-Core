@@ -498,6 +498,82 @@ class PageLoaderTest {
                 "an unresolved placeholder must not leak into the document");
     }
 
+    @Test
+    void nestedTemplatesResolveInsideOut() throws Exception {
+        Path page = write("nested.yml", """
+                schema: 1
+                id: nested
+                surface: custom_screen
+                title: "Nested"
+                size: [200, 100]
+                state:
+                  balance: 300
+                  entries:
+                    - { name: "Iron", price: 120 }
+                elements:
+                  - type: repeat
+                    id: rows
+                    source: "${state.entries}"
+                    as: entry
+                    children:
+                      - type: button
+                        id: buy
+                        x: 0
+                        y: 0
+                        width: 80
+                        height: 18
+                        text: "buy"
+                        on:
+                          click:
+                            - action: set_state
+                              key: balance
+                              value: "${state.balance - ${entry.price}}"
+                            - action: message
+                              value: "bought ${entry.name} for ${entry.price}"
+                """);
+
+        PageLoader.CompiledPage compiled = PageLoader.load(pages, page, Map.of());
+        UiElement row = compiled.document().elements().get(0);
+        int actionId = row.events().get("click");
+        List<PageLoader.PageAction> actions = compiled.actions().get(actionId);
+
+        assertEquals("${state.balance - 120}", actions.get(0).params().get("value"),
+                "the inner price is resolved, the outer expression is left for the runtime");
+        assertEquals("bought Iron for 120", actions.get(1).params().get("value"));
+    }
+
+    @Test
+    void attributesAndLabelsAcceptExpressions() throws Exception {
+        Path page = write("expr.yml", """
+                schema: 1
+                id: expr
+                surface: custom_screen
+                title: "Expr"
+                size: [200, 100]
+                state:
+                  balance: 300
+                  clicks: 2
+                elements:
+                  - type: progress
+                    id: bar
+                    x: 0
+                    y: 0
+                    width: 100
+                    height: 8
+                    value: "${state.balance / 300}"
+                  - type: label
+                    id: text
+                    x: 0
+                    y: 20
+                    text: "已点击 ${state.clicks + 1} 次"
+                """);
+
+        UiDocument document = PageLoader.loadDocument(pages, page, Map.of());
+
+        assertEquals(1.0, document.elements().get(0).attributes().get("value"));
+        assertEquals("已点击 3 次", document.elements().get(1).attributes().get("text"));
+    }
+
     private static String manyLabels(int count) {
         StringBuilder yaml = new StringBuilder("schema: 1\nid: many\n"
                 + "surface: custom_screen\ntitle: \"Many\"\nsize: [200, 100]\nelements:\n");

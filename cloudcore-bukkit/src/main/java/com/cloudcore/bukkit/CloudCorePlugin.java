@@ -544,9 +544,9 @@ public final class CloudCorePlugin extends JavaPlugin
         if (trimmed.startsWith("${") && trimmed.endsWith("}")) {
             String expression = trimmed.substring(2, trimmed.length() - 1);
             try {
-                return com.cloudcore.server.surface.ExpressionEvaluator.evaluate(expression,
+                return com.cloudcore.api.expression.ExpressionEvaluator.evaluate(expression,
                         expressionVariables(state, payload));
-            } catch (com.cloudcore.server.surface.ExpressionEvaluator.ExpressionException ignored) {
+            } catch (com.cloudcore.api.expression.ExpressionEvaluator.ExpressionException ignored) {
                 // Not an expression (plain path or literal): fall through to substitution.
             }
         }

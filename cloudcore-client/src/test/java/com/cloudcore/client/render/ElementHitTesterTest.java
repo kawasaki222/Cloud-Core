@@ -39,6 +39,46 @@ class ElementHitTesterTest {
     }
 
     @Test
+    void rowChildrenAreHitWhereTheRendererDrawsThem() {
+        UiElement first = new UiElement("a", "button", 0, 0, "40", "10",
+                true, true, 0, Map.of("click", 1), List.of(), Map.of("text", "a"));
+        UiElement second = new UiElement("b", "button", 0, 0, "40", "10",
+                true, true, 0, Map.of("click", 2), List.of(), Map.of("text", "b"));
+        UiElement row = new UiElement("row", "row", 10, 0, "100", "10",
+                true, true, 0, Map.of(), List.of(first, second), Map.of("gap", 5));
+        UiDocument document = document(row);
+
+        // 100x100 document centred in 320x180 => origin (110, 40); the row starts at x=10.
+        // "a" occupies 10..50 and "b" 55..95 because the row advances by width + gap.
+        assertEquals("a", ElementHitTester.findWithEvent(document, 320, 180, 110 + 20,
+                40 + 5, id -> 0, "click").id());
+        assertEquals("b", ElementHitTester.findWithEvent(document, 320, 180, 110 + 60,
+                40 + 5, id -> 0, "click").id());
+        assertNull(ElementHitTester.findWithEvent(document, 320, 180, 110 + 52,
+                40 + 5, id -> 0, "click"), "the gap between children is not a target");
+    }
+
+    @Test
+    void gridChildrenAreHitOnTheirCells() {
+        UiElement first = new UiElement("a", "button", 0, 0, "20", "10",
+                true, true, 0, Map.of("click", 1), List.of(), Map.of("text", "a"));
+        UiElement second = new UiElement("b", "button", 0, 0, "20", "10",
+                true, true, 0, Map.of("click", 2), List.of(), Map.of("text", "b"));
+        UiElement third = new UiElement("c", "button", 0, 0, "20", "10",
+                true, true, 0, Map.of("click", 3), List.of(), Map.of("text", "c"));
+        UiElement grid = new UiElement("grid", "grid", 0, 0, "100", "100",
+                true, true, 0, Map.of(), List.of(first, second, third),
+                Map.of("columns", 2, "cell", List.of(20, 12), "gap", 2));
+        UiDocument document = document(grid);
+
+        // Cell 0 at (0,0), cell 1 at (22,0), cell 2 wraps to (0,14).
+        assertEquals("b", ElementHitTester.findWithEvent(document, 320, 180, 110 + 25,
+                40 + 5, id -> 0, "click").id());
+        assertEquals("c", ElementHitTester.findWithEvent(document, 320, 180, 110 + 5,
+                40 + 16, id -> 0, "click").id());
+    }
+
+    @Test
     void scrollOffsetMovesHitTargets() {
         UiElement row = new UiElement("row", "button", 0, 80, "80", "18",
                 true, true, 0, Map.of("click", 1), List.of(), Map.of("text", "row"));

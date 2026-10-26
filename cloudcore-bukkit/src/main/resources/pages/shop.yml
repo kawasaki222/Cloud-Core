@@ -1,0 +1,146 @@
+# 商店示例：repeat + 行布局 + 物品图标 + 逐项动作 + 余额持久化
+# /cloudcore page shop <玩家>
+# 余额保存在会话状态里，重进后仍在（state.persist）。
+schema: 1
+id: shop
+surface: custom_screen
+title: "RPG Shop"
+theme: dark
+size: [320, 220]
+state:
+  balance: 300
+  entries:
+    - { id: sword, name: "铁剑", price: 120, item: "minecraft:iron_sword" }
+    - { id: shield, name: "盾牌", price: 80, item: "minecraft:shield" }
+    - { id: potion, name: "药水", price: 35, item: "minecraft:potion" }
+includes: []
+elements:
+  - type: panel
+    id: root
+    x: 0
+    y: 0
+    width: fill
+    height: fill
+    style:
+      background: "#CC202830"
+
+  - type: label
+    id: heading
+    x: 16
+    y: 12
+    text: "RPG 商店"
+    color: "#FFFFFFFF"
+  - type: label
+    id: welcome
+    x: 16
+    y: 28
+    text: "欢迎，%player_name%"
+    color: "#FF9AD0FF"
+
+  - type: label
+    id: balance_label
+    x: 16
+    y: 46
+    text: "余额：${state.balance}"
+    color: "#FFFFD479"
+  - type: progress
+    id: balance_bar
+    x: 120
+    y: 48
+    width: 180
+    height: 8
+    value: "${state.balance / 300}"
+    style:
+      background: "#AA202020"
+      fill_color: "#FFFFD479"
+
+  # 每个商品一行：图标 + 名称 + 价格 + 购买按钮
+  # 动作里的 ${entry.price} 在编译期替换成该行的价格，
+  # 所以同一个按钮模板对不同商品成立。
+  - type: repeat
+    id: goods
+    source: "${state.entries}"
+    as: entry
+    index: i
+    gap: 4
+    children:
+      - type: row
+        id: line
+        x: 16
+        y: 70
+        width: 288
+        height: 22
+        gap: 6
+        children:
+          - type: item_icon
+            id: icon
+            x: 0
+            y: 3
+            width: 16
+            height: 16
+            item: "${entry.item}"
+          - type: label
+            id: name
+            x: 0
+            y: 7
+            width: 120
+            height: 10
+            text: "${entry.name}"
+            color: "#FFFFFFFF"
+          - type: label
+            id: price
+            x: 0
+            y: 7
+            width: 60
+            height: 10
+            text: "${entry.price} 金"
+            color: "#FFB8F0FF"
+          - type: button
+            id: buy
+            x: 0
+            y: 2
+            width: 64
+            height: 18
+            text: "购买"
+            style:
+              background: "#FF4A9F6E"
+              hover:
+                background: "#FF66BF8E"
+            on:
+              click:
+                - action: if
+                  condition: "${state.balance >= ${entry.price}}"
+                  then:
+                    - action: set_state
+                      key: balance
+                      value: "${state.balance - ${entry.price}}"
+                    - action: sound
+                      sound: "minecraft:entity.experience_orb.pickup"
+                      volume: 0.8
+                      pitch: 1.4
+                    - action: message
+                      value: "购买成功：${entry.name}"
+                  else:
+                    - action: message
+                      value: "余额不足，买不起 ${entry.name}"
+
+  - type: label
+    id: hint
+    x: 16
+    y: 178
+    text: "余额会写入会话状态并在重进后恢复；Tab 聚焦、Enter 购买"
+    color: "#FF8FD0A0"
+  - type: button
+    id: close
+    x: 16
+    y: 194
+    width: 96
+    height: 18
+    text: "关闭"
+    style:
+      background: "#FF9F3C6E"
+      hover:
+        background: "#FFD05C8E"
+    on:
+      click:
+        - action: close_ui
