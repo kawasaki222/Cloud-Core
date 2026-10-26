@@ -22,7 +22,7 @@ class FragmentCodecTest {
     void reassemblesLargeUncompressedMessageInOrder() {
         byte[] body = pattern(100_000);
         Frame logical = new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION, body);
-        List<Frame> fragments = Fragmenter.fragment(logical, Limits.S2C, FRAGMENT_ID);
+        List<Frame> fragments = wire(Fragmenter.fragment(logical, Limits.S2C, FRAGMENT_ID));
 
         assertTrue(fragments.size() > 1);
         for (Frame fragment : fragments) {
@@ -40,7 +40,8 @@ class FragmentCodecTest {
     void acceptsFragmentsOutOfOrder() {
         byte[] body = pattern(80_000);
         Frame logical = new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION, body);
-        List<Frame> fragments = new ArrayList<>(Fragmenter.fragment(logical, Limits.S2C, FRAGMENT_ID));
+        List<Frame> fragments = new ArrayList<>(
+                wire(Fragmenter.fragment(logical, Limits.S2C, FRAGMENT_ID)));
         Collections.reverse(fragments);
 
         Frame complete = feed(new FragmentAssembler(Limits.S2C), fragments).orElseThrow();
@@ -56,7 +57,7 @@ class FragmentCodecTest {
 
         Frame logical = new Frame(ProtocolVersion.MAJOR, FrameFlags.COMPRESSED,
                 Opcode.UI_DEFINITION, body);
-        List<Frame> fragments = Fragmenter.fragment(logical, Limits.S2C, FRAGMENT_ID);
+        List<Frame> fragments = wire(Fragmenter.fragment(logical, Limits.S2C, FRAGMENT_ID));
         assertTrue(fragments.size() > 1);
         for (Frame fragment : fragments) {
             assertTrue((fragment.flags() & FrameFlags.COMPRESSED) != 0);
@@ -71,7 +72,7 @@ class FragmentCodecTest {
     void duplicateFragmentWithSameContentIsIgnored() {
         byte[] body = pattern(80_000);
         Frame logical = new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION, body);
-        List<Frame> fragments = Fragmenter.fragment(logical, Limits.S2C, FRAGMENT_ID);
+        List<Frame> fragments = wire(Fragmenter.fragment(logical, Limits.S2C, FRAGMENT_ID));
         FragmentAssembler assembler = new FragmentAssembler(Limits.S2C);
 
         List<Frame> withoutLast = fragments.subList(0, fragments.size() - 1);
@@ -85,7 +86,7 @@ class FragmentCodecTest {
     void duplicateFragmentWithDifferentContentAbortsGroup() {
         byte[] body = pattern(80_000);
         Frame logical = new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION, body);
-        List<Frame> fragments = Fragmenter.fragment(logical, Limits.S2C, FRAGMENT_ID);
+        List<Frame> fragments = wire(Fragmenter.fragment(logical, Limits.S2C, FRAGMENT_ID));
         FragmentAssembler assembler = new FragmentAssembler(Limits.S2C);
         assembler.accept(fragments.get(0));
 
@@ -102,8 +103,8 @@ class FragmentCodecTest {
     void conflictingGroupMetadataAbortsGroup() {
         Frame first = new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION, pattern(80_000));
         Frame second = new Frame(ProtocolVersion.MAJOR, 0, Opcode.TEXTURE_PUT, pattern(80_000));
-        List<Frame> firstFragments = Fragmenter.fragment(first, Limits.S2C, FRAGMENT_ID);
-        List<Frame> secondFragments = Fragmenter.fragment(second, Limits.S2C, FRAGMENT_ID);
+        List<Frame> firstFragments = wire(Fragmenter.fragment(first, Limits.S2C, FRAGMENT_ID));
+        List<Frame> secondFragments = wire(Fragmenter.fragment(second, Limits.S2C, FRAGMENT_ID));
 
         FragmentAssembler assembler = new FragmentAssembler(Limits.S2C);
         assembler.accept(firstFragments.get(0));
@@ -114,7 +115,7 @@ class FragmentCodecTest {
     @Test
     void expiresGroupAfterTimeout() {
         Frame first = new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION, pattern(80_000));
-        List<Frame> fragments = Fragmenter.fragment(first, Limits.S2C, FRAGMENT_ID);
+        List<Frame> fragments = wire(Fragmenter.fragment(first, Limits.S2C, FRAGMENT_ID));
         FragmentAssembler assembler = new FragmentAssembler(Limits.S2C, 100, 4);
 
         assembler.accept(fragments.get(0), 1_000);
@@ -130,13 +131,13 @@ class FragmentCodecTest {
         FragmentAssembler assembler = new FragmentAssembler(Limits.S2C);
         for (int id = 0; id < 4; id++) {
             Frame logical = new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION, pattern(80_000));
-            assembler.accept(Fragmenter.fragment(logical, Limits.S2C, id).get(0));
+            assembler.accept(wire(Fragmenter.fragment(logical, Limits.S2C, id)).get(0));
         }
         assertEquals(4, assembler.activeGroupCount());
 
         Frame fifth = new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION, pattern(80_000));
         assertThrows(ProtocolException.class,
-                () -> assembler.accept(Fragmenter.fragment(fifth, Limits.S2C, 4).get(0)));
+                () -> assembler.accept(wire(Fragmenter.fragment(fifth, Limits.S2C, 4)).get(0)));
         assertEquals(4, assembler.activeGroupCount());
     }
 
@@ -174,6 +175,30 @@ class FragmentCodecTest {
     }
 
     @Test
+    void compressedPayloadThatFitsOneChunkUsesNormalFrame() {
+        byte[] body = new byte[80_000];
+        Arrays.fill(body, (byte) 0x5A);
+        Frame logical = new Frame(ProtocolVersion.MAJOR, FrameFlags.COMPRESSED,
+                Opcode.UI_DEFINITION, body);
+        List<Frame> fragments = Fragmenter.fragment(logical, Limits.S2C, FRAGMENT_ID);
+
+        assertEquals(1, fragments.size());
+        assertEquals(0, fragments.get(0).flags() & FrameFlags.FRAGMENT);
+        Frame decoded = FrameCodec.decode(
+                FrameCodec.encode(fragments.get(0), Limits.S2C), Limits.S2C);
+        assertEquals(FrameFlags.COMPRESSED, decoded.flags());
+        assertArrayEquals(body, decoded.body());
+    }
+
+    @Test
+    void rejectsMessageThatNeedsMoreThan255Fragments() {
+        Limits smallChunks = new Limits(1_048_576, 1_048_576, 100, 32_767, 16, 4_096);
+        Frame logical = new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION, pattern(30_000));
+        assertThrows(ProtocolException.class,
+                () -> Fragmenter.fragment(logical, smallChunks, FRAGMENT_ID));
+    }
+
+    @Test
     void randomFramesOnlyThrowProtocolException() {
         Random random = new Random(0xCC);
         for (int i = 0; i < 10_000; i++) {
@@ -187,6 +212,14 @@ class FragmentCodecTest {
                 throw new AssertionError("Unexpected runtime failure at iteration " + i, unexpected);
             }
         }
+    }
+
+    private static List<Frame> wire(List<Frame> frames) {
+        List<Frame> decoded = new ArrayList<>(frames.size());
+        for (Frame frame : frames) {
+            decoded.add(FrameCodec.decode(FrameCodec.encode(frame, Limits.S2C), Limits.S2C));
+        }
+        return decoded;
     }
 
     private static Optional<Frame> feed(FragmentAssembler assembler, List<Frame> fragments) {
