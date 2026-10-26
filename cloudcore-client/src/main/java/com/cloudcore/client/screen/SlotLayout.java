@@ -35,10 +35,20 @@ public final class SlotLayout {
      * @return indices that a grid declared
      */
     public static Set<Integer> apply(UiDocument document, List<Slot> slots, int topSize) {
+        return apply(document, slots, index -> index < topSize);
+    }
+
+    /**
+     * @param movable which menu indices may be rebuilt; player-inventory skins pass the
+     *                main-inventory and hotbar range so armour/crafting/result slots keep
+     *                their subclasses and restrictions
+     */
+    public static Set<Integer> apply(UiDocument document, List<Slot> slots,
+            java.util.function.IntPredicate movable) {
         List<UiElement> grids = new ArrayList<>();
         collectGrids(document.elements(), grids);
         Set<Integer> declared = new LinkedHashSet<>();
-        if (grids.isEmpty() || topSize <= 0) {
+        if (grids.isEmpty()) {
             return declared;
         }
         for (UiElement grid : grids) {
@@ -57,7 +67,7 @@ public final class SlotLayout {
             int index = 0;
             for (int slotIndex = first; slotIndex <= last && slotIndex < slots.size(); slotIndex++) {
                 int[] position = positions.get(index++);
-                if (slotIndex >= topSize) {
+                if (!movable.test(slotIndex)) {
                     // Player-inventory slots keep vanilla coordinates for now: their Slot
                     // subclasses carry restrictions a plain Slot would drop.
                     continue;
@@ -67,8 +77,8 @@ public final class SlotLayout {
             }
         }
         if (!declared.isEmpty()) {
-            for (int slotIndex = 0; slotIndex < Math.min(topSize, slots.size()); slotIndex++) {
-                if (!declared.contains(slotIndex)) {
+            for (int slotIndex = 0; slotIndex < slots.size(); slotIndex++) {
+                if (!declared.contains(slotIndex) && movable.test(slotIndex)) {
                     move(slots, slotIndex, HIDDEN, HIDDEN);
                 }
             }

@@ -38,8 +38,9 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
     @Override
     protected void init() {
         super.init();
-        // Player slots keep their vanilla positions: their subclasses carry restrictions
-        // (armour, result slot) that a repositioned plain Slot would lose.
+        // Only main inventory (9..35) and hotbar (36..44) are plain InventorySlots; armour,
+        // crafting, result and offhand keep their subclasses and vanilla positions.
+        SlotLayout.apply(document, menu.slots, index -> index >= 9 && index <= 44);
     }
 
     @Override

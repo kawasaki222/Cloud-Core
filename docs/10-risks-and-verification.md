@@ -283,7 +283,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **槽位布局已核实**：`/cloudcore demo-container` 的文档声明三个 `inventory_grid`（0–8、9–17、18–26，
   `origin` 右移 16px），打开箱子后 27 个容器槽位与其中物品一起移动，玩家背包槽位保持原版；
   点击移动后的 0 号槽能取出钻石（`chest-layout.png`、`chest-layout-click2.png`）。
-  玩家背包槽位暂不支持重排。
+  玩家背包皮肤可按 `inventory_grid` 重排主物品栏 9–35 与快捷栏 36–44（`inventory-grid2.png`），
+  护甲/合成/结果/副手槽保持原版。
 - **滚动裁剪已核实**：`/cloudcore demo-scroll` 的 `scroll` 元素按 `scroll_y: 26` 偏移并把
   子元素裁剪到 200×80 的框内；原生后端（`scroll-native.png`）与 NanoVG 后端
   （`scroll-nanovg.png`）显示一致。嵌套裁剪由 `ClipPush`/`ClipPop` 的交集实现。
