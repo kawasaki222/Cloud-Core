@@ -1,4 +1,4 @@
-# 10 — 风险、已核实事实与待验证项
+﻿# 10 — 风险、已核实事实与待验证项
 
 本文档把**已知**和**假设**分开。假设清单里的任何一条，在完成验证之前都不能当作定论。
 
@@ -267,6 +267,16 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   画成带背景与悬停态的物品图标按钮，点击记录 `EVENT ui=example element=gem_button`；
   “喊话”按钮的 `icon: {item: minecraft:emerald}` 画在左侧、文字右移到 `x + 21`
   （`icon-button.png`）。`DocumentRenderListBuilderTest` 覆盖贴图图标、物品图标缩放与文字偏移。
+- **附属插件 API 已核实（第二个插件）**：`CloudCoreApi` 经 `ServicesManager` 暴露；测试插件
+  `CloudCoreApiProbe`（仓库外夹具）从另一个插件加载 API、注册 `probe_grant` 动作并打开
+  `api_demo` 页面。真机日志：非主线程 `open` → `SCHEDULED`，随后 `UI_OPEN` + 文档到达客户端；
+  `open("no_such_page")` → `UNKNOWN_PAGE`；`isModded` → `true`。点击按钮后插件收到
+  `probe_grant ran ui=api_demo element=grant args={amount=3} state=0`，`refresh()` 推 revision=2，
+  随后的内置 `set_state` 推 revision=3（界面 `state.clicks = 1`）。
+  未加 op 时同一按钮被拒：`Denied action 'probe_grant' ... (missing probe.use)`，整次点击
+  `REJECTED` 且状态不变；未注册动作名写 `Unsupported action ...` 并回 `EVENT_RESULT(REJECTED)`
+  （客户端日志 `status=1 (REJECTED)`）。动作名规则有 `ActionNamesTest`。
+  截图：`api-demo1.png`、`api-demo3.png`。
 - **页面热重载已核实**：启动日志 `Watching plugins\CloudCore\pages`；打开示例页后直接改
   `example.yml` 的标题，约 1 秒内服务端 `Reloaded 1 pages, refreshed 1 open views`，界面标题
   变为“示例页面 自动重载”（`watch-reload.png`），无需任何命令。
@@ -351,7 +361,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，170 个测试 / 35 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，173 个测试 / 36 个测试类，0 失败）。
 
 仍未验证：
 

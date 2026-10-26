@@ -3,6 +3,10 @@
 目标是让商业 RPG 团队用自己的插件直接构造页面、注册动作、读取状态、扩展面板，而不依赖内部类或
 YAML 反射。公共 API 是合同：1.x 不做破坏性变更。
 
+当前实现状态：`open`（按页面 id）、`registerActionHandler` / `unregisterActionHandler`、
+`isModded` 已实现并在第二个插件里真机验证（`10-risks-and-verification.md`）；
+`PageBuilder`（代码构造页面）、`PlaceholderResolver`、`PageProvider` 与 testkit 计划中。
+
 ## 1. 稳定面与内部面
 
 | 面 | 模块 | 承诺 |
@@ -29,6 +33,8 @@ if (api == null) {
 
 ## 3. 打开页面
 
+已实现（`cloudcore-bukkit` 的 `com.cloudcore.bukkit.api`，通过 `ServicesManager` 提供）：
+
 ```java
 OpenOptions options = OpenOptions.builder()
         .surface(SurfaceType.CUSTOM_SCREEN)
@@ -38,14 +44,15 @@ OpenOptions options = OpenOptions.builder()
 OpenResult result = api.open(player, "rpg_shop", options);
 ```
 
-- `open(Player, String pageId, OpenOptions)`：打开已加载的页面。
-- `open(Player, UiDocument document, OpenOptions)`：打开代码构造的页面。
-- 玩家没装模组返回 `NOT_MODDED`；非主线程返回 `SCHEDULED`。
-- 权限、限流、会话上限由 CloudCore 统一处理。
+- `open(Player, String pageId)` / `open(Player, String pageId, OpenOptions)`：打开已加载的页面。
+- 返回值：`OPENED`、`SCHEDULED`（非主线程，已排到下一 tick）、`NOT_MODDED`（客户端没完成
+  握手）、`UNKNOWN_PAGE`、`UNSUPPORTED_SURFACE`（v1 只打开自定义页面）、`FAILED`（页面编译失败）。
+- 会话状态、revision 与贴图引用和 `/cloudcore page` 走同一条路径。
+- `open(Player, UiDocument, OpenOptions)`（代码构造页面）属于 PageBuilder，计划中。
 
 ## 4. 代码构造页面
 
-`PageBuilder`/`UiDocumentBuilder` 提供 Java DSL，适合 RPG 动态页面：
+计划中（M8）。`PageBuilder`/`UiDocumentBuilder` 提供 Java DSL，适合 RPG 动态页面：
 
 ```java
 UiDocument doc = PageBuilder.create("rpg_shop")
@@ -66,21 +73,49 @@ UiDocument doc = PageBuilder.create("rpg_shop")
 
 ## 5. 注册动作
 
+已实现。处理器在主线程执行，注册名大小写不敏感、只允许 `[a-z0-9_.-]{1,64}`，
+内置动作名（`message`/`set_state`/`close_ui`/`if`/`delay`/`command`）不可占用。
+
 ```java
-api.registerActionHandler("rpg_buy", (context, args) -> {
-    Player player = context.player();
-    String item = (String) args.get("item");
-    // 业务逻辑
-    context.refresh();
+api.registerActionHandler("rpg_buy", new ActionHandler() {
+    @Override
+    public void handle(ActionContext context, Map<String, Object> args) {
+        String item = (String) args.get("item");
+        // 业务逻辑；读 context.state()，改完调用 context.refresh()
+        context.message("已购买 " + item);
+        context.refresh();
+    }
+
+    @Override
+    public String permission() {
+        return "rpg.buy";
+    }
 });
 ```
 
-- 处理器在主线程执行，必须快速返回；慢操作自行调度。
-- 声明权限：`ActionHandler#permission()`；CloudCore 在调用前检查。
-- 抛异常 → `EVENT_RESULT(INTERNAL_ERROR)`，记录 uiId/elementId/actionId。
-- 处理器名唯一；重复注册抛异常或替换，由 API 文档明确。
+- `ActionContext`：`player()`、`uiId()`、`elementId()`（如 `rows[2].buy`）、`state()`（本次点击
+  之前的页面状态快照）、`message(String)`、`refresh()`（用当前状态重编译并推送新 revision）。
+- 声明权限：`ActionHandler#permission()` 非空时先检查；不通过则**整次点击**记为
+  `REJECTED`，后续动作不再执行，并写 `Denied action ...` 日志。
+- 抛异常 → 记录 `uiId`/`elementId`/动作名与堆栈，本次点击 `REJECTED`。
+- 注册重复名抛 `IllegalArgumentException`；`unregisterActionHandler` 返回是否移除。
+- 页面里未注册的动作名：写 `Unsupported action ...` 警告并按 `REJECTED` 处理，不静默。
+
+```yaml
+- type: button
+  id: buy
+  text: "购买"
+  on:
+    click:
+      - action: rpg_buy
+        item: "minecraft:diamond"
+```
+
+内置动作也支持 `permission:` 参数：`- { action: message, value: "...", permission: "rpg.vip" }`。
 
 ## 6. 注册占位符
+
+计划中（M8）。目标形态：
 
 ```java
 api.registerPlaceholderResolver("rpg", (player, params) -> switch (params) {

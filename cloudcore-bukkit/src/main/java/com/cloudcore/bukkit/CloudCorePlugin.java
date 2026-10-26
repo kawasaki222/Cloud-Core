@@ -77,12 +77,20 @@ public final class CloudCorePlugin extends JavaPlugin
             new ConcurrentHashMap<>();
     private final com.cloudcore.server.surface.EventRateLimiter eventLimiter =
             new com.cloudcore.server.surface.EventRateLimiter();
+    /** Addon actions registered through {@link com.cloudcore.bukkit.api.CloudCoreApi}. */
+    private final Map<String, com.cloudcore.bukkit.api.ActionHandler> actionHandlers =
+            new ConcurrentHashMap<>();
+    private static final Set<String> BUILT_IN_ACTIONS = Set.of(
+            "message", "close_ui", "close", "set_state", "if", "delay", "command");
+    private final com.cloudcore.bukkit.api.CloudCoreApi api = new Api();
 
     @Override
     public void onEnable() {
         getServer().getMessenger().registerOutgoingPluginChannel(this, CHANNEL);
         getServer().getMessenger().registerIncomingPluginChannel(this, CHANNEL, this);
         getServer().getPluginManager().registerEvents(this, this);
+        getServer().getServicesManager().register(com.cloudcore.bukkit.api.CloudCoreApi.class,
+                api, this, org.bukkit.plugin.ServicePriority.Normal);
         if (getCommand("cloudcore") != null) {
             getCommand("cloudcore").setExecutor(this);
         } else {
@@ -138,6 +146,8 @@ public final class CloudCorePlugin extends JavaPlugin
 
     @Override
     public void onDisable() {
+        getServer().getServicesManager().unregisterAll(this);
+        actionHandlers.clear();
         if (pageWatcher != null) {
             pageWatcher.close();
             pageWatcher = null;
@@ -222,7 +232,14 @@ public final class CloudCorePlugin extends JavaPlugin
                 + " actions=" + actions.size() + " player=" + player.getName());
         int status = com.cloudcore.protocol.EventResult.OK;
         for (com.cloudcore.api.page.PageLoader.PageAction action : actions) {
-            if (!executeAction(player, page, action, event.payload())) {
+            ActionOutcome outcome = executeAction(player, page, action, event.payload(),
+                    event.elementId());
+            if (outcome == ActionOutcome.DENIED) {
+                // A missing permission rejects the whole click, not just that one action.
+                status = com.cloudcore.protocol.EventResult.REJECTED;
+                break;
+            }
+            if (outcome == ActionOutcome.FAILED) {
                 status = com.cloudcore.protocol.EventResult.REJECTED;
             }
         }
@@ -236,10 +253,14 @@ public final class CloudCorePlugin extends JavaPlugin
                 com.cloudcore.protocol.EventResultCodec.encode(result, Limits.S2C)));
     }
 
-    private boolean executeAction(Player player,
+    /** How one action finished; a denied permission aborts the rest of the click. */
+    private enum ActionOutcome { OK, FAILED, DENIED }
+
+    private ActionOutcome executeAction(Player player,
             com.cloudcore.api.page.PageLoader.CompiledPage page,
             com.cloudcore.api.page.PageLoader.PageAction action,
-            Map<String, com.cloudcore.protocol.WireValue> payload) {
+            Map<String, com.cloudcore.protocol.WireValue> payload,
+            String elementId) {
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
         Map<String, Object> sessionState = session.pageState.computeIfAbsent(
                 session.pageNames.getOrDefault(page.document().id(), page.document().id()),
@@ -248,6 +269,14 @@ public final class CloudCorePlugin extends JavaPlugin
         // to the session map only.
         Map<String, Object> state = new java.util.LinkedHashMap<>(page.state());
         state.putAll(sessionState);
+        Object permission = action.params().get("permission");
+        if (permission instanceof String node && !node.isBlank()
+                && !player.hasPermission(resolveState(node, state, payload))) {
+            getLogger().info("Denied action '" + action.type() + "' for " + player.getName()
+                    + " on page " + page.document().id() + " element " + elementId
+                    + " (missing " + node + ")");
+            return ActionOutcome.DENIED;
+        }
         switch (action.type().toLowerCase(java.util.Locale.ROOT)) {
             case "close_ui", "close" -> sendClose(player);
             case "message" -> {
@@ -263,7 +292,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 if (!commandAllowed(command)) {
                     getLogger().warning("Blocked command action '" + command + "' from page "
                             + page.document().id() + " for " + player.getName());
-                    return false;
+                    return ActionOutcome.FAILED;
                 }
                 boolean asConsole = "console".equalsIgnoreCase(
                         String.valueOf(action.params().getOrDefault("as", "player")));
@@ -277,7 +306,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 Object key = action.params().get("key");
                 if (key == null) {
                     getLogger().warning("set_state without key in page " + page.document().id());
-                    return false;
+                    return ActionOutcome.FAILED;
                 }
                 Object raw = action.params().get("value");
                 Object value = raw instanceof String text
@@ -293,9 +322,18 @@ public final class CloudCorePlugin extends JavaPlugin
                 boolean condition = truthy(evaluateCondition(
                         action.params().get("condition"), state, payload));
                 Object branch = action.params().get(condition ? "then" : "else");
+                ActionOutcome outcome = ActionOutcome.OK;
                 for (com.cloudcore.api.page.PageLoader.PageAction nested : toActions(branch)) {
-                    executeAction(player, page, nested, payload);
+                    ActionOutcome nestedOutcome = executeAction(player, page, nested, payload,
+                            elementId);
+                    if (nestedOutcome == ActionOutcome.DENIED) {
+                        return ActionOutcome.DENIED;
+                    }
+                    if (nestedOutcome == ActionOutcome.FAILED) {
+                        outcome = ActionOutcome.FAILED;
+                    }
                 }
+                return outcome;
             }
             case "delay" -> {
                 Object ticksValue = action.params().getOrDefault("ticks", 20);
@@ -306,19 +344,48 @@ public final class CloudCorePlugin extends JavaPlugin
                 getServer().getScheduler().runTaskLater(this, () -> {
                     if (player.isOnline()) {
                         for (com.cloudcore.api.page.PageLoader.PageAction delayed : nested) {
-                            executeAction(player, page, delayed, payload);
+                            executeAction(player, page, delayed, payload, elementId);
                         }
                     }
                 }, ticks);
             }
             default -> {
-                getLogger().warning("Unsupported action '" + action.type()
-                        + "' from page " + page.document().id()
-                        + " (planned for the action engine)");
-                return false;
+                return runCustomAction(player, page, action, state, session, elementId);
             }
         }
-        return true;
+        return ActionOutcome.OK;
+    }
+
+    /**
+     * Runs an action registered through {@code CloudCoreApi#registerActionHandler}. Built-in
+     * types never reach here; an unknown type is logged and rejects the click.
+     */
+    private ActionOutcome runCustomAction(Player player,
+            com.cloudcore.api.page.PageLoader.CompiledPage page,
+            com.cloudcore.api.page.PageLoader.PageAction action,
+            Map<String, Object> state, Session session, String elementId) {
+        String name = action.type().toLowerCase(java.util.Locale.ROOT);
+        com.cloudcore.bukkit.api.ActionHandler handler = actionHandlers.get(name);
+        if (handler == null) {
+            getLogger().warning("Unsupported action '" + action.type() + "' from page "
+                    + page.document().id() + "; register it through CloudCoreApi");
+            return ActionOutcome.FAILED;
+        }
+        String permission = handler.permission();
+        if (permission != null && !permission.isBlank() && !player.hasPermission(permission)) {
+            getLogger().info("Denied action '" + name + "' for " + player.getName()
+                    + " (missing " + permission + ")");
+            return ActionOutcome.DENIED;
+        }
+        try {
+            handler.handle(new HandlerContext(player, page, elementId, state, session),
+                    java.util.Collections.unmodifiableMap(action.params()));
+            return ActionOutcome.OK;
+        } catch (Exception exception) {
+            getLogger().log(Level.WARNING, "Action '" + name + "' from page "
+                    + page.document().id() + " element " + elementId + " failed", exception);
+            return ActionOutcome.FAILED;
+        }
     }
 
     /**
@@ -1656,6 +1723,146 @@ public final class CloudCorePlugin extends JavaPlugin
             if (removed.bossBar != null) {
                 removed.bossBar.removeAll();
             }
+        }
+    }
+
+    /** Everything a custom action handler may read or trigger for the click that fired it. */
+    private final class HandlerContext implements com.cloudcore.bukkit.api.ActionContext {
+        private final Player player;
+        private final com.cloudcore.api.page.PageLoader.CompiledPage page;
+        private final String elementId;
+        private final Map<String, Object> state;
+        private final Session session;
+
+        private HandlerContext(Player player,
+                com.cloudcore.api.page.PageLoader.CompiledPage page, String elementId,
+                Map<String, Object> state, Session session) {
+            this.player = player;
+            this.page = page;
+            this.elementId = elementId == null ? "" : elementId;
+            this.state = state;
+            this.session = session;
+        }
+
+        @Override
+        public Player player() {
+            return player;
+        }
+
+        @Override
+        public String uiId() {
+            return page.document().id();
+        }
+
+        @Override
+        public String elementId() {
+            return elementId;
+        }
+
+        @Override
+        public Map<String, Object> state() {
+            return java.util.Collections.unmodifiableMap(state);
+        }
+
+        @Override
+        public void message(String text) {
+            if (text != null) {
+                player.sendMessage(Component.text(text));
+            }
+        }
+
+        @Override
+        public void refresh() {
+            refreshPage(player, session, page);
+        }
+    }
+
+    /**
+     * The service addons load through {@code Bukkit.getServicesManager()}. Opens load pages
+     * the same way the {@code /cloudcore page} command does, so state, revision counting and
+     * texture refs stay on one path.
+     */
+    private final class Api implements com.cloudcore.bukkit.api.CloudCoreApi {
+
+        @Override
+        public com.cloudcore.bukkit.api.OpenResult open(Player player, String pageId) {
+            return open(player, pageId, com.cloudcore.bukkit.api.OpenOptions.defaults());
+        }
+
+        @Override
+        public com.cloudcore.bukkit.api.OpenResult open(Player player, String pageId,
+                com.cloudcore.bukkit.api.OpenOptions options) {
+            java.util.Objects.requireNonNull(player, "player");
+            java.util.Objects.requireNonNull(pageId, "pageId");
+            com.cloudcore.bukkit.api.OpenOptions effective = options == null
+                    ? com.cloudcore.bukkit.api.OpenOptions.defaults() : options;
+            if (!getServer().isPrimaryThread()) {
+                getServer().getScheduler().runTask(CloudCorePlugin.this,
+                        () -> open(player, pageId, effective));
+                return com.cloudcore.bukkit.api.OpenResult.SCHEDULED;
+            }
+            if (!isModded(player)) {
+                return com.cloudcore.bukkit.api.OpenResult.NOT_MODDED;
+            }
+            java.nio.file.Path pageFile = resolvePageFile(pageId);
+            if (pageFile == null) {
+                getLogger().warning("API open: unknown page '" + pageId + "'");
+                return com.cloudcore.bukkit.api.OpenResult.UNKNOWN_PAGE;
+            }
+            Session session = sessions.computeIfAbsent(player.getUniqueId(),
+                    ignored -> new Session());
+            Map<String, Object> state = session.pageState.computeIfAbsent(pageId,
+                    ignored -> new ConcurrentHashMap<>());
+            com.cloudcore.api.page.PageLoader.CompiledPage compiled;
+            try {
+                compiled = com.cloudcore.api.page.PageLoader.load(pagesRoot, pageFile, state);
+            } catch (PageLoadException exception) {
+                getLogger().warning("API open: page '" + pageId + "' failed to load: "
+                        + exception.getMessage());
+                return com.cloudcore.bukkit.api.OpenResult.FAILED;
+            }
+            SurfaceType surface = effective.surface() == null
+                    ? compiled.document().surface() : effective.surface();
+            if (surface != SurfaceType.CUSTOM_SCREEN) {
+                getLogger().warning("API open: page '" + pageId + "' requests surface " + surface
+                        + "; v1 opens custom screens only");
+                return com.cloudcore.bukkit.api.OpenResult.UNSUPPORTED_SURFACE;
+            }
+            sendPage(player, pageId);
+            return com.cloudcore.bukkit.api.OpenResult.OPENED;
+        }
+
+        @Override
+        public void registerActionHandler(String name,
+                com.cloudcore.bukkit.api.ActionHandler handler) {
+            java.util.Objects.requireNonNull(handler, "handler");
+            String key = com.cloudcore.server.action.ActionNames.normalise(name);
+            if (BUILT_IN_ACTIONS.contains(key)) {
+                throw new IllegalArgumentException("Action name '" + key + "' is built in");
+            }
+            if (actionHandlers.putIfAbsent(key, handler) != null) {
+                throw new IllegalArgumentException("Action name '" + key + "' is registered");
+            }
+            getLogger().info("Registered action handler '" + key + "'");
+        }
+
+        @Override
+        public boolean unregisterActionHandler(String name) {
+            if (!com.cloudcore.server.action.ActionNames.isValid(name)) {
+                return false;
+            }
+            boolean removed = actionHandlers.remove(
+                    com.cloudcore.server.action.ActionNames.normalise(name)) != null;
+            if (removed) {
+                getLogger().info("Unregistered action handler '" + name + "'");
+            }
+            return removed;
+        }
+
+        @Override
+        public boolean isModded(Player player) {
+            Session session = player == null ? null : sessions.get(player.getUniqueId());
+            return session != null && session.hello != null;
         }
     }
 
