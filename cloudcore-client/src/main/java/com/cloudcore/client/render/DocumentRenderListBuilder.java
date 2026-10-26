@@ -25,7 +25,17 @@ public final class DocumentRenderListBuilder {
     }
 
     public static RenderList build(UiDocument document, int screenWidth, int screenHeight) {
+        return build(document, screenWidth, screenHeight, id -> 0);
+    }
+
+    /**
+     * @param localScroll extra offset per scroll element id, added to the document's
+     *                    {@code scroll_y}; the client uses it for wheel input
+     */
+    public static RenderList build(UiDocument document, int screenWidth, int screenHeight,
+            java.util.function.ToIntFunction<String> localScroll) {
         Objects.requireNonNull(document, "document");
+        Objects.requireNonNull(localScroll, "localScroll");
         if (screenWidth <= 0 || screenHeight <= 0) {
             return RenderList.EMPTY;
         }
@@ -37,14 +47,15 @@ public final class DocumentRenderListBuilder {
         Map<String, FontSpec> fonts = document.fonts();
         for (UiElement element : document.elements()) {
             append(element, originX, originY, documentWidth, documentHeight,
-                    commands, 1, fonts);
+                    commands, 1, fonts, localScroll);
         }
         return commands.isEmpty() ? RenderList.EMPTY : new RenderList(commands);
     }
 
     private static void append(UiElement element, int parentX, int parentY,
             int parentWidth, int parentHeight, List<RenderCommand> commands, int depth,
-            Map<String, FontSpec> fonts) {
+            Map<String, FontSpec> fonts,
+            java.util.function.ToIntFunction<String> localScroll) {
         if (!element.visible() || depth > MAX_DEPTH || commands.size() >= MAX_COMMANDS) {
             return;
         }
@@ -133,8 +144,9 @@ public final class DocumentRenderListBuilder {
                 childWidth = w;
                 childHeight = h;
                 clipChildren = true;
-                // Server-provided offset; local wheel scrolling arrives with input routing.
-                childY = y - (int) Math.round(number(attribute(element, "scroll_y"), 0.0));
+                int scrollY = (int) Math.round(number(attribute(element, "scroll_y"), 0.0))
+                        + localScroll.applyAsInt(element.id());
+                childY = y - scrollY;
                 childX = x - (int) Math.round(number(attribute(element, "scroll_x"), 0.0));
             }
             case "inventory_grid", "spacer" -> {
@@ -151,7 +163,7 @@ public final class DocumentRenderListBuilder {
         }
         for (UiElement child : element.children()) {
             append(child, childX, childY, childWidth, childHeight, commands, depth + 1,
-                    fonts);
+                    fonts, localScroll);
         }
         if (clipChildren && commands.size() < MAX_COMMANDS) {
             commands.add(new RenderCommand.ClipPop());

@@ -183,7 +183,8 @@ offset: [0, 0]
 
 v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框；两个渲染后端都支持嵌套裁剪
 （原生用 `enableScissor` 求交，NanoVG 用 `nvgSave`/`nvgScissor`/`nvgRestore`）。
-本地滚轮输入与 `scroll` 事件尚待输入路由。
+滚轮在光标位于滚动框内时改变本地偏移（`ScrollTargets` 命中测试，步长 12，范围
+`0..内容高度-视口高度`），只影响客户端显示；`scroll` 事件回传服务端要等动作引擎。
 
 ### 4.5 `overlay`
 

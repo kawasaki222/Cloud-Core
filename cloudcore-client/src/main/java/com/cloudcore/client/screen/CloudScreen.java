@@ -27,6 +27,8 @@ public final class CloudScreen extends Screen {
     private RenderList cachedList = RenderList.EMPTY;
     private int cachedWidth = -1;
     private int cachedHeight = -1;
+    private final java.util.Map<String, Integer> localScroll = new java.util.HashMap<>();
+    private static final int SCROLL_STEP = 12;
     private boolean closed;
 
     public CloudScreen(UiDocument document) {
@@ -62,15 +64,40 @@ public final class CloudScreen extends Screen {
             graphics.fill(controlX, height - 72, controlX + 64, height - 8, 0xFFFF0000);
         }
         if (width != cachedWidth || height != cachedHeight) {
-            cachedList = DocumentRenderListBuilder.build(document, width, height);
-            cachedWidth = width;
-            cachedHeight = height;
-            LOGGER.debug("Built render list for ui={} commands={}", document.id(),
-                    cachedList.commands().size());
+            rebuild();
         }
         backend.render(graphics, cachedList, new FrameContext(graphics, width, height,
                 minecraft.getWindow().getGuiScale(), partialTick));
         graphics.drawString(font, title, 8, 8, TITLE_COLOR, true);
+    }
+
+    private void rebuild() {
+        cachedList = DocumentRenderListBuilder.build(document, width, height,
+                id -> localScroll.getOrDefault(id, 0));
+        cachedWidth = width;
+        cachedHeight = height;
+        LOGGER.debug("Built render list for ui={} commands={}", document.id(),
+                cachedList.commands().size());
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        com.cloudcore.client.render.ScrollTargets.Target target =
+                com.cloudcore.client.render.ScrollTargets.find(document, width, height,
+                        (int) mouseX, (int) mouseY,
+                        id -> localScroll.getOrDefault(id, 0));
+        if (target == null || scrollY == 0.0) {
+            return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        }
+        // Wheel up (positive) scrolls the content back towards its start.
+        int next = target.current() - (int) Math.round(scrollY * SCROLL_STEP);
+        next = Math.max(0, Math.min(target.maxScroll(), next));
+        if (next == target.current()) {
+            return true;
+        }
+        localScroll.put(target.id(), next);
+        rebuild();
+        return true;
     }
 
     @Override
