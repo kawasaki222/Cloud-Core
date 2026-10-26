@@ -131,7 +131,9 @@ docs/
 - [x] 九宫格 `nine_slice`：9 块拆分，角固定/边单向/中心双向（真机验证）
 - [x] `url:` 贴图：编译成 `inline:` + `TEXTURE_REF` + 客户端直连下载（真机验证，https/大小/超时/sha256）
 - [ ] 代理模式：`TEXTURE_REQUEST`/`TEXTURE_PUT`
-- [ ] M2 渲染剩余：GIF、文本 shaping、`scroll` 事件回传
+- [x] GIF 动画：本地与直连图片逐帧播放（3 帧测试图真机验证）
+- [ ] 动画选项：`animated`/`speed`/`loop` 与远端 GIF 真机验证
+- [ ] M2 渲染剩余：文本 shaping、`scroll` 事件回传
 - [x] HUD / Tooltip / BossBar / Container 面板最小闭环
 - [x] HUD 三层（background/foreground/overlay）与锚点/偏移（真机验证）
 - [x] PlayerInventory 面板：持久皮肤、`CloudInventoryScreen`、`UI_CLOSE` 还原原版（真机截图验证）

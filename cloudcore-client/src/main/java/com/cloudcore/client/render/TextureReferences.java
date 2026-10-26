@@ -90,6 +90,10 @@ public final class TextureReferences {
             // Pending or failed: draw nothing this frame; the download logs its own failure.
             return null;
         }
+        if (AnimatedTextures.isGif(bytes)) {
+            // Frames are chosen per draw; the render list keeps only the reference string.
+            return AnimatedTextures.frame(key, bytes, System.currentTimeMillis());
+        }
         try {
             com.mojang.blaze3d.platform.NativeImage image =
                     com.mojang.blaze3d.platform.NativeImage.read(

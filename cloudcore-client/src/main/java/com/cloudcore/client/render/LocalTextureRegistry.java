@@ -32,6 +32,12 @@ public final class LocalTextureRegistry {
         if (relativePath == null || relativePath.isBlank()) {
             return null;
         }
+        if (relativePath.toLowerCase(java.util.Locale.ROOT).endsWith(".gif")) {
+            byte[] bytes = readBytes(relativePath);
+            return bytes == null ? null
+                    : AnimatedTextures.frame("local:" + relativePath, bytes,
+                            System.currentTimeMillis());
+        }
         if (CACHE.containsKey(relativePath)) {
             return CACHE.get(relativePath);
         }

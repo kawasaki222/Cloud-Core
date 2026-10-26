@@ -1295,6 +1295,9 @@ public final class CloudCorePlugin extends JavaPlugin
                       "style": { "background": "#CC202830" } },
                     { "id": "title", "type": "label", "x": 16, "y": 14,
                       "text": "item_icon / pack / builtin", "color": "#FFFFFFFF" },
+                    { "id": "anim_gif", "type": "image", "x": 240, "y": 30,
+                      "width": 32, "height": 32,
+                      "texture": "local:test/anim.gif" },
                     { "id": "rich_text", "type": "label", "x": 16, "y": 156,
                       "text": { "runs": [
                           { "text": "Rich ", "color": "#FFFFFFFF" },
