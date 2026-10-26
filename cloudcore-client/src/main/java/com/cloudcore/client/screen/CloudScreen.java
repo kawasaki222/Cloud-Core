@@ -203,8 +203,11 @@ public final class CloudScreen extends Screen {
                 return true;
             }
             if (event.isUp() || event.isDown() || event.isLeft() || event.isRight()) {
-                cycleFocus(event.isUp() || event.isLeft());
-                return true;
+                // Only claim the arrows when there is something to move focus to.
+                if (!focusables().isEmpty()) {
+                    cycleFocus(event.isUp() || event.isLeft());
+                    return true;
+                }
             }
             if (event.isConfirmation() || event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_SPACE) {
                 LayoutBoxes.Box box = focusedBox();
