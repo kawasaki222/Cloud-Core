@@ -252,6 +252,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 sendHudOpen(target);
             } else if (args[0].equalsIgnoreCase("demo-tooltip")) {
                 sendTooltipOpen(target);
+            } else if (args[0].equalsIgnoreCase("demo-container")) {
+                sendDemoContainer(target);
             } else {
                 sendDemoOpen(target, args[0].equalsIgnoreCase("demo-big"));
             }
@@ -300,10 +302,16 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core tooltip demo sent."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("demo-container")) {
+            sendDemoContainer(player);
+            sender.sendMessage(Component.text("Cloud Core container demo sent."));
+            return true;
+        }
         if (args.length != 1 || !args[0].equalsIgnoreCase("ping")) {
             sender.sendMessage(Component.text(
                     "Usage: /" + label
-                            + " <ping|demo|demo-big|demo-hud|demo-tooltip|probe|boss|close|diagnostic>"));
+                            + " <ping|demo|demo-big|demo-hud|demo-tooltip|demo-container"
+                            + "|probe|boss|close|diagnostic>"));
             return true;
         }
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
@@ -321,7 +329,51 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("close")
                 || action.equalsIgnoreCase("diagnostic")
                 || action.equalsIgnoreCase("demo-hud")
-                || action.equalsIgnoreCase("demo-tooltip");
+                || action.equalsIgnoreCase("demo-tooltip")
+                || action.equalsIgnoreCase("demo-container");
+    }
+
+    private void sendDemoContainer(Player player) {
+        String uiId = "cloudcore_demo_container";
+        int token = random.nextInt();
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        session.lastUiId = uiId;
+        UiOpen open = new UiOpen(uiId, 1, SurfaceType.CONTAINER, BindMode.NEXT_CONTAINER,
+                token, RenderMode.SCREEN, 0, "demo-container");
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
+                UiCodec.encodeOpen(open, Limits.S2C)));
+        String json = """
+                {
+                  "schema": 1,
+                  "id": "cloudcore_demo_container",
+                  "surface": "container",
+                  "title": { "runs": [ { "text": "Cloud Core Container" } ] },
+                  "size": [176, 166],
+                  "container": { "rows": 3, "interaction": "managed" },
+                  "elements": [
+                    { "id": "container_bg", "type": "panel", "x": 0, "y": 0,
+                      "width": "fill", "height": "fill",
+                      "style": { "background": "#E0203040" } },
+                    { "id": "container_hint", "type": "label", "x": 8, "y": 6,
+                      "text": "Cloud Core Container", "color": "#FFFFFFFF" }
+                  ]
+                }
+                """;
+        UiDefinition definition = new UiDefinition(uiId, 1, 0,
+                json.getBytes(StandardCharsets.UTF_8));
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (player.isOnline()) {
+                sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
+                        UiCodec.encodeDefinition(definition, Limits.S2C)));
+                getServer().getScheduler().runTaskLater(this, () -> {
+                    if (player.isOnline()) {
+                        player.openInventory(Bukkit.createInventory(null, 27,
+                                Component.text("Cloud Core Container")));
+                    }
+                }, 1L);
+            }
+        }, 1L);
+        getLogger().info("Sent container UI_OPEN/UI_DEFINITION to " + player.getName());
     }
 
     private void sendTooltipOpen(Player player) {

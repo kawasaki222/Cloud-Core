@@ -184,6 +184,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **BossBar 面板已核实**：`/cloudcore boss` 发送 UI_OPEN + 文档后，`BossBarSurfaceAdapter` 用
   `BossEvent` 进度/颜色绘制自定义条，`@WrapOperation` 跳过原版 `drawBar`；`@Redirect` 去除哨兵，
   标题实际显示为 `Cloud Core Boss`。九宫格/样式数据化尚未实现。
+- **Container 面板已核实**：`/cloudcore demo-container` 先发 UI_OPEN/文档，再打开 27 格箱子；
+  `Minecraft#setScreen` 的 `@ModifyVariable` 替换为 `CloudContainerScreen`，自定义背景下仍显示
+  3 行容器槽位与玩家背包槽位。点击语义仍由原版 menu 处理，尚未做自动化交互测试。
 - **本地贴图已核实**：`LocalTextureRegistry` 从
   `resourcepacks/CloudCore/test/red.png` 读取 PNG、注册 `DynamicTexture`，demo 页面实际显示绿色图片；
   路径逃逸/缺失分别记录 `CC-ASSET-001/002`。

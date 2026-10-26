@@ -114,10 +114,11 @@ docs/
 - [x] HUD 面板：Fabric `HudElementRegistry` + 持久文档 + UI_CLOSE 清除（真机截图验证）
 - [x] Tooltip 面板：自定义背景 + 原生文本/图片（真机截图验证）
 - [x] BossBar 面板：自定义条 + 进度/颜色 + 哨兵标题剥离（真机截图验证）
+- [x] Container 面板：NEXT_CONTAINER 绑定的箱子换背景，原版槽位保留（真机截图验证）
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
 - [ ] M2 完整渲染：NanoVG/FBO、裁剪/滚动、混入
-- [x] HUD / Tooltip / BossBar 面板最小闭环
-- [ ] Container / PlayerInventory 的实际适配器
+- [x] HUD / Tooltip / BossBar / Container 面板最小闭环
+- [ ] PlayerInventory 适配器与容器点击策略完整验证
 - [x] 协议前向兼容：未知 `surfaceId` 保留原始值并回 `UI_READY(state=4)`
 - [ ] 协议前向兼容：未知 `BindMode` / `RenderMode`（仍拒绝）
 - [x] M0 NanoVG 初始化 + FBO 绘制 + readback（Windows x64，`cloudcore.nanovg.spike`）

@@ -37,7 +37,7 @@
   `player.openInventory(...)`。U2 已在真实客户端核实：`InventoryOpenEvent` 中的插件消息先于
   `ContainerScreen` 的 `setScreen` 到达。
 - **客户端**：`Minecraft#setScreen(ContainerScreen)` 被 `@ModifyVariable` 替换为
-  `CloudContainerScreen`。
+  `CloudContainerScreen`。已实现最小替换：自定义背景 + 原版槽位绘制；点击仍走原版 menu。
 - **槽位**：来自原版 `AbstractContainerMenu`；`SlotLayout` 覆盖 `slot.x/y`；未声明槽位移出屏幕。
 - **点击**：`managed` / `readonly` / `passthrough` 由服务端 `InventoryClickEvent` 决定。
 - **旧界面**：`InventoryOpenEvent` 生成合成文档，`passthrough`，不取消事件。

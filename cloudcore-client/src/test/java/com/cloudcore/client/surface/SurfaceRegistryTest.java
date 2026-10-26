@@ -28,6 +28,8 @@ class SurfaceRegistryTest {
                 assertInstanceOf(TooltipSurfaceAdapter.class, registry.get(type));
             } else if (type == SurfaceType.BOSS_BAR) {
                 assertInstanceOf(BossBarSurfaceAdapter.class, registry.get(type));
+            } else if (type == SurfaceType.CONTAINER) {
+                assertInstanceOf(ContainerSurfaceAdapter.class, registry.get(type));
             } else if (type != SurfaceType.CUSTOM_SCREEN) {
                 assertInstanceOf(UnsupportedSurfaceAdapter.class, registry.get(type));
             }
@@ -44,7 +46,8 @@ class SurfaceRegistryTest {
         assertTrue(registry.canHandle(hud, null));
         assertTrue(registry.canHandle(request(SurfaceType.TOOLTIP), null));
         assertTrue(registry.canHandle(request(SurfaceType.BOSS_BAR), null));
-        assertFalse(registry.canHandle(request(SurfaceType.CONTAINER), null));
+        assertTrue(registry.canHandle(request(SurfaceType.CONTAINER), null));
+        assertFalse(registry.canHandle(request(SurfaceType.PLAYER_INVENTORY), null));
     }
 
     @Test
