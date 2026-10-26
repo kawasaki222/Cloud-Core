@@ -1511,8 +1511,10 @@ public final class CloudCorePlugin extends JavaPlugin
         getLogger().info(sender.getName() + " validated " + names.size() + " pages, " + ok + " ok");
     }
 
-    /** Recompiles every page and refreshes players that currently have one open. */
+    /** Reloads config.yml, then recompiles every page and refreshes open views. */
     private void reloadPages(CommandSender sender) {
+        reloadConfig();
+        getLogger().info("Reloaded config.yml");
         java.util.List<String> names = listPageNames();
         int refreshed = 0;
         for (String name : names) {

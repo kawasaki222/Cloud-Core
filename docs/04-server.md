@@ -269,8 +269,8 @@ actions:
 
 `/cloudcore validate`：遍历 `pages/`（`<目录>/page.yml` 与顶层 `*.yml`），逐页编译并报告
 `[OK]`/`[FAIL] 名字: 原因`，不改动在线玩家界面。
-`/cloudcore reload`：重新编译所有页面，并给正在查看该页面的玩家推送更高 revision 的文档更新；
-会话状态保留（每个玩家按页面名保存）。
+`/cloudcore reload`：重新读取 `config.yml`，再重新编译所有页面，并给正在查看该页面的玩家推送更高
+revision 的文档更新；会话状态保留（每个玩家按页面名保存）。
 `/cloudcore page <名字> [玩家]`：从 `plugins/CloudCore/pages/<名字>/page.yml`（或 `<名字>.yml`）
 加载 YAML，经 `PageLoader` 组合与展开后下发 `UI_OPEN` + `UI_DEFINITION`。当前只接受
 `surface: custom_screen`；容器/HUD/Tooltip/Boss 仍走各自的演示与后续策略实现。
