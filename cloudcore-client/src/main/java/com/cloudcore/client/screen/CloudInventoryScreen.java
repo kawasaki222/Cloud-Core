@@ -36,6 +36,13 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
     }
 
     @Override
+    protected void init() {
+        super.init();
+        // Player slots keep their vanilla positions: their subclasses carry restrictions
+        // (armour, result slot) that a repositioned plain Slot would lose.
+    }
+
+    @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         // The document draws its own labels; the vanilla container title is hidden.
     }
@@ -44,6 +51,9 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, PANEL_FILL);
         for (Slot slot : menu.slots) {
+            if (slot.x < 0 || slot.y < 0) {
+                continue;
+            }
             int x = leftPos + slot.x - 1;
             int y = topPos + slot.y - 1;
             graphics.fill(x, y, x + 18, y + 18, SLOT_BORDER);

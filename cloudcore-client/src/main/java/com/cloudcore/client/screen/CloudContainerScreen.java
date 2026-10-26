@@ -30,12 +30,27 @@ public final class CloudContainerScreen extends AbstractContainerScreen<Abstract
     }
 
     @Override
+    protected void init() {
+        super.init();
+        // The top inventory is every slot before the player inventory starts.
+        int topSize = 0;
+        while (topSize < menu.slots.size()
+                && menu.slots.get(topSize).container != minecraft.player.getInventory()) {
+            topSize++;
+        }
+        SlotLayout.apply(document, menu.slots, topSize);
+    }
+
+    @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         graphics.fill(0, 0, width, height, BACKGROUND);
         backend.render(graphics, DocumentRenderListBuilder.build(document, width, height),
                 new FrameContext(graphics, width, height,
                         minecraft.getWindow().getGuiScale(), partialTick));
         for (Slot slot : menu.slots) {
+            if (slot.x < 0 || slot.y < 0) {
+                continue;
+            }
             int x = leftPos + slot.x - 1;
             int y = topPos + slot.y - 1;
             graphics.fill(x, y, x + 18, y + 18, 0xFF707070);

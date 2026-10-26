@@ -122,6 +122,8 @@ docs/
 - [x] HUD / Tooltip / BossBar / Container 面板最小闭环
 - [x] PlayerInventory 面板：持久皮肤、`CloudInventoryScreen`、`UI_CLOSE` 还原原版（真机截图验证）
 - [x] 容器点击策略：`managed`/`readonly` 的 `InventoryClickEvent` 取消与日志（真机验证，服务端解析文档槽位）
+- [x] 容器槽位布局：`inventory_grid` 的 origin/cell/columns 重排容器槽位（真机验证，含点击）
+- [ ] 玩家背包槽位重排（需要保留 Slot 子类语义）
 - [ ] 容器点击策略补充：`passthrough`、`allow_player_inventory`、`InventoryDragEvent` 的真机验证
 - [ ] 玩家背包配方书（v1 隐藏；v2 再补 `skinned`/`custom`）与玩家模型/状态效果选项
 - [x] 协议前向兼容：未知 `surfaceId` 保留原始值并回 `UI_READY(state=4)`

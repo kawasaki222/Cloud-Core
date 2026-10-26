@@ -469,6 +469,15 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
   render_items: true
 ```
 
+客户端实现（v1）：
+
+- 1.21.11 的 `Slot#x/#y` 是 `final`，无法原地改坐标；客户端用 `new Slot(container, containerSlot, x, y)`
+  重建菜单槽位，保留容器与槽位下标，点击仍按 index 走原版路径。
+- 只重建 Cloud 容器自己的槽位（玩家背包之前的那些）；玩家背包槽位保持原版位置与限制
+  （盔甲/合成结果槽是 `Slot` 子类，重建会丢规则）。
+- 网格未声明到的容器槽位移到 `(-10000, -10000)`，原版命中测试自然跳过。
+- 纯几何（列/行、`origin`、`cell`、`gap`、`columns`）有单元测试 `SlotLayoutTest`。
+
 `managed` 容器的槽位映射必须完整且不重叠。玩家背包皮肤需要覆盖 `InventoryMenu` 的相关槽位组：
 
 | 组 | 槽位范围 | 说明 |

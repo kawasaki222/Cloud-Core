@@ -452,9 +452,17 @@ public final class CloudCorePlugin extends JavaPlugin
                       "style": { "background": "#E0203040" } },
                     { "id": "container_hint", "type": "label", "x": 8, "y": 6,
                       "text": "Cloud Core Container", "color": "#FFFFFFFF" },
-                    { "id": "container_grid", "type": "inventory_grid", "x": 8, "y": 18,
+                    { "id": "container_grid", "type": "inventory_grid", "x": 0, "y": 0,
                       "width": "fill", "height": 18,
-                      "slots": [0, 8], "origin": [8, 18], "cell": [18, 18],
+                      "slots": [0, 8], "origin": [24, 20], "cell": [18, 18],
+                      "columns": 9 },
+                    { "id": "container_grid_mid", "type": "inventory_grid", "x": 0, "y": 0,
+                      "width": "fill", "height": 18,
+                      "slots": [9, 17], "origin": [24, 38], "cell": [18, 18],
+                      "columns": 9 },
+                    { "id": "container_grid_low", "type": "inventory_grid", "x": 0, "y": 0,
+                      "width": "fill", "height": 18,
+                      "slots": [18, 26], "origin": [24, 58], "cell": [18, 18],
                       "columns": 9 }
                   ]
                 }

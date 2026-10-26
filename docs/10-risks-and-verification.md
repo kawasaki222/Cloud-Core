@@ -224,6 +224,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
+- **槽位布局已核实**：`/cloudcore demo-container` 的文档声明三个 `inventory_grid`（0–8、9–17、18–26，
+  `origin` 右移 16px），打开箱子后 27 个容器槽位与其中物品一起移动，玩家背包槽位保持原版；
+  点击移动后的 0 号槽能取出钻石（`chest-layout.png`、`chest-layout-click2.png`）。
+  玩家背包槽位暂不支持重排。
 - **滚动裁剪已核实**：`/cloudcore demo-scroll` 的 `scroll` 元素按 `scroll_y: 26` 偏移并把
   子元素裁剪到 200×80 的框内；原生后端（`scroll-native.png`）与 NanoVG 后端
   （`scroll-nanovg.png`）显示一致。嵌套裁剪由 `ClipPush`/`ClipPop` 的交集实现。
