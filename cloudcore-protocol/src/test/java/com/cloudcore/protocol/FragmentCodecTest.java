@@ -175,6 +175,22 @@ class FragmentCodecTest {
     }
 
     @Test
+    void fragmentEnvelopeGoldenVectorIsStable() {
+        Limits tinyChunks = new Limits(1_048_576, 1_048_576, 4, 32_767, 16, 4_096);
+        Frame logical = new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
+                new byte[] {1, 2, 3, 4, 5, 6, 7, 8});
+        List<Frame> fragments = Fragmenter.fragment(logical, tinyChunks, 0x1234);
+
+        assertEquals(2, fragments.size());
+        assertEquals("43430102100a12340002080401020304",
+                java.util.HexFormat.of().formatHex(
+                        FrameCodec.encode(fragments.get(0), tinyChunks)));
+        assertEquals("43430102100a12340102080405060708",
+                java.util.HexFormat.of().formatHex(
+                        FrameCodec.encode(fragments.get(1), tinyChunks)));
+    }
+
+    @Test
     void compressedPayloadThatFitsOneChunkUsesNormalFrame() {
         byte[] body = new byte[80_000];
         Arrays.fill(body, (byte) 0x5A);

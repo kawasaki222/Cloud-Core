@@ -255,6 +255,13 @@ public final class CloudCoreClient implements ClientModInitializer {
 
     private void handleHelloAck(Frame frame) {
         HelloAck ack = HandshakeCodec.decodeHelloAck(frame.body(), Limits.S2C);
+        if (!ProtocolVersion.isCompatible(ack.protoMajor())) {
+            handshakeComplete = false;
+            LOGGER.warn("Server protocol {}.{} is incompatible with client {}.{}",
+                    ack.protoMajor(), ack.protoMinor(),
+                    ProtocolVersion.MAJOR, ProtocolVersion.MINOR);
+            return;
+        }
         handshakeComplete = true;
         LOGGER.info("Server handshake accepted: protocol {}.{}, features=0x{}, maxFrameBytes={}, message={}",
                 ack.protoMajor(), ack.protoMinor(), Integer.toHexString(ack.acceptedFeatures()),
