@@ -216,9 +216,18 @@ class FragmentCodecTest {
 
     @Test
     void randomFramesOnlyThrowProtocolException() {
-        Random random = new Random(0xCC);
-        for (int i = 0; i < 10_000; i++) {
-            byte[] data = new byte[random.nextInt(256)];
+        exerciseRandomFrames(10_000, 0xCC);
+    }
+
+    @Test
+    void millionRandomFramesOnlyThrowProtocolException() {
+        exerciseRandomFrames(1_000_000, 0xCC2);
+    }
+
+    private static void exerciseRandomFrames(int iterations, long seed) {
+        Random random = new Random(seed);
+        for (int i = 0; i < iterations; i++) {
+            byte[] data = new byte[random.nextInt(512)];
             random.nextBytes(data);
             try {
                 FrameCodec.decode(data, Limits.C2S);

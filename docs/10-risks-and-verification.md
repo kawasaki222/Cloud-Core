@@ -159,6 +159,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   发送路径不再用 `canSend()` 作为门控。
 - 分片/重组、压缩分片、乱序、重复片、组冲突、超时、4 组上限、1 MiB 上限：
   `FragmentCodecTest`。
+- 1,000,000 个随机帧解码：只允许 `ProtocolException`，无未捕获运行时异常。
 - HELLO 黄金字节、HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED：
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：

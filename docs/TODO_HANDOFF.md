@@ -96,7 +96,8 @@ docs/
 - [x] M1 接线：Paper 与 Fabric 的 HELLO/PING/PONG/分片/UI_OPEN 处理
 - [x] M1 真实联调：Paper + Fabric 握手、`/cloudcore ping`（RTT 9ms）、UI 打开/关闭
 - [x] M1 真机大报文：64,776 字节文档压缩后拆成 3 片并重组成功
-- [ ] M1 压力：100 万随机帧、断线清理
+- [x] M1 压力：100 万随机帧解码（仅 ProtocolException）
+- [ ] M1 断线清理：重连后分片组与 pending UI 会话
 - [x] M2 骨架：SurfaceRegistry/SurfaceAdapter/SurfaceProvider、UiDocument、RenderBackend、CloudScreen
 - [x] M2 文档链路：UI_DEFINITION 解码、校验、`CloudScreen` 打开
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
