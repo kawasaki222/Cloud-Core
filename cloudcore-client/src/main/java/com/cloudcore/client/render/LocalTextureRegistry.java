@@ -46,6 +46,42 @@ public final class LocalTextureRegistry {
         return identifier;
     }
 
+    static void resetFailed() {
+        FAILED.clear();
+    }
+
+    /**
+     * Reads the raw file for backends that decode images themselves (NanoVG). The same root
+     * containment and size checks apply.
+     */
+    static byte[] readBytes(String relativePath) {
+        if (relativePath == null || relativePath.isBlank()) {
+            return null;
+        }
+        Path root = Minecraft.getInstance().gameDirectory.toPath()
+                .resolve("resourcepacks").resolve("CloudCore").toAbsolutePath().normalize();
+        Path file = root.resolve(relativePath).normalize();
+        if (!file.startsWith(root)) {
+            LOGGER.warn("[CC-ASSET-001] local texture escapes CloudCore root: {}", relativePath);
+            return null;
+        }
+        if (!Files.isRegularFile(file)) {
+            LOGGER.warn("[CC-ASSET-002] local texture missing: {}", relativePath);
+            return null;
+        }
+        try {
+            if (Files.size(file) > MAX_FILE_BYTES) {
+                LOGGER.warn("[CC-ASSET-004] local texture exceeds {} bytes: {}",
+                        MAX_FILE_BYTES, relativePath);
+                return null;
+            }
+            return Files.readAllBytes(file);
+        } catch (IOException exception) {
+            LOGGER.warn("[CC-ASSET-003] cannot read local texture " + relativePath, exception);
+            return null;
+        }
+    }
+
     private static Identifier load(String relativePath) {
         Path root = Minecraft.getInstance().gameDirectory.toPath()
                 .resolve("resourcepacks").resolve("CloudCore").toAbsolutePath().normalize();

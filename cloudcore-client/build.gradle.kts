@@ -33,11 +33,15 @@ tasks.processResources {
 
 // The NanoVG compositing spike is opt-in so normal runs never create an extra GL context.
 // Use: ./gradlew :cloudcore-client:runClient -PcloudcoreNanoVgSpike=true
+// The production vector backend is also opt-in until it is verified on all platforms:
+// -PcloudcoreNanoVg=true
 loom {
     runs {
         named("client") {
             property("cloudcore.nanovg.spike",
                     providers.gradleProperty("cloudcoreNanoVgSpike").getOrElse("false"))
+            property("cloudcore.nanovg",
+                    providers.gradleProperty("cloudcoreNanoVg").getOrElse("false"))
         }
     }
 }

@@ -2,9 +2,8 @@ package com.cloudcore.client.screen;
 
 import com.cloudcore.api.document.UiDocument;
 import com.cloudcore.client.render.DocumentRenderListBuilder;
+import com.cloudcore.client.render.DocumentRenderer;
 import com.cloudcore.client.render.FrameContext;
-import com.cloudcore.client.render.Layer;
-import com.cloudcore.client.render.NativeBackend;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -27,7 +26,7 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
     private static final int SLOT_FILL = 0xFF2B2B2B;
 
     private final UiDocument document;
-    private final NativeBackend backend = new NativeBackend();
+    private final DocumentRenderer backend = new DocumentRenderer();
 
     public CloudInventoryScreen(Player player, UiDocument document) {
         super(player.inventoryMenu, player.getInventory(), Component.empty());
@@ -54,14 +53,10 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
         Matrix3x2fStack pose = graphics.pose();
         pose.pushMatrix();
         pose.translate((float) leftPos, (float) topPos);
-        backend.beginFrame(new FrameContext(graphics, imageWidth, imageHeight,
-                minecraft.getWindow().getGuiScale(), partialTick));
-        try {
-            backend.draw(DocumentRenderListBuilder.build(document, imageWidth, imageHeight),
-                    Layer.BACKGROUND);
-        } finally {
-            backend.endFrame();
-        }
+        backend.render(graphics,
+                DocumentRenderListBuilder.build(document, imageWidth, imageHeight),
+                new FrameContext(graphics, imageWidth, imageHeight,
+                        minecraft.getWindow().getGuiScale(), partialTick));
         pose.popMatrix();
     }
 }

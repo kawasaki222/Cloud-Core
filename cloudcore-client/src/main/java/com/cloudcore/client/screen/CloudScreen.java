@@ -2,9 +2,8 @@ package com.cloudcore.client.screen;
 
 import com.cloudcore.api.document.UiDocument;
 import com.cloudcore.client.render.DocumentRenderListBuilder;
+import com.cloudcore.client.render.DocumentRenderer;
 import com.cloudcore.client.render.FrameContext;
-import com.cloudcore.client.render.Layer;
-import com.cloudcore.client.render.NativeBackend;
 import com.cloudcore.client.render.RenderList;
 import java.util.Objects;
 import net.minecraft.client.gui.GuiGraphics;
@@ -23,7 +22,7 @@ public final class CloudScreen extends Screen {
     private static final int TITLE_COLOR = 0xFFFFFFFF;
 
     private final UiDocument document;
-    private final NativeBackend backend = new NativeBackend();
+    private final DocumentRenderer backend = new DocumentRenderer();
     private final Runnable onCloseAction;
     private RenderList cachedList = RenderList.EMPTY;
     private int cachedWidth = -1;
@@ -69,13 +68,8 @@ public final class CloudScreen extends Screen {
             LOGGER.debug("Built render list for ui={} commands={}", document.id(),
                     cachedList.commands().size());
         }
-        backend.beginFrame(new FrameContext(graphics, width, height,
+        backend.render(graphics, cachedList, new FrameContext(graphics, width, height,
                 minecraft.getWindow().getGuiScale(), partialTick));
-        try {
-            backend.draw(cachedList, Layer.BACKGROUND);
-        } finally {
-            backend.endFrame();
-        }
         graphics.drawString(font, title, 8, 8, TITLE_COLOR, true);
     }
 

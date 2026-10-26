@@ -219,7 +219,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   客户端 jar 已合并 NanoVG 类与 Windows/Linux/macOS 原生库（1.1 MiB）。
   FBO 纹理包装成 `AbstractTexture` 后用 `GUI_TEXTURED` blit 成功上屏
   （`-PcloudcoreNanoVgSpike=true`，截图 `nanovg-composite3.png` 左下红块）。
-  Linux/macOS 尚未运行；`NanoVgBackend.available()` 仍未接入生产路径。
+- **NanoVG 生产后端已核实（Windows x64，opt-in）**：`-PcloudcoreNanoVg=true` 时
+  `NanoVgBackend` 创建 NVGContext，按逻辑分辨率建 FBO（427×240），画填充与
+  `local:`/`pack:` 图片，然后合成；文本与 `item_icon` 走原生叠层。
+  `/cloudcore demo-assets` 截图 `nanovg-backend3.png`：面板、钻石块贴图与本地 PNG 位置正确、
+  方向正确；物品与文字由原版绘制。默认仍走 `NativeBackend`，Linux/macOS 未测。
 - **U20 已核实**：Fabric API 0.141.3 能在 officialMojangMappings 下编译并启动。
 - **U10 已核实并规避**：Fabric `canSend()` 只反映服务端声明的通道；Paper 不保证声明，
   发送路径不再用 `canSend()` 作为门控。
@@ -234,8 +238,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 
 仍未验证：
 
-- NanoVG/FBO：初始化、FBO 绘制、屏幕合成已在 Windows 验证；`NanoVgBackend.available()` 仍为
-  `false`，生产路径仍走 `NativeBackend`，预乘 alpha（U30）、Linux/macOS 未测。
+- NanoVG：填充/图片/合成已在 Windows 验证（opt-in）；文字仍走原版 `Font`，未接 NanoVG 字体；
+  U30 预乘 alpha、U31 状态隔离、Linux/macOS 未测；默认后端仍是 `NativeBackend`。
 - U28–U31：Linux/macOS、FBO 屏幕合成、预乘 alpha、1.21.6 提取/绘制状态。
 - `inline:`/`pack:` 图片、GIF、item_icon、文本整形、裁剪/滚动、真实布局容器、其余五类面板的实际替换。
 - 当前 screen/scroll/tooltip/boss 混入只是诊断探针，尚未替换绘制或输入。

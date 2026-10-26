@@ -16,7 +16,8 @@ M2 的面板注册表、最小 `UiDocument`、`UI_DEFINITION` 解码/校验、`C
   私有 `BossHealthOverlay#drawBar` 的 `@WrapOperation` 与 Paper BossBar 哨兵标题、
   `GuiGraphics#renderTooltip` 命中、服务端主动 `UI_CLOSE`、`DIAGNOSTIC` 下发链路；
   Windows x64 上 NanoVG 初始化/FBO 绘制/readback 已通过（`(255,0,0,255)`），NanoVG 类与三平台原生库
-  已并入客户端 jar；FBO 纹理用 `GUI_TEXTURED` blit 已能合成上屏；
+  已并入客户端 jar；FBO 纹理用 `GUI_TEXTURED` blit 已能合成上屏，NanoVG 后端（`-PcloudcoreNanoVg=true`）
+  已能绘制填充与 `local:`/`pack:` 图片并叠原生文本/物品；
   本地 `local:`、`pack:`、`builtin:` 贴图与 `item_icon` 已能绘制；HUD、Tooltip、BossBar、Container、
   玩家背包的最小面板闭环已能正常显示（玩家背包按 `E` 打开时换成自绘皮肤，`UI_CLOSE` 后回到原版）；
   容器 `managed`/`readonly` 点击策略已启用。

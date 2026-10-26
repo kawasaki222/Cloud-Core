@@ -9,14 +9,28 @@ class RenderBackendSelectorTest {
     @Test
     void fallsBackWhenNanoVgIsUnavailable() {
         NativeBackend nativeBackend = new NativeBackend();
-        RenderBackend selected = RenderBackendSelector.select(new NanoVgBackend(false), nativeBackend);
+        RenderBackend selected = RenderBackendSelector.select(new NanoVgBackend(), nativeBackend);
         assertEquals(BackendId.NATIVE, selected.id());
     }
 
     @Test
-    void prefersAvailableNanoVg() {
+    void prefersTheAvailableBackend() {
         RenderBackend selected = RenderBackendSelector.select(
-                new NanoVgBackend(true), new NativeBackend());
+                new StubBackend(BackendId.NANOVG, true), new NativeBackend());
         assertEquals(BackendId.NANOVG, selected.id());
+    }
+
+    private record StubBackend(BackendId id, boolean available) implements RenderBackend {
+        @Override
+        public void beginFrame(FrameContext context) {
+        }
+
+        @Override
+        public void draw(RenderList list, Layer layer) {
+        }
+
+        @Override
+        public void endFrame() {
+        }
     }
 }

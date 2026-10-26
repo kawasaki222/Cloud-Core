@@ -2,9 +2,8 @@ package com.cloudcore.client.screen;
 
 import com.cloudcore.api.document.UiDocument;
 import com.cloudcore.client.render.DocumentRenderListBuilder;
+import com.cloudcore.client.render.DocumentRenderer;
 import com.cloudcore.client.render.FrameContext;
-import com.cloudcore.client.render.Layer;
-import com.cloudcore.client.render.NativeBackend;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
@@ -20,7 +19,7 @@ public final class CloudContainerScreen extends AbstractContainerScreen<Abstract
     private static final int BACKGROUND = 0x90000000;
 
     private final UiDocument document;
-    private final NativeBackend backend = new NativeBackend();
+    private final DocumentRenderer backend = new DocumentRenderer();
 
     public CloudContainerScreen(AbstractContainerMenu menu, Inventory inventory,
             Component title, UiDocument document) {
@@ -33,14 +32,9 @@ public final class CloudContainerScreen extends AbstractContainerScreen<Abstract
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         graphics.fill(0, 0, width, height, BACKGROUND);
-        backend.beginFrame(new FrameContext(graphics, width, height,
-                minecraft.getWindow().getGuiScale(), partialTick));
-        try {
-            backend.draw(DocumentRenderListBuilder.build(document, width, height),
-                    Layer.BACKGROUND);
-        } finally {
-            backend.endFrame();
-        }
+        backend.render(graphics, DocumentRenderListBuilder.build(document, width, height),
+                new FrameContext(graphics, width, height,
+                        minecraft.getWindow().getGuiScale(), partialTick));
         for (Slot slot : menu.slots) {
             int x = leftPos + slot.x - 1;
             int y = topPos + slot.y - 1;

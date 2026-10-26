@@ -128,6 +128,8 @@ docs/
 - [x] M0 NanoVG 初始化 + FBO 绘制 + readback（Windows x64，`cloudcore.nanovg.spike`）
 - [x] NanoVG 类与 Windows/Linux/macOS 原生库并入客户端 jar
 - [x] M0 渲染：FBO 纹理经 `GUI_TEXTURED` blit（显式贴图尺寸）合成上屏（Windows x64，截图验证）
+- [x] NanoVG 生产后端（opt-in）：填充 + `local:`/`pack:` 图片 + 原生文本/物品叠层（Windows x64 截图验证）
+- [ ] NanoVG 默认化：NanoVG 字体（TTF）接入、U30 预乘 alpha、U31 状态隔离、Linux/macOS 验证
 - [ ] M0 渲染：预乘 alpha/Linux/macOS 运行验证
 
 剩余的是实现前的验证项和待决问题，不是文档缺口。

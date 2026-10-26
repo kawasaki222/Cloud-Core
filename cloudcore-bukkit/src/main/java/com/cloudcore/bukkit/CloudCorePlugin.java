@@ -786,7 +786,10 @@ public final class CloudCorePlugin extends JavaPlugin
                       "texture": "builtin:error" },
                     { "id": "missing", "type": "image", "x": 112, "y": 96,
                       "width": 32, "height": 32,
-                      "texture": "pack:cloudcore:missing/texture" }
+                      "texture": "pack:cloudcore:missing/texture" },
+                    { "id": "local_red", "type": "image", "x": 160, "y": 96,
+                      "width": 32, "height": 32,
+                      "texture": "local:test/red.png" }
                   ]
                 }
                 """;

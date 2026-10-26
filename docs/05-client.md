@@ -347,10 +347,15 @@ interface RenderBackend {
 }
 ```
 
-- `NanoVgBackend`（默认）：`NVGContext` + `FontRegistry` + 离屏 FBO。
+- `NanoVgBackend`（目标默认，当前需 `-PcloudcoreNanoVg=true` 开启）：`NVGContext` + 离屏 FBO。
+  已实现填色与图片（`local:`/`pack:` 用 `nvgCreateImageMem`），
+  `builtin:` 图片和 `item_icon` 交给原生叠层；文本暂由原版 `Font` 绘制（NanoVG 字体未接入）。
 - `NativeBackend`（回退）：同一份 `RenderList` 用 `GuiGraphics` 绘制。
 - `FboCompositor`：把 FBO 颜色纹理包装成 `AbstractTexture`，注册给 `TextureManager`，用
-  `GuiGraphics.blit` 合成；处理预乘 alpha、整数倍缩放和 GL 状态恢复。
+  `GuiGraphics#blit(GUI_TEXTURED, ..., textureWidth, textureHeight)` 合成；`begin/end` 配对恢复
+  帧缓冲与视口。FBO 行 0 在底部，因此 NanoVG 场景先做垂直翻转再合成。
+- `DocumentRenderer`：一次绘制 = NanoVG（填充/图片）→ 合成 → 原生叠层（文本/`item_icon`/
+  `builtin:` 图片）；NanoVG 不可用或中途失败时整帧回退 `NativeBackend`。
 - `NativeBridge`：物品、槽位、数量/冷却/附魔光效、tooltip 内容、`EditBox` 文本。
 - 后端选择：配置 → `NanoVgBackend.available()` → `NativeBackend`。
 
