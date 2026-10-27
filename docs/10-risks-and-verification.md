@@ -335,6 +335,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   画面上整体变暗（背景 `#FF6E3C3C` 以一半 alpha 绘制，编辑框不可编辑），点击不产生 `EVENT`
   （服务端日志无记录），同页“关闭”按钮点击正常（`disabled-demo.png`）。
   `ElementHitTesterTest` 覆盖禁用元素不接收事件，`DocumentRenderListBuilderTest` 覆盖变暗与不使用悬停样式。
+- **客户端配置文件已核实**：首次启动写出 `config/cloudcore-client.json`
+  （`{"renderer": "native", "debug": false}`）；把 `renderer` 改成 `nanovg` 重启后日志
+  `Client config requests the NanoVG renderer` → `NanoVG backend initialised`（FBO 448×280），
+  启动参数 `-Dcloudcore.nanovg` 仍优先于文件；带 UTF-8 BOM 的文件也能解析。
+  `ClientConfigTest` 覆盖默认写入、渲染器解析、未知值回退、损坏 JSON、BOM 与属性优先级。
 - **右键事件已核实**：`actions_demo` 的“右键试试”按钮右键后服务端记录
   `EVENT ... element=right_click_demo`（走 `right_click`）；对只声明了 `click` 的商店“购买”按钮
   右键同样触发 `EVENT ... element=goods[0].line.buy`（回退到 `click`，载荷 `button=1`）。
@@ -433,7 +438,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，212 个测试 / 44 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，221 个测试 / 45 个测试类，0 失败）。
 
 仍未验证：
 

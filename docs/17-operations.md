@@ -52,8 +52,10 @@ plugins/CloudCore/
 - 依赖 Fabric Loader、Fabric API、Minecraft 1.21.11。
 - 模组内置 NanoVG 三平台 natives；玩家不需要额外安装运行库。
 - 版本策略：协议主版本相同即可互操作；服务端支持落后一个次版本的客户端。
-- 客户端配置：当前用启动参数 `-Dcloudcore.nanovg=true` 启用 NanoVG 后端（默认原生）；
-  `config/cloudcore-client.json` 与默认 NanoVG 计划中，失败时整帧回退原生。
+- 客户端配置：`config/cloudcore-client.json`（首次启动自动写入）：
+  `{"renderer": "native", "debug": false}`。`renderer` 取 `native`（默认）或 `nanovg`；
+  启动参数 `-Dcloudcore.nanovg=true/false` 优先于文件，便于启动器/测试覆盖。
+  文件损坏或取值未知时按默认值启动并记 `CC-CFG-001/002`。
 - 客户端缓存：`.minecraft/cloudcore/image-cache/`（内容哈希）计划中；本地贴图缓存由
   `LocalTextureRegistry` 直接读文件系统。
 
