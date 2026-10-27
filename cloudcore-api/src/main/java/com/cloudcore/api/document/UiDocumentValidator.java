@@ -169,10 +169,19 @@ public final class UiDocumentValidator {
                     }
                 }
                 case "slider" -> {
-                    if (attributes.get("value") instanceof Number number
-                            && (number.doubleValue() < 0.0 || number.doubleValue() > 1.0)) {
-                        result.add(ValidationIssue.warning("CC-DOC-023", path + ".value",
-                                "slider.value outside 0..1 is clamped"));
+                    // Only literal numbers can be checked here; placeholders are resolved
+                    // server-side before delivery. The range mirrors the client: min defaults
+                    // to 0 and max to min + 1, so a bare slider stays 0..1.
+                    if (attributes.get("value") instanceof Number number) {
+                        double min = literalNumber(attributes.get("min"), 0.0);
+                        double max = literalNumber(attributes.get("max"), min + 1.0);
+                        double value = number.doubleValue();
+                        if (!Double.isNaN(min) && !Double.isNaN(max) && max > min
+                                && (value < min || value > max)) {
+                            result.add(ValidationIssue.warning("CC-DOC-023", path + ".value",
+                                    "slider.value outside " + compact(min) + ".." + compact(max)
+                                            + " is clamped"));
+                        }
                     }
                 }
                 case "text_field" -> {
@@ -193,6 +202,21 @@ public final class UiDocumentValidator {
                 default -> {
                 }
             }
+        }
+
+        /** @return the literal number, {@code fallback} when absent, {@code NaN} for a placeholder */
+        private static double literalNumber(Object value, double fallback) {
+            if (value instanceof Number number) {
+                return number.doubleValue();
+            }
+            return value == null ? fallback : Double.NaN;
+        }
+
+        private static String compact(double value) {
+            if (value == Math.rint(value) && Math.abs(value) < 1.0e9) {
+                return Long.toString((long) value);
+            }
+            return Double.toString(value);
         }
 
         private static String text(Object value) {

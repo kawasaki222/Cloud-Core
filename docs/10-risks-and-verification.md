@@ -469,6 +469,13 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **M3 剩余**：依赖图增量编译/内容哈希去重。
 - **互操作与性能**：与 REI/EMI、其他 Tooltip/物品栏模组的共存矩阵未测；NanoVG FBO 的帧率与
   显存占用没有测量数据（只有功能正确性）。
+- **原生崩溃（未定位，帧不在本项目代码）**：开发客户端偶发
+  `EXCEPTION_ACCESS_VIOLATION`，问题帧 `jemalloc.dll+0x317e0`，Java 帧为原版
+  `QuadParticleRenderState.prepare`（粒子提交），进程退出码 `0xC0000409`。
+  2026-10-27 两次运行：第一次未复现；第二次运行 9 分 38 秒后在渲染线程复现
+  （`cloudcore-client/run/hs_err_pid11620.log`，空指针读）。未证明与 Cloud Core 无关：
+  同一进程内的 FBO/NanoVG 仍可能间接影响原生内存。复现时先以
+  `"renderer":"native"` 对照，并保留 `hs_err` 与 `logs/cloudcore-client.log`。
 
 ## 3. 风险登记
 

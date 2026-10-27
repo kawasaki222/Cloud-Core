@@ -284,7 +284,7 @@
 - 客户端再次校验，但只做防御性检查，不替代服务端。
 - 元素属性警告（不拒绝文档，`/cloudcore validate` 会逐条列出）：
   - `CC-DOC-022` `progress.direction` 不是 left/right/up/down（按 left 绘制）；
-  - `CC-DOC-023` `slider.value` 超出 0..1（客户端钳制）；
+  - `CC-DOC-023` `slider.value` 超出 `min..max`（默认 `0..1`；客户端钳制，占位符不在此检查）；
   - `CC-DOC-024` 未知 `text_field.filter`（放行输入，客户端记 `CC-INPUT-002`）；
   - `CC-DOC-025` `icon` 既不是贴图引用字符串也不是 `{item, count}`（不绘制图标）。
 

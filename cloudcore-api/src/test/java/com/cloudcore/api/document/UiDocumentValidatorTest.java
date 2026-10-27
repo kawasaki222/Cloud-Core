@@ -78,6 +78,24 @@ class UiDocumentValidatorTest {
     }
 
     @Test
+    void sliderRangeFollowsMinMaxAndIgnoresPlaceholders() {
+        UiElement inside = new UiElement("a", "slider", 0, 0, "100", "6", true, true, 0,
+                Map.of(), List.of(), Map.of("min", 0, "max", 100, "step", 5, "value", 40));
+        UiElement outside = new UiElement("b", "slider", 0, 20, "100", "6", true, true, 0,
+                Map.of(), List.of(), Map.of("min", -10, "max", 10, "value", 12));
+        UiElement placeholder = new UiElement("c", "slider", 0, 40, "100", "6", true, true, 0,
+                Map.of(), List.of(), Map.of("min", 0, "max", "${state.max}", "value", 50));
+
+        ValidationResult result = UiDocumentValidator.validate(document(
+                SurfaceType.CUSTOM_SCREEN, null, List.of(inside, outside, placeholder)));
+
+        assertTrue(result.valid(), result.issues().toString());
+        assertEquals(1, result.issues().size(), result.issues().toString());
+        assertEquals("CC-DOC-023", result.issues().get(0).code());
+        assertEquals("elements[1].value", result.issues().get(0).path());
+    }
+
+    @Test
     void acceptsKnownElementAttributesWithoutNoise() {
         UiElement progress = new UiElement("bar", "progress", 0, 0, "100", "8", true, true, 0,
                 Map.of(), List.of(), Map.of("direction", "RIGHT"));
