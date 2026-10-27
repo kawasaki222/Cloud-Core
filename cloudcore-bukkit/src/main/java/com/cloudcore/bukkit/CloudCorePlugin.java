@@ -722,28 +722,62 @@ public final class CloudCorePlugin extends JavaPlugin
     }
 
     /**
-     * Sends the pages listed under {@code apply-on-join.pages} once the handshake is up, so a
-     * player sees a server-authored HUD immediately instead of after a command. Runs one tick
-     * after the ACK because the client installs its S2C receiver during the join callback.
+     * Applies every ambient page once the handshake is up, so a player sees the server's HUD,
+     * inventory skin, tooltip theme and boss-bar skin immediately instead of after a command.
+     *
+     * <p>"Ambient" means the surfaces that live alongside normal gameplay — {@link
+     * SurfaceType#HUD}, {@link SurfaceType#PLAYER_INVENTORY}, {@link SurfaceType#TOOLTIP},
+     * {@link SurfaceType#BOSS_BAR}. Screens and containers are deliberately excluded: those are
+     * opened by a trigger (a command, a container opening), not on join.
+     *
+     * <p>No config list is needed; a page opts out with {@code surface_options.on_join: false}.
+     * If {@code apply-on-join.pages} is set it wins, so an operator can still pin an explicit
+     * set. Runs 2 ticks after the ACK because the client installs its S2C receiver during the
+     * join callback.
      */
     private void applyOnJoin(Player player) {
-        java.util.List<String> pages = getConfig().getStringList("apply-on-join.pages");
-        if (pages.isEmpty()) {
-            return;
-        }
+        java.util.List<String> configured = getConfig().getStringList("apply-on-join.pages");
         getServer().getScheduler().runTaskLater(this, () -> {
             if (!player.isOnline()) {
                 return;
             }
-            for (String name : pages) {
+            int applied = 0;
+            for (String name : configured.isEmpty() ? listPageNames() : configured) {
                 String trimmed = name == null ? "" : name.trim();
                 if (trimmed.isEmpty()) {
                     continue;
                 }
+                if (configured.isEmpty() && !isAmbientPage(trimmed)) {
+                    continue;
+                }
                 sendPage(player, trimmed);
+                applied++;
             }
-            getLogger().info("Applied " + pages.size() + " join page(s) to " + player.getName());
+            getLogger().info("Applied " + applied + " join page(s) to " + player.getName());
         }, 2L);
+    }
+
+    /** True when the page should be applied on join without being opened by a trigger. */
+    private boolean isAmbientPage(String name) {
+        java.nio.file.Path file = resolvePageFile(name);
+        if (file == null) {
+            return false;
+        }
+        com.cloudcore.api.page.PageLoader.CompiledPage compiled;
+        try {
+            compiled = com.cloudcore.api.page.PageLoader.load(pagesRoot, file, Map.of());
+        } catch (com.cloudcore.api.page.PageLoadException exception) {
+            return false;
+        }
+        UiDocument document = compiled.document();
+        Object optOut = document.surfaceOptions().get("on_join");
+        if (optOut instanceof Boolean enabled && !enabled) {
+            return false;
+        }
+        return switch (document.surface()) {
+            case HUD, PLAYER_INVENTORY, TOOLTIP, BOSS_BAR -> true;
+            default -> false;
+        };
     }
 
     private void sendPing(Player player, Session session) {

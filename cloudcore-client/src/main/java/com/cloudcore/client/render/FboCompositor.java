@@ -30,8 +30,20 @@ import org.slf4j.LoggerFactory;
  */
 public final class FboCompositor implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
-    private static final Identifier TEXTURE_ID =
-            Identifier.fromNamespaceAndPath("cloudcore", "dynamic/nanovg_surface");
+    /**
+     * Every compositor owns its own off-screen target. The id must therefore be unique per
+     * instance: HUD, screens and the inventory each hold their own {@code DocumentRenderer},
+     * and a shared id made them overwrite each other's registration in the texture manager.
+     * The symptom was the HUD sampling the inventory's surface (a full-screen blue fill) or a
+     * stale texture left behind by a resize.
+     */
+    private static final java.util.concurrent.atomic.AtomicInteger NEXT_ID =
+            new java.util.concurrent.atomic.AtomicInteger();
+    private final int instanceId = NEXT_ID.getAndIncrement();
+    /** Stable per instance: re-registering the same id replaces the entry, so a resize does
+     *  not accumulate stale textures in the manager. */
+    private final Identifier textureId = Identifier.fromNamespaceAndPath("cloudcore",
+            "dynamic/nanovg_surface_" + instanceId);
 
     private GpuTexture texture;
     private GpuTextureView view;
@@ -83,12 +95,12 @@ public final class FboCompositor implements AutoCloseable {
                 close();
                 return false;
             }
-            Minecraft.getInstance().getTextureManager().register(TEXTURE_ID,
+            Minecraft.getInstance().getTextureManager().register(textureId,
                     new FboTexture(texture, view, sampler));
             this.width = width;
             this.height = height;
             available = true;
-            LOGGER.info("FBO {}x{} ready as {}", width, height, TEXTURE_ID);
+            LOGGER.info("FBO {}x{} ready as {}", width, height, textureId);
             return true;
         } catch (RuntimeException exception) {
             LOGGER.error("[CC-RENDER-011] FBO creation failed", exception);
@@ -125,7 +137,7 @@ public final class FboCompositor implements AutoCloseable {
         // NanoVG writes premultiplied alpha; the straight-alpha GUI pipeline would multiply
         // coverage twice and dim text and translucent fills.
         // Destination size and source size differ when the FBO uses device pixels.
-        graphics.blit(RenderPipelines.GUI_TEXTURED_PREMULTIPLIED_ALPHA, TEXTURE_ID, x, y,
+        graphics.blit(RenderPipelines.GUI_TEXTURED_PREMULTIPLIED_ALPHA, textureId, x, y,
                 0.0f, 0.0f, width, height, this.width, this.height,
                 this.width, this.height);
     }

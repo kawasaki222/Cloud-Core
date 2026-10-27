@@ -49,6 +49,14 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
     }
 
     @Override
+    public void removed() {
+        super.removed();
+        // Each inventory open builds its own renderer, which owns a NanoVG context and an
+        // off-screen target; releasing here keeps repeat opens from leaking both.
+        backend.close();
+    }
+
+    @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, PANEL_FILL);
         for (Slot slot : menu.slots) {

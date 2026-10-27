@@ -288,8 +288,20 @@ revision 的文档更新；会话状态保留（每个玩家按页面名保存�
 `apply-on-join` 都不需要改。`surface: hud` 的页面可额外用 `surface_options.replace`
 取消原版血条/饱食度/经验条/快捷栏的绘制。
 
-进服自动下发：`config.yml` 的 `apply-on-join.pages` 列出页面名，握手完成后 2 tick
-统一下发，玩家无需命令即可看到服务端配置的 HUD 与背包皮肤。
+进服自动下发：无需配置名单。握手完成后 2 tick，服务端扫描 `pages/`，把所有
+「常驻类」表面自动下发一次：
+
+| 表面 | 进服是否自动下发 |
+| --- | --- |
+| `hud` | 是 |
+| `player_inventory` | 是 |
+| `tooltip` | 是 |
+| `boss_bar` | 是 |
+| `custom_screen` | 否，由命令或动作触发 |
+| `container` | 否，由打开容器触发 |
+
+单页退出：在页面的 `surface_options` 写 `on_join: false`。
+需要固定名单时，`config.yml` 的 `apply-on-join.pages` 非空即覆盖自动扫描。
 
 ### 7.1 容器面板
 
