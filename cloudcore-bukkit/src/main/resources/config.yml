@@ -8,6 +8,12 @@ pages:
   # 页面文件变化后自动重载（400ms 合并窗口），并给正在查看的玩家推送新文档
   watch: true
 
+apply-on-join:
+  # 玩家握手完成后立刻下发的页面名（pages/ 下的文件名，不含 .yml）。
+  # 页面自己声明 surface：surface: hud 的页面按层持久显示（如常驻 HUD），
+  # 其他页面按普通界面打开。留空则进服时不自动下发。
+  pages: []
+
 placeholders:
   # 安装了 PlaceholderAPI 时，在发送/刷新页面时解析可见文本里的 %占位符%。
   # 关闭后 %token% 原样显示。只解析 text/placeholder 与标题，不碰颜色、尺寸和贴图引用。

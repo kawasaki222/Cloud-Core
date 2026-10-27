@@ -41,9 +41,43 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
     private static final Map<String, Layer> LAYERS = new LinkedHashMap<>();
     private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
 
+    /**
+     * Ordering against an open screen. {@link #VANILLA} follows the vanilla HUD, which is
+     * drawn before the screen and therefore sits below it, so the layer yields while any
+     * screen is open. {@link #OVERLAY} is for CloudCore's own pages that stay on top.
+     */
+    public enum Priority {
+        VANILLA,
+        OVERLAY
+    }
+
+    /**
+     * Reads {@code surface_options.priority}. Documents that replace vanilla parts default to
+     * {@link Priority#VANILLA} — they stand in for the HUD, so they inherit its ordering —
+     * and everything else defaults to {@link Priority#OVERLAY} to keep its current behaviour.
+     */
+    private static Priority priorityOf(UiDocument document) {
+        Object value = document.surfaceOptions().get("priority");
+        if (value instanceof String text) {
+            String normalised = text.trim().toLowerCase(Locale.ROOT);
+            if ("vanilla".equals(normalised) || "below_screen".equals(normalised)) {
+                return Priority.VANILLA;
+            }
+            if ("overlay".equals(normalised) || "above_screen".equals(normalised)) {
+                return Priority.OVERLAY;
+            }
+        }
+        return replacesIn(document, "health") || replacesIn(document, "food")
+                || replacesIn(document, "hotbar") || replacesIn(document, "xp")
+                || replacesIn(document, "armor") || replacesIn(document, "air")
+                ? Priority.VANILLA
+                : Priority.OVERLAY;
+    }
+
     /** One layer holds its document plus the cached render list for the current viewport. */
     private static final class Layer {
         private volatile UiDocument document;
+        private volatile Priority priority = Priority.OVERLAY;
         private RenderList cachedList = RenderList.EMPTY;
         private UiDocument cachedDocument;
         private int cachedWidth = -1;
@@ -63,7 +97,10 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
     @Override
     public void open(OpenRequest request, UiRuntime runtime) {
         String layer = layerOf(request.surfaceKey());
-        LAYERS.computeIfAbsent(layer, ignored -> new Layer()).document = runtime.document();
+        Layer target = LAYERS.computeIfAbsent(layer, ignored -> new Layer());
+        UiDocument document = runtime.document();
+        target.priority = priorityOf(document);
+        target.document = document;
     }
 
     @Override
@@ -102,18 +139,25 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
             if (document == null) {
                 continue;
             }
-            Object value = document.surfaceOptions().get("replace");
-            if (value instanceof Iterable<?> parts) {
-                for (Object entry : parts) {
-                    if (entry instanceof String text && text.equalsIgnoreCase(part)) {
-                        return true;
-                    }
-                }
-            } else if (value instanceof String text && text.equalsIgnoreCase(part)) {
+            if (replacesIn(document, part)) {
                 return true;
             }
         }
         return false;
+    }
+
+    /** Single-document form used when deciding a layer's priority before it is registered. */
+    private static boolean replacesIn(UiDocument document, String part) {
+        Object value = document.surfaceOptions().get("replace");
+        if (value instanceof Iterable<?> parts) {
+            for (Object entry : parts) {
+                if (entry instanceof String text && text.equalsIgnoreCase(part)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return value instanceof String text && text.equalsIgnoreCase(part);
     }
 
     /** Draws one layer; called from the Fabric HUD element for that layer. */
@@ -153,9 +197,6 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
         }
         RENDERER.render(graphics, layer.cachedList, new FrameContext(graphics, width, height,
                 minecraft.getWindow().getGuiScale(), 0.0f));
-        if (Boolean.getBoolean("cloudcore.hud.debug")) {
-            graphics.fill(4, 4, 24, 24, 0xFFFF00FF);
-        }
 
         UiDocument rendered = layer.cachedDocument;
         if (rendered != null) {

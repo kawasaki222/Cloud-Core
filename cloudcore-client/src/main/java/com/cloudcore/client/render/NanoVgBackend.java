@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Render thread only.
  */
-public final class NanoVgBackend implements RenderBackend {
+public final class NanoVgBackend implements RenderBackend, RenderList.VectorTextSupport {
     private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
     private static final int MAX_IMAGE_BYTES = 16 * 1024 * 1024;
     private static final int IMAGE_FLAGS = 0;
@@ -42,6 +42,8 @@ public final class NanoVgBackend implements RenderBackend {
     private FrameContext frame;
     private NVGColor color;
     private NVGPaint paint;
+    /** Scratch for {@code nvgTextBounds}, which returns the advance width. */
+    private final float[] textBounds = new float[4];
 
     public NanoVgBackend() {
         color = NVGColor.create();
@@ -90,8 +92,14 @@ public final class NanoVgBackend implements RenderBackend {
         }
         try {
             // Render at device resolution so text and edges stay crisp after compositing.
+            // The target must be allocated in device pixels, not GUI units: NanoVG multiplies
+            // the logical size by pixelRatio when it sets its viewport, so a GUI-sized target
+            // left it drawing into the bottom quarter of the requested area and the composite
+            // then magnified the result by guiScale with a LINEAR sampler, which softened every
+            // glyph (measured edge ramp 2px against 1px for natively drawn text).
             int pixelRatio = Math.max(1, context.guiScale());
-            if (!compositor.ensure(context.width(), context.height())) {
+            if (!compositor.ensure(context.width() * pixelRatio,
+                    context.height() * pixelRatio)) {
                 fail("FBO unavailable");
                 return;
             }
@@ -128,9 +136,7 @@ public final class NanoVgBackend implements RenderBackend {
                     }
                     case RenderCommand.ClipPop ignored -> NanoVG.nvgRestore(context);
                     case RenderCommand.Text text -> text(text);
-                    case RenderCommand.RichText ignored -> {
-                        // Rich text stays native: it needs per-run widths in the vanilla font.
-                    }
+                    case RenderCommand.RichText rich -> richText(rich);
                     case RenderCommand.ItemIcon ignored -> {
                         // Item models are drawn by the native bridge.
                     }
@@ -152,6 +158,19 @@ public final class NanoVgBackend implements RenderBackend {
         return fonts.resolve(text.font()) >= 0;
     }
 
+    /** Rich text uses the same rule: only an explicit, resolvable font goes through NanoVG. */
+    @Override
+    public boolean drawsRichText(RenderCommand.RichText text) {
+        return drawsFont(text.font());
+    }
+
+    private boolean drawsFont(String font) {
+        if (!available() || font == null || font.isBlank()) {
+            return false;
+        }
+        return fonts.resolve(font) >= 0;
+    }
+
     private void text(RenderCommand.Text text) {
         if (!drawsText(text)) {
             return;
@@ -167,11 +186,42 @@ public final class NanoVgBackend implements RenderBackend {
             return;
         }
         NanoVG.nvgFontFaceId(context, fontId);
-        NanoVG.nvgFontSize(context, 9.0f);
+        NanoVG.nvgFontSize(context, text.size());
         NanoVG.nvgTextAlign(context, NanoVG.NVG_ALIGN_LEFT | NanoVG.NVG_ALIGN_BASELINE);
         setColor(text.argb());
         NanoVG.nvgFillColor(context, color);
-        NanoVG.nvgText(context, text.x(), text.y() + 7.5f, text.text());
+        // The baseline offset tracks the em size so larger text does not sit lower than the
+        // row it belongs to; 7.5/9 is the ratio that aligned the default size.
+        NanoVG.nvgText(context, text.x(), text.y() + text.size() * (7.5f / 9.0f), text.text());
+    }
+
+    /**
+     * Draws coloured runs left to right. The cursor advances by each run's measured advance
+     * width, so mixed colours stay kerned exactly as the vector font renders them.
+     */
+    private void richText(RenderCommand.RichText rich) {
+        if (!drawsRichText(rich)) {
+            return;
+        }
+        int fontId = fonts.resolve(rich.font());
+        if (fontId < 0) {
+            return;
+        }
+        NanoVG.nvgFontFaceId(context, fontId);
+        NanoVG.nvgFontSize(context, rich.size());
+        NanoVG.nvgTextAlign(context, NanoVG.NVG_ALIGN_LEFT | NanoVG.NVG_ALIGN_BASELINE);
+        float baseline = rich.y() + rich.size() * (7.5f / 9.0f);
+        float cursor = rich.x();
+        for (RenderCommand.RichText.Run run : rich.runs()) {
+            if (run.text().isEmpty()) {
+                continue;
+            }
+            setColor(run.argb());
+            NanoVG.nvgFillColor(context, color);
+            NanoVG.nvgText(context, cursor, baseline, run.text());
+            cursor += NanoVG.nvgTextBounds(context, cursor, baseline, run.text(),
+                    textBounds);
+        }
     }
 
     private void fill(RenderCommand.FillRect rect) {

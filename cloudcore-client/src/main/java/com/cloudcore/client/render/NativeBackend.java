@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
  */
 public final class NativeBackend implements RenderBackend {
     private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
+    private static final boolean DEBUG = Boolean.getBoolean("cloudcore.hud.debug");
 
     private FrameContext context;
     private final java.util.ArrayList<int[]> clips = new java.util.ArrayList<>();
@@ -47,19 +48,32 @@ public final class NativeBackend implements RenderBackend {
             throw new IllegalStateException("beginFrame must be called before draw");
         }
         for (RenderCommand command : list.commands()) {
-            switch (command) {
-                case RenderCommand.FillRect rect -> frame.graphics().fill(
-                        rect.x(), rect.y(), rect.x() + rect.width(), rect.y() + rect.height(),
-                        rect.argb());
-                case RenderCommand.Text text -> frame.graphics().drawString(
-                        Minecraft.getInstance().font, text.text(), text.x(), text.y(),
-                        text.argb(), text.shadow());
-                case RenderCommand.Image image -> drawImage(frame.graphics(), image);
-                case RenderCommand.ItemIcon icon -> drawItem(frame, icon);
-                case RenderCommand.RichText rich -> drawRichText(frame, rich);
-                case RenderCommand.ClipPush clip -> pushClip(frame, clip);
-                case RenderCommand.ClipPop ignored -> popClip(frame);
+            if (DEBUG) {
+                LOGGER.info("native draw {}", command.getClass().getSimpleName());
             }
+            try {
+                drawCommand(frame, command);
+            } catch (RuntimeException exception) {
+                // A single bad command must not blank the rest of the document.
+                LOGGER.error("[CC-RENDER-030] command failed: {}", command.getClass()
+                        .getSimpleName(), exception);
+            }
+        }
+    }
+
+    private void drawCommand(FrameContext frame, RenderCommand command) {
+        switch (command) {
+            case RenderCommand.FillRect rect -> frame.graphics().fill(
+                    rect.x(), rect.y(), rect.x() + rect.width(), rect.y() + rect.height(),
+                    rect.argb());
+            case RenderCommand.Text text -> frame.graphics().drawString(
+                    Minecraft.getInstance().font, text.text(), text.x(), text.y(),
+                    text.argb(), text.shadow());
+            case RenderCommand.Image image -> drawImage(frame.graphics(), image);
+            case RenderCommand.ItemIcon icon -> drawItem(frame, icon);
+            case RenderCommand.RichText rich -> drawRichText(frame, rich);
+            case RenderCommand.ClipPush clip -> pushClip(frame, clip);
+            case RenderCommand.ClipPop ignored -> popClip(frame);
         }
     }
 
@@ -101,6 +115,7 @@ public final class NativeBackend implements RenderBackend {
     private static void drawImage(GuiGraphics graphics, RenderCommand.Image image) {
         Identifier texture = TextureReferences.resolve(image.texture(), image.animation());
         if (texture == null) {
+            LOGGER.warn("[CC-RENDER-003] unresolved texture: {}", image.texture());
             return;
         }
         // 1.21.11 blits take the texture size explicitly; the legacy normalized-UV overload

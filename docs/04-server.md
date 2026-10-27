@@ -33,30 +33,10 @@ ui:
   close-on-world-change: true
   close-on-death: true
 
-surfaces:
-  container:
-    enabled: true
-    legacy:
-      enabled: true
-      interaction: passthrough
-      skip: [CRAFTING, ANVIL, ENCHANTING, MERCHANT, BEACON, HOPPER, SHULKER_BOX]
-      title-sentinel-fallback: true
-  player_inventory:
-    enabled: true
-    document: inventory_skin
-    apply-on-join: true
-  hud:
-    enabled: true
-    layers:
-      background: hud_background
-      foreground: hud_foreground
-  tooltip:
-    enabled: true
-    document: tooltip_theme
-  boss_bar:
-    enabled: true
-    document: boss_theme
-    adopt-sentinel: true
+# 进服自动下发的页面（按文件名，不含 .yml）。
+# 页面自己声明 surface，服务端据此决定打开方式，见第 7 节「表面路由」。
+apply-on-join:
+  pages: [rpg_hud, inventory_skin]
 
 placeholders:
   default-mode: interval
@@ -289,6 +269,27 @@ revision 的文档更新；会话状态保留（每个玩家按页面名保存�
 - `PlayerStateStore` 是接口，SQLite/MySQL 实现接在同一位置（计划中）；当前默认是文件实现。
 
 ## 7. 面板提供器
+
+### 7.0 表面路由
+
+页面在哪一层显示，由页面自己声明的 `surface` 决定，服务端不做逐表面的特判。
+`CloudCorePlugin#openForSurface` 是唯一知道“每个表面怎么绑定”的地方：
+
+| `surface` | BindMode | RenderMode | surfaceKey |
+| --- | --- | --- | --- |
+| `hud` | `PERSISTENT` | `SURFACE_NATIVE` | `surface_options.layer`（默认 `foreground`） |
+| `tooltip` | `PERSISTENT` | `SURFACE_NATIVE` | 页面名 |
+| `boss_bar` | `PERSISTENT` | `SURFACE_NATIVE` | 页面名 |
+| `player_inventory` | `PERSISTENT` | `SCREEN` | 页面名 |
+| `container` | `NEXT_CONTAINER` | `SCREEN` | 页面名 |
+| `custom_screen` | `NONE` | `SCREEN` | 页面名 |
+
+因此新增一个表面只需要在客户端实现 `SurfaceAdapter` 并在上表补一行，YAML 页面与
+`apply-on-join` 都不需要改。`surface: hud` 的页面可额外用 `surface_options.replace`
+取消原版血条/饱食度/经验条/快捷栏的绘制。
+
+进服自动下发：`config.yml` 的 `apply-on-join.pages` 列出页面名，握手完成后 2 tick
+统一下发，玩家无需命令即可看到服务端配置的 HUD 与背包皮肤。
 
 ### 7.1 容器面板
 

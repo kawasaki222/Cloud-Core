@@ -134,7 +134,7 @@ public final class DocumentRenderListBuilder {
                 }
                 addText(commands, text(element), textX, y + Math.max(2, (h - 8) / 2),
                         dim(element, color(styleText(element), DEFAULT_TEXT)),
-                        fontPath(element, fonts));
+                        fontPath(element, fonts), fontSize(element));
                 childWidth = w;
                 childHeight = h;
             }
@@ -157,11 +157,12 @@ public final class DocumentRenderListBuilder {
             case "label" -> {
                 java.util.List<RenderCommand.RichText.Run> runs = runs(element);
                 if (runs != null) {
-                    addRichText(commands, runs, x, y);
+                    addRichText(commands, runs, x, y, fontPath(element, fonts),
+                            fontSize(element));
                 } else {
                     addText(commands, text(element), x, y,
                             color(attribute(element, "color"), DEFAULT_TEXT),
-                            fontPath(element, fonts));
+                            fontPath(element, fonts), fontSize(element));
                 }
             }
             case "text_field" -> {
@@ -191,7 +192,8 @@ public final class DocumentRenderListBuilder {
                     addFill(commands, x + 2, y + 2, 5, 5, 0xFFFFFFFF);
                 }
                 addText(commands, text(element), x + 13, y,
-                        color(styleText(element), DEFAULT_TEXT), fontPath(element, fonts));
+                        color(styleText(element), DEFAULT_TEXT), fontPath(element, fonts),
+                        fontSize(element));
             }
             case "slider" -> {
                 int w = width > 0 ? width : parentWidth;
@@ -388,9 +390,28 @@ public final class DocumentRenderListBuilder {
 
     private static void addText(List<RenderCommand> commands, String text, int x, int y,
             int argb, String font) {
+        addText(commands, text, x, y, argb, font, RenderCommand.Text.DEFAULT_SIZE);
+    }
+
+    private static void addText(List<RenderCommand> commands, String text, int x, int y,
+            int argb, String font, float size) {
         if (!text.isEmpty() && commands.size() < MAX_COMMANDS) {
-            commands.add(new RenderCommand.Text(text, x, y, argb, true, font));
+            commands.add(new RenderCommand.Text(text, x, y, argb, true, font, size));
         }
+    }
+
+    /**
+     * Reads the em size for a label. {@code font_size} is accepted both as an attribute and
+     * under {@code style}; absent values keep the backend default so existing documents are
+     * unchanged.
+     */
+    private static float fontSize(UiElement element) {
+        Object value = attribute(element, "font_size");
+        if (value == null) {
+            value = style(element, "font_size");
+        }
+        double size = number(value, RenderCommand.Text.DEFAULT_SIZE);
+        return size > 0.0 ? (float) size : RenderCommand.Text.DEFAULT_SIZE;
     }
 
     /**
@@ -504,9 +525,10 @@ public final class DocumentRenderListBuilder {
     }
 
     private static void addRichText(List<RenderCommand> commands,
-            java.util.List<RenderCommand.RichText.Run> runs, int x, int y) {
+            java.util.List<RenderCommand.RichText.Run> runs, int x, int y, String font,
+            float size) {
         if (commands.size() < MAX_COMMANDS) {
-            commands.add(new RenderCommand.RichText(runs, x, y, true));
+            commands.add(new RenderCommand.RichText(runs, x, y, true, font, size));
         }
     }
 

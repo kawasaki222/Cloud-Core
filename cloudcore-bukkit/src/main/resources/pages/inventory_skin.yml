@@ -1,0 +1,42 @@
+# 背包皮肤示例：surface 声明为 player_inventory 后，玩家打开自己的背包
+# （E 键）时用这个文档替换原版界面外观；槽位与点击仍走原版 InventoryMenu。
+schema: 1
+id: inventory_skin
+surface: player_inventory
+title: "背包"
+size: [176, 166]
+elements:
+  - id: bg
+    type: panel
+    x: 0
+    y: 0
+    width: "fill"
+    height: "fill"
+    style:
+      background: "#E0203040"
+  - id: title
+    type: label
+    x: 62
+    y: 6
+    text: "Cloud Core 背包"
+    color: "#FFFFE8C9"
+  - id: main
+    type: inventory_grid
+    x: 0
+    y: 0
+    width: "fill"
+    height: 54
+    slots: [9, 35]
+    origin: [12, 84]
+    cell: [18, 18]
+    columns: 9
+  - id: hotbar
+    type: inventory_grid
+    x: 0
+    y: 0
+    width: "fill"
+    height: 18
+    slots: [36, 44]
+    origin: [12, 142]
+    cell: [18, 18]
+    columns: 9

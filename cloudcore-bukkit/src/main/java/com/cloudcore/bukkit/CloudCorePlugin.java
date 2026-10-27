@@ -95,7 +95,8 @@ public final class CloudCorePlugin extends JavaPlugin
             "open_page", "sound");
     /** Demo pages copied into {@code plugins/CloudCore/pages/} when missing. */
     private static final java.util.List<String> DEMO_PAGES = java.util.List.of(
-            "example", "shop", "progress_demo", "scroll_demo", "actions_demo", "papi_demo");
+            "example", "shop", "progress_demo", "scroll_demo", "actions_demo", "papi_demo",
+            "rpg_hud", "inventory_skin");
     private final com.cloudcore.bukkit.api.CloudCoreApi api = new Api();
 
     @Override
@@ -717,6 +718,32 @@ public final class CloudCorePlugin extends JavaPlugin
         getLogger().info("Sent HELLO_ACK to " + player.getName()
                 + " protocol=" + ack.protoMajor() + "." + ack.protoMinor()
                 + " acceptedFeatures=0x" + Integer.toHexString(ack.acceptedFeatures()));
+        applyOnJoin(player);
+    }
+
+    /**
+     * Sends the pages listed under {@code apply-on-join.pages} once the handshake is up, so a
+     * player sees a server-authored HUD immediately instead of after a command. Runs one tick
+     * after the ACK because the client installs its S2C receiver during the join callback.
+     */
+    private void applyOnJoin(Player player) {
+        java.util.List<String> pages = getConfig().getStringList("apply-on-join.pages");
+        if (pages.isEmpty()) {
+            return;
+        }
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (!player.isOnline()) {
+                return;
+            }
+            for (String name : pages) {
+                String trimmed = name == null ? "" : name.trim();
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+                sendPage(player, trimmed);
+            }
+            getLogger().info("Applied " + pages.size() + " join page(s) to " + player.getName());
+        }, 2L);
     }
 
     private void sendPing(Player player, Session session) {
@@ -1229,7 +1256,7 @@ public final class CloudCorePlugin extends JavaPlugin
                   "id": "cloudcore_hud_rpg",
                   "surface": "hud",
                   "title": { "runs": [ { "text": "RPG HUD" } ] },
-                  "size": [200, 64],
+                  "size": [200, 80],
                   "fonts": {
                     "alibaba": { "provider": "nanovg_ttf", "source": "local",
                                  "id": "公共/字体/AlibabaBold.ttf" }
@@ -1241,47 +1268,47 @@ public final class CloudCorePlugin extends JavaPlugin
                   },
                   "elements": [
                     { "id": "panel", "type": "panel", "x": 0, "y": 0,
-                      "width": 200, "height": 64,
+                      "width": 200, "height": 80,
                       "style": { "background": "local:ui/hud_panel.png",
-                                 "nine_slice": [16, 16, 16, 16] } },
+                                 "nine_slice": [6, 6, 6, 6] } },
 
-                    { "id": "hp_key", "type": "label", "x": 10, "y": 3,
+                    { "id": "hp_key", "type": "label", "x": 12, "y": 9,
                       "text": "生命", "font": "alibaba", "color": "#FFE8C98A" },
-                    { "id": "hp_text", "type": "label", "x": 34, "y": 3,
+                    { "id": "hp_text", "type": "label", "x": 36, "y": 9,
                       "text": "", "text_from": "health", "font": "alibaba",
                       "color": "#FFFFEDD0" },
-                    { "id": "hp_bar", "type": "progress", "x": 10, "y": 13,
-                      "width": 84, "height": 8,
+                    { "id": "hp_bar", "type": "progress", "x": 12, "y": 20,
+                      "width": 82, "height": 8,
                       "value_from": "health",
                       "texture_fill": "local:ui/hp_fill.png",
                       "style": { "background": "#FF140C0C" } },
 
-                    { "id": "food_key", "type": "label", "x": 106, "y": 3,
+                    { "id": "food_key", "type": "label", "x": 106, "y": 9,
                       "text": "饱食", "font": "alibaba", "color": "#FFE8C98A" },
-                    { "id": "food_text", "type": "label", "x": 130, "y": 3,
+                    { "id": "food_text", "type": "label", "x": 130, "y": 9,
                       "text": "", "text_from": "food", "font": "alibaba",
                       "color": "#FFFFEDD0" },
-                    { "id": "food_bar", "type": "progress", "x": 106, "y": 13,
-                      "width": 84, "height": 8,
+                    { "id": "food_bar", "type": "progress", "x": 106, "y": 20,
+                      "width": 82, "height": 8,
                       "value_from": "food",
                       "texture_fill": "local:ui/food_fill.png",
                       "style": { "background": "#FF140C0C" } },
 
-                    { "id": "xp_bar", "type": "progress", "x": 10, "y": 25,
-                      "width": 180, "height": 5,
+                    { "id": "xp_bar", "type": "progress", "x": 12, "y": 32,
+                      "width": 176, "height": 5,
                       "value_from": "xp",
                       "texture_fill": "local:ui/xp_fill.png",
                       "style": { "background": "#FF0A1218" } },
-                    { "id": "lvl_key", "type": "label", "x": 10, "y": 33,
+                    { "id": "lvl_key", "type": "label", "x": 12, "y": 40,
                       "text": "等级", "font": "alibaba", "color": "#FFE8C98A" },
-                    { "id": "lvl_value", "type": "label", "x": 34, "y": 33,
+                    { "id": "lvl_value", "type": "label", "x": 36, "y": 40,
                       "text": "", "text_from": "level", "font": "alibaba",
                       "color": "#FFFFEDD0" },
-                    { "id": "xp_text", "type": "label", "x": 158, "y": 33,
+                    { "id": "xp_text", "type": "label", "x": 152, "y": 40,
                       "text": "", "text_from": "xp", "font": "alibaba",
                       "color": "#FF9FD3D8" },
 
-                    { "id": "hotbar", "type": "hotbar", "x": 19, "y": 44,
+                    { "id": "hotbar", "type": "hotbar", "x": 19, "y": 54,
                       "slots": 9, "cell": 18, "gap": 0, "show_counts": true,
                       "style": { "slot": "#C0181C22",
                                  "slot_border": "#FF8E7434",
@@ -1564,9 +1591,9 @@ public final class CloudCorePlugin extends JavaPlugin
     private void sendCompiledPage(Player player, Session session, String surfaceKey,
             com.cloudcore.api.page.PageLoader.CompiledPage compiled) {
         UiDocument document = compiled.document();
-        if (document.surface() != SurfaceType.CUSTOM_SCREEN) {
-            getLogger().warning("Page '" + document.id() + "' uses surface " + document.surface()
-                    + "; only custom screens open this way");
+        SurfaceType surface = document.surface();
+        if (surface == SurfaceType.UNKNOWN) {
+            getLogger().warning("Page '" + document.id() + "' declares an unknown surface");
             return;
         }
         document = expandPlaceholders(player, document);
@@ -1575,8 +1602,7 @@ public final class CloudCorePlugin extends JavaPlugin
         int token = random.nextInt();
         session.lastUiId = uiId;
         int revision = session.pageRevisions.merge(uiId, 1, Integer::sum);
-        UiOpen open = new UiOpen(uiId, revision, SurfaceType.CUSTOM_SCREEN, BindMode.NONE, token,
-                RenderMode.SCREEN, 0, surfaceKey);
+        UiOpen open = openForSurface(surface, uiId, revision, token, surfaceKey, document);
         sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
                 UiCodec.encodeOpen(open, Limits.S2C)));
         sendTextureRefs(player, compiled);
@@ -1591,6 +1617,49 @@ public final class CloudCorePlugin extends JavaPlugin
         }, 1L);
         getLogger().info("Sent page '" + surfaceKey + "' to " + player.getName()
                 + " elements=" + document.elements().size() + " bytes=" + json.length());
+    }
+
+    /**
+     * Maps a document's declared surface to the {@code UI_OPEN} parameters that surface needs.
+     * This is the single place that knows how each surface binds, so any page — YAML or
+     * addon-built — lands on its surface without per-call special cases.
+     *
+     * <p>Persistent surfaces (HUD, tooltip, boss bar, player inventory) live until UI_CLOSE;
+     * screens and containers are bound to the next open of that kind.
+     */
+    private static UiOpen openForSurface(SurfaceType surface, String uiId, int revision,
+            int token, String surfaceKey, UiDocument document) {
+        return switch (surface) {
+            case HUD -> new UiOpen(uiId, revision, surface, BindMode.PERSISTENT, token,
+                    RenderMode.SURFACE_NATIVE, 0, hudLayerOf(document));
+            case TOOLTIP -> new UiOpen(uiId, revision, surface, BindMode.PERSISTENT, token,
+                    RenderMode.SURFACE_NATIVE, 0, surfaceKey == null ? "default" : surfaceKey);
+            // The inventory skin is drawn by CloudInventoryScreen, which replaces the vanilla
+            // InventoryScreen, so it binds through the screen path rather than the native one.
+            case PLAYER_INVENTORY -> new UiOpen(uiId, revision, surface, BindMode.PERSISTENT,
+                    token, RenderMode.SCREEN, 0,
+                    surfaceKey == null ? "default" : surfaceKey);
+            case BOSS_BAR -> new UiOpen(uiId, revision, surface, BindMode.PERSISTENT, token,
+                    RenderMode.SURFACE_NATIVE, 0,
+                    surfaceKey == null ? Integer.toHexString(token) : surfaceKey);
+            case CONTAINER -> new UiOpen(uiId, revision, surface, BindMode.NEXT_CONTAINER, token,
+                    RenderMode.SCREEN, 0, surfaceKey);
+            case CUSTOM_SCREEN, UNKNOWN -> new UiOpen(uiId, revision, SurfaceType.CUSTOM_SCREEN,
+                    BindMode.NONE, token, RenderMode.SCREEN, 0, surfaceKey);
+        };
+    }
+
+    /** Layer name for a HUD page: {@code surface_options.layer}, defaulting to foreground. */
+    private static String hudLayerOf(UiDocument document) {
+        Object value = document.surfaceOptions().get("layer");
+        if (value instanceof String text) {
+            String normalised = text.trim().toLowerCase(java.util.Locale.ROOT);
+            if (normalised.equals("background") || normalised.equals("foreground")
+                    || normalised.equals("overlay")) {
+                return normalised;
+            }
+        }
+        return "foreground";
     }
 
     /** Tells the client which URL images this page uses; the client downloads them itself. */

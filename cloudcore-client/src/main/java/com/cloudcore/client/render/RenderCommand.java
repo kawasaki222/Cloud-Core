@@ -8,11 +8,28 @@ public sealed interface RenderCommand {
     record FillRect(int x, int y, int width, int height, int argb) implements RenderCommand {
     }
 
-    record Text(String text, int x, int y, int argb, boolean shadow, String font)
+    /**
+     * @param font CloudCore-relative font path, or null to keep the vanilla font
+     * @param size em size for vector backends; ignored by the vanilla font, which has a
+     *             fixed cell height
+     */
+    record Text(String text, int x, int y, int argb, boolean shadow, String font, float size)
             implements RenderCommand {
 
+        public static final float DEFAULT_SIZE = 9.0f;
+
         public Text(String text, int x, int y, int argb, boolean shadow) {
-            this(text, x, y, argb, shadow, null);
+            this(text, x, y, argb, shadow, null, DEFAULT_SIZE);
+        }
+
+        public Text(String text, int x, int y, int argb, boolean shadow, String font) {
+            this(text, x, y, argb, shadow, font, DEFAULT_SIZE);
+        }
+
+        public Text {
+            if (!(size > 0.0f) || size > 512.0f) {
+                size = DEFAULT_SIZE;
+            }
         }
     }
 
@@ -58,11 +75,18 @@ public sealed interface RenderCommand {
     }
 
     /** Coloured text segments drawn sequentially; used when a label declares text runs. */
-    record RichText(java.util.List<Run> runs, int x, int y, boolean shadow)
-            implements RenderCommand {
+    record RichText(java.util.List<Run> runs, int x, int y, boolean shadow, String font,
+            float size) implements RenderCommand {
+
+        public RichText(java.util.List<Run> runs, int x, int y, boolean shadow) {
+            this(runs, x, y, shadow, null, Text.DEFAULT_SIZE);
+        }
 
         public RichText {
             runs = java.util.List.copyOf(runs);
+            if (!(size > 0.0f) || size > 512.0f) {
+                size = Text.DEFAULT_SIZE;
+            }
         }
 
         public record Run(String text, int argb) {

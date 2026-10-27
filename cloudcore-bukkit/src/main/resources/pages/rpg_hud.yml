@@ -1,0 +1,142 @@
+# 中世纪 RPG 风格 HUD：替换原版血条、饱食度、经验条与快捷栏。
+#
+# 用法：在 config.yml 里
+#   apply-on-join:
+#     pages: [rpg_hud]
+# 玩家握手完成后会立刻收到这个页面，无需命令。
+#
+# surface: hud            → 常驻 HUD，不是弹出界面
+# surface_options.layer    → background / foreground / overlay，默认 foreground
+# surface_options.replace  → 让客户端取消对应的原版绘制
+# value_from / text_from   → 每帧读取实时数值，数值变化不需要重发文档
+schema: 1
+id: rpg_hud
+surface: hud
+title: "RPG HUD"
+size: [200, 80]
+fonts:
+  alibaba:
+    provider: nanovg_ttf
+    source: local
+    id: 公共/字体/AlibabaBold.ttf
+surface_options:
+  layer: foreground
+  anchor: bottom_center
+  offset_y: -4
+  replace: [health, food, xp, hotbar]
+elements:
+  - id: panel
+    type: panel
+    x: 0
+    y: 0
+    width: 200
+    height: 80
+    style:
+      background: "local:ui/hud_panel.png"
+      nine_slice: [6, 6, 6, 6]
+
+  - id: hp_key
+    type: label
+    x: 12
+    y: 9
+    text: "生命"
+    font: alibaba
+    font_size: 10
+    color: "#FFE8C98A"
+  - id: hp_text
+    type: label
+    x: 36
+    y: 9
+    text: ""
+    text_from: health
+    font: alibaba
+    font_size: 10
+    color: "#FFFFEDD0"
+  - id: hp_bar
+    type: progress
+    x: 12
+    y: 20
+    width: 82
+    height: 8
+    value_from: health
+    texture_fill: "local:ui/hp_fill.png"
+    style:
+      background: "#FF140C0C"
+
+  - id: food_key
+    type: label
+    x: 106
+    y: 9
+    text: "饱食"
+    font: alibaba
+    font_size: 10
+    color: "#FFE8C98A"
+  - id: food_text
+    type: label
+    x: 130
+    y: 9
+    text: ""
+    text_from: food
+    font: alibaba
+    font_size: 10
+    color: "#FFFFEDD0"
+  - id: food_bar
+    type: progress
+    x: 106
+    y: 20
+    width: 82
+    height: 8
+    value_from: food
+    texture_fill: "local:ui/food_fill.png"
+    style:
+      background: "#FF140C0C"
+
+  - id: xp_bar
+    type: progress
+    x: 12
+    y: 32
+    width: 176
+    height: 5
+    value_from: xp
+    texture_fill: "local:ui/xp_fill.png"
+    style:
+      background: "#FF0A1218"
+  - id: lvl_key
+    type: label
+    x: 12
+    y: 40
+    text: "等级"
+    font: alibaba
+    font_size: 10
+    color: "#FFE8C98A"
+  - id: lvl_value
+    type: label
+    x: 36
+    y: 40
+    text: ""
+    text_from: level
+    font: alibaba
+    font_size: 10
+    color: "#FFFFEDD0"
+  - id: xp_text
+    type: label
+    x: 152
+    y: 40
+    text: ""
+    text_from: xp
+    font: alibaba
+    font_size: 10
+    color: "#FF9FD3D8"
+
+  - id: hotbar
+    type: hotbar
+    x: 19
+    y: 54
+    slots: 9
+    cell: 18
+    gap: 0
+    show_counts: true
+    style:
+      slot: "#C0181C22"
+      slot_border: "#FF8E7434"
+      selected: "#FFFFD479"

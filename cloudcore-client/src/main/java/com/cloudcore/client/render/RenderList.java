@@ -28,28 +28,48 @@ public record RenderList(List<RenderCommand> commands) {
      * @param includeText false when NanoVG loaded a font and already drew the text
      */
     public RenderList nativeOverlay(boolean includeText) {
-        return nativeOverlay(text -> !includeText);
+        return nativeOverlay(new VectorTextSupport() {
+            @Override
+            public boolean drawsText(RenderCommand.Text text) {
+                return !includeText;
+            }
+
+            @Override
+            public boolean drawsRichText(RenderCommand.RichText text) {
+                return !includeText;
+            }
+        });
     }
 
     /**
      * Text is kept for the native backend whenever the predicate reports that the vector
      * backend did not draw it, so a document with custom fonts mixes both paths.
      */
-    public RenderList nativeOverlay(java.util.function.Predicate<RenderCommand.Text> vectorText) {
+    public RenderList nativeOverlay(VectorTextSupport vectorText) {
         java.util.List<RenderCommand> overlay = new java.util.ArrayList<>();
         for (RenderCommand command : commands) {
             if (command instanceof RenderCommand.Text text) {
-                if (vectorText.test(text)) {
+                if (vectorText.drawsText(text)) {
                     continue;
                 }
-            } else if (!(command instanceof RenderCommand.RichText)
-                    && !(command instanceof RenderCommand.ItemIcon)
+            } else if (command instanceof RenderCommand.RichText rich) {
+                if (vectorText.drawsRichText(rich)) {
+                    continue;
+                }
+            } else if (!(command instanceof RenderCommand.ItemIcon)
                     && !isNativeImage(command)) {
                 continue;
             }
             overlay.add(command);
         }
         return overlay.isEmpty() ? EMPTY : new RenderList(overlay);
+    }
+
+    /** Reports which text a vector backend already drew itself. */
+    public interface VectorTextSupport {
+        boolean drawsText(RenderCommand.Text text);
+
+        boolean drawsRichText(RenderCommand.RichText text);
     }
 
     /** Generated textures have no file bytes for NanoVG, so the native backend draws them. */
