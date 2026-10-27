@@ -424,6 +424,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   子元素裁剪到 200×80 的框内；原生后端（`scroll-native.png`）与 NanoVG 后端
   （`scroll-nanovg.png`）显示一致。嵌套裁剪由 `ClipPush`/`ClipPop` 的交集实现。
   本地滚轮滚动尚未接入。
+- **HUD 稳态零分配（2026-10-27）**：`HudValues` 每帧把实时数值写回文档，原先即使数值
+  未变也会重建元素与属性表。现在只复制真正变化的元素，其余元素与原文档共享实例；
+  `HudValuesTest` 断言数值不变时返回同一文档、变化时只替换对应元素、`text_from` 保留来源键。
+  行为不变，减少的是满血/经验静止时的逐帧分配。
 - **NanoVG 字体已核实（Windows x64，opt-in）**：`FontRegistry` 从
   `resourcepacks/CloudCore/公共/字体/body.ttf` 读取 TTF，`nvgCreateFontMem` 后
   `/cloudcore demo-assets` 的 `font: body` 标签由 NanoVG 绘制，未声明字体的文本仍由原版绘制。

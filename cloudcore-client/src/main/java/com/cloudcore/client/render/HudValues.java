@@ -25,15 +25,41 @@ public final class HudValues {
     private HudValues() {
     }
 
+    /** Live values, extracted so the rewrite can be tested without a client player. */
+    interface Values {
+        Double fraction(String source);
+
+        String text(String source);
+    }
+
     /** @return a copy of the document with live values filled in (same instance when unused) */
     public static UiDocument apply(UiDocument document) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null || !usesLiveValues(document)) {
             return document;
         }
-        List<UiElement> elements = new ArrayList<>(document.elements().size());
-        for (UiElement element : document.elements()) {
-            elements.add(rewrite(element, player));
+        return apply(document, new PlayerValues(player));
+    }
+
+    /**
+     * Rewrites elements whose live value changed, sharing untouched elements and attributes.
+     * A HUD is rendered every frame, so the steady state (health bar full, XP unchanged)
+     * must not allocate a new document.
+     */
+    static UiDocument apply(UiDocument document, Values values) {
+        List<UiElement> original = document.elements();
+        List<UiElement> elements = null;
+        for (int index = 0; index < original.size(); index++) {
+            UiElement rewritten = rewrite(original.get(index), values);
+            if (rewritten != original.get(index)) {
+                if (elements == null) {
+                    elements = new ArrayList<>(original);
+                }
+                elements.set(index, rewritten);
+            }
+        }
+        if (elements == null) {
+            return document;
         }
         return new UiDocument(document.schema(), document.id(), document.surface(),
                 document.title(), document.theme(), document.width(), document.height(),
@@ -63,30 +89,65 @@ public final class HudValues {
         return false;
     }
 
-    private static UiElement rewrite(UiElement element, LocalPlayer player) {
-        Map<String, Object> attributes = new LinkedHashMap<>(element.attributes());
-        if (attributes.get("value_from") instanceof String source) {
-            Double fraction = fraction(source, player);
-            if (fraction != null) {
+    private static UiElement rewrite(UiElement element, Values values) {
+        List<UiElement> originalChildren = element.children();
+        List<UiElement> children = null;
+        for (int index = 0; index < originalChildren.size(); index++) {
+            UiElement child = originalChildren.get(index);
+            UiElement rewritten = rewrite(child, values);
+            if (rewritten != child) {
+                if (children == null) {
+                    children = new ArrayList<>(originalChildren);
+                }
+                children.set(index, rewritten);
+            }
+        }
+
+        Map<String, Object> originalAttributes = element.attributes();
+        Map<String, Object> attributes = null;
+        if (originalAttributes.get("value_from") instanceof String source) {
+            Double fraction = values.fraction(source);
+            if (fraction != null && !fraction.equals(originalAttributes.get("value"))) {
+                attributes = new LinkedHashMap<>(originalAttributes);
                 attributes.put("value", fraction);
             }
         }
-        if (attributes.get("text_from") instanceof String source) {
-            String text = text(source, player);
-            if (text != null) {
+        if (originalAttributes.get("text_from") instanceof String source) {
+            String text = values.text(source);
+            if (text != null && !text.equals(originalAttributes.get("text"))) {
+                if (attributes == null) {
+                    attributes = new LinkedHashMap<>(originalAttributes);
+                }
                 attributes.put("text", text);
             }
         }
-        List<UiElement> children = new ArrayList<>(element.children().size());
-        for (UiElement child : element.children()) {
-            children.add(rewrite(child, player));
-        }
-        if (children.equals(element.children()) && attributes.equals(element.attributes())) {
+
+        if (children == null && attributes == null) {
             return element;
         }
         return new UiElement(element.id(), element.type(), element.x(), element.y(),
                 element.width(), element.height(), element.visible(), element.enabled(),
-                element.z(), element.events(), children, attributes);
+                element.z(), element.events(),
+                children != null ? children : originalChildren,
+                attributes != null ? attributes : originalAttributes);
+    }
+
+    private static final class PlayerValues implements Values {
+        private final LocalPlayer player;
+
+        private PlayerValues(LocalPlayer player) {
+            this.player = player;
+        }
+
+        @Override
+        public Double fraction(String source) {
+            return HudValues.fraction(source, player);
+        }
+
+        @Override
+        public String text(String source) {
+            return HudValues.text(source, player);
+        }
     }
 
     private static Double fraction(String source, LocalPlayer player) {

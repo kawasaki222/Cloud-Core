@@ -33,6 +33,8 @@ elements:
     height: 80
     style:
       background: "local:ui/hud_panel.png"
+      # 384x256 源图的边框实测四边均为 24px（源 1536x1024，按 1/4 缩放），九宫格取 6
+      # 正好是整条铜边，中间条带不再拉伸边框像素。
       nine_slice: [6, 6, 6, 6]
 
   - id: hp_key
