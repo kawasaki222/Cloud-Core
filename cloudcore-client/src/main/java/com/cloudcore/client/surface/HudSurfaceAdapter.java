@@ -2,21 +2,33 @@ package com.cloudcore.client.surface;
 
 import com.cloudcore.api.SurfaceType;
 import com.cloudcore.api.document.UiDocument;
+import com.cloudcore.api.document.UiElement;
 import com.cloudcore.client.render.DocumentRenderListBuilder;
 import com.cloudcore.client.render.DocumentRenderer;
 import com.cloudcore.client.render.FrameContext;
+import com.cloudcore.client.render.HudValues;
+import com.cloudcore.client.render.NativeBackend;
 import com.cloudcore.client.render.RenderList;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.item.ItemStack;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Persistent HUD surface. Each {@code UI_OPEN} names a layer in {@code surfaceKey}
  * ({@code background}, {@code foreground} or {@code overlay}); the document is drawn at the
  * anchor in {@code surface_options.anchor} (default {@code top_left}) plus {@code offset}
  * ({@code offset_x}, {@code offset_y}).
+ *
+ * <p>A document may also replace vanilla HUD parts: {@code surface_options.replace: ["health",
+ * "hunger", "xp", "hotbar"]} makes {@link GuiMixin} cancel the vanilla bars, and the document
+ * draws its own. Elements with {@code value_from}/{@code text_from} read live player values
+ * ({@link HudValues}); a {@code hotbar} element is drawn here with the player's items.
  *
  * <p>Render thread only: documents are written on the client thread and only read here.
  */
@@ -27,6 +39,7 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
 
     private static final DocumentRenderer RENDERER = new DocumentRenderer();
     private static final Map<String, Layer> LAYERS = new LinkedHashMap<>();
+    private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
 
     /** One layer holds its document plus the cached render list for the current viewport. */
     private static final class Layer {
@@ -79,6 +92,30 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
         };
     }
 
+    /**
+     * @return true when an open HUD document asks to replace that vanilla part
+     *         ({@code health}, {@code hunger}, {@code xp}, {@code hotbar})
+     */
+    public static boolean replaces(String part) {
+        for (Layer layer : LAYERS.values()) {
+            UiDocument document = layer.document;
+            if (document == null) {
+                continue;
+            }
+            Object value = document.surfaceOptions().get("replace");
+            if (value instanceof Iterable<?> parts) {
+                for (Object entry : parts) {
+                    if (entry instanceof String text && text.equalsIgnoreCase(part)) {
+                        return true;
+                    }
+                }
+            } else if (value instanceof String text && text.equalsIgnoreCase(part)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Draws one layer; called from the Fabric HUD element for that layer. */
     public static void render(GuiGraphics graphics, String layerName) {
         Layer layer = LAYERS.get(layerName);
@@ -92,21 +129,157 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
         Minecraft minecraft = Minecraft.getInstance();
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
-        if (layer.cachedDocument != document || layer.cachedWidth != width
+        // Live values change every frame; a rewritten document compares structurally, so the
+        // list is rebuilt only when an actual value changed.
+        UiDocument live = HudValues.apply(document);
+        if (layer.cachedDocument != live || layer.cachedWidth != width
                 || layer.cachedHeight != height) {
-            int documentWidth = Math.round(document.width() * document.scale());
-            int documentHeight = Math.round(document.height() * document.scale());
             String anchor = anchorOf(document);
-            int originX = anchorX(anchor, width, documentWidth) + offset(document, "offset_x");
-            int originY = anchorY(anchor, height, documentHeight) + offset(document, "offset_y");
-            layer.cachedList = DocumentRenderListBuilder.buildAt(document, width, height,
+            int originX = originX(document, anchor, width);
+            int originY = originY(document, anchor, height);
+            layer.cachedList = DocumentRenderListBuilder.buildAt(live, width, height,
                     originX, originY);
-            layer.cachedDocument = document;
+            layer.cachedDocument = live;
             layer.cachedWidth = width;
             layer.cachedHeight = height;
+            LOGGER.debug("HUD layer {} ui={} origin={},{} viewport={}x{} commands={}", layerName,
+                    document.id(), originX, originY, width, height,
+                    layer.cachedList.commands().size());
+            if (Boolean.getBoolean("cloudcore.hud.debug")) {
+                for (var command : layer.cachedList.commands()) {
+                    LOGGER.info("HUD cmd {}", command);
+                }
+            }
         }
         RENDERER.render(graphics, layer.cachedList, new FrameContext(graphics, width, height,
                 minecraft.getWindow().getGuiScale(), 0.0f));
+        if (Boolean.getBoolean("cloudcore.hud.debug")) {
+            graphics.fill(4, 4, 24, 24, 0xFFFF00FF);
+        }
+
+        UiDocument rendered = layer.cachedDocument;
+        if (rendered != null) {
+            int originX = originX(rendered, anchorOf(rendered), width);
+            int originY = originY(rendered, anchorOf(rendered), height);
+            renderHotbars(graphics, rendered, originX, originY);
+        }
+    }
+
+    private static int originX(UiDocument document, String anchor, int screenWidth) {
+        int documentWidth = Math.round(document.width() * document.scale());
+        return anchorX(anchor, screenWidth, documentWidth) + offset(document, "offset_x");
+    }
+
+    private static int originY(UiDocument document, String anchor, int screenHeight) {
+        int documentHeight = Math.round(document.height() * document.scale());
+        return anchorY(anchor, screenHeight, documentHeight) + offset(document, "offset_y");
+    }
+
+    /** A {@code hotbar} element: frame texture, live item icons, counts and the selected slot. */
+    private static void renderHotbars(GuiGraphics graphics, UiDocument document, int originX,
+            int originY) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return;
+        }
+        for (UiElement element : document.elements()) {
+            if (!element.visible() || !"hotbar".equals(element.type())) {
+                continue;
+            }
+            int slots = intAttribute(element, "slots", 9);
+            int cell = intAttribute(element, "cell", 20);
+            int gap = intAttribute(element, "gap", 0);
+            int width = slots * cell + Math.max(0, slots - 1) * gap;
+            int x = originX + element.x();
+            int y = originY + element.y();
+
+            Object texture = element.attributes().get("texture");
+            if (texture instanceof String reference && NativeBackend.isTextureReference(reference)) {
+                NativeBackend.drawTexture(graphics, reference, x, y, width, cell,
+                        intArray(element.attributes().get("nine_slice")));
+            } else {
+                graphics.fill(x, y, x + width, y + cell, 0xA0101317);
+            }
+
+            int slotFill = com.cloudcore.client.render.Colors.parse(
+                    styleColor(element, "slot"), 0xC0181C22);
+            int slotBorder = com.cloudcore.client.render.Colors.parse(
+                    styleColor(element, "slot_border"), 0xFF8E7434);
+            int selectedColor = com.cloudcore.client.render.Colors.parse(
+                    styleColor(element, "selected"), 0xFFFFD479);
+            int selected = player.getInventory().getSelectedSlot();
+            boolean showCounts = !Boolean.FALSE.equals(element.attributes().get("show_counts"));
+            for (int slot = 0; slot < slots; slot++) {
+                int slotX = x + slot * (cell + gap);
+                graphics.fill(slotX + 1, y + 1, slotX + cell - 1, y + cell - 1, slotFill);
+                if (slot == selected) {
+                    // A bright double ring marks the held slot.
+                    graphics.fill(slotX, y, slotX + cell, y + 2, selectedColor);
+                    graphics.fill(slotX, y + cell - 2, slotX + cell, y + cell, selectedColor);
+                    graphics.fill(slotX, y + 2, slotX + 2, y + cell - 2, selectedColor);
+                    graphics.fill(slotX + cell - 2, y + 2, slotX + cell, y + cell - 2,
+                            selectedColor);
+                } else {
+                    graphics.fill(slotX, y, slotX + cell, y + 1, slotBorder);
+                    graphics.fill(slotX, y + cell - 1, slotX + cell, y + cell, slotBorder);
+                    graphics.fill(slotX, y + 1, slotX + 1, y + cell - 1, slotBorder);
+                    graphics.fill(slotX + cell - 1, y + 1, slotX + cell, y + cell - 1,
+                            slotBorder);
+                }
+                ItemStack stack = player.getInventory().getItem(slot);
+                if (stack.isEmpty()) {
+                    continue;
+                }
+                float scale = Math.max(0.5f, (cell - 4) / 16.0f);
+                var pose = graphics.pose();
+                pose.pushMatrix();
+                pose.translate(slotX + 2.0f, y + 2.0f);
+                pose.scale(scale, scale);
+                graphics.renderItem(stack, 0, 0);
+                pose.popMatrix();
+                if (showCounts && stack.getCount() > 1) {
+                    String count = String.valueOf(stack.getCount());
+                    graphics.drawString(Minecraft.getInstance().font, count,
+                            slotX + cell - 2 - Minecraft.getInstance().font.width(count),
+                            y + cell - 9, 0xFFFFFFFF, true);
+                }
+            }
+        }
+    }
+
+    private static int intAttribute(UiElement element, String key, int fallback) {
+        Object value = element.attributes().get(key);
+        if (value instanceof Number number) {
+            return Math.max(1, number.intValue());
+        }
+        if (value instanceof String text) {
+            try {
+                return Math.max(1, Integer.parseInt(text.trim()));
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
+    }
+
+    private static Object styleColor(UiElement element, String key) {
+        Object style = element.attributes().get("style");
+        if (style instanceof Map<?, ?> map) {
+            return map.get(key);
+        }
+        return null;
+    }
+
+    private static int[] intArray(Object value) {
+        if (!(value instanceof java.util.List<?> list) || list.size() != 4) {
+            return null;
+        }
+        int[] borders = new int[4];
+        for (int index = 0; index < 4; index++) {
+            borders[index] = list.get(index) instanceof Number number
+                    ? Math.max(0, number.intValue()) : 0;
+        }
+        return borders;
     }
 
     private static String anchorOf(UiDocument document) {

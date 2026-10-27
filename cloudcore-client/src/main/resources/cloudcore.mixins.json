@@ -6,6 +6,7 @@
   "client": [
     "BossHealthOverlayMixin",
     "GuiGraphicsMixin",
+    "GuiMixin",
     "MinecraftMixin",
     "MouseHandlerMixin"
   ],

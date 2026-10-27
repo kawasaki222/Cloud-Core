@@ -800,6 +800,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 sendDiagnostic(target);
             } else if (args[0].equalsIgnoreCase("demo-hud")) {
                 sendHudOpen(target);
+            } else if (args[0].equalsIgnoreCase("demo-hud-rpg")) {
+                sendRpgHud(target);
             } else if (args[0].equalsIgnoreCase("demo-hud-bg")) {
                 sendHudBackground(target);
             } else if (args[0].equalsIgnoreCase("demo-tooltip")) {
@@ -874,6 +876,11 @@ public final class CloudCorePlugin extends JavaPlugin
             sender.sendMessage(Component.text("Cloud Core HUD demo sent."));
             return true;
         }
+        if (args.length == 1 && args[0].equalsIgnoreCase("demo-hud-rpg")) {
+            sendRpgHud(player);
+            sender.sendMessage(Component.text("Cloud Core RPG HUD sent."));
+            return true;
+        }
         if (args.length == 1 && args[0].equalsIgnoreCase("demo-hud-bg")) {
             sendHudBackground(player);
             sender.sendMessage(Component.text("Cloud Core HUD background demo sent."));
@@ -944,6 +951,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("close")
                 || action.equalsIgnoreCase("diagnostic")
                 || action.equalsIgnoreCase("demo-hud")
+                || action.equalsIgnoreCase("demo-hud-rpg")
                 || action.equalsIgnoreCase("demo-tooltip")
                 || action.equalsIgnoreCase("demo-hud-bg")
                 || action.equalsIgnoreCase("demo-container")
@@ -1196,6 +1204,100 @@ public final class CloudCorePlugin extends JavaPlugin
             }
         }, 1L);
         getLogger().info("Sent HUD UI_OPEN/UI_DEFINITION to " + player.getName());
+    }
+
+    /**
+     * A medieval RPG HUD that replaces the vanilla hearts, hunger, experience bar and hotbar.
+     *
+     * <p>{@code replace} makes the client cancel those vanilla draws; {@code value_from} /
+     * {@code text_from} read live player values each frame, so no document update is needed when
+     * health or hunger changes. The textures are the generated CloudCore UI set under
+     * {@code resourcepacks/CloudCore/ui/} ({@code local:} paths).
+     */
+    private void sendRpgHud(Player player) {
+        String uiId = "cloudcore_hud_rpg";
+        int token = random.nextInt();
+        Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        session.lastUiId = uiId;
+        UiOpen open = new UiOpen(uiId, 1, SurfaceType.HUD, BindMode.PERSISTENT,
+                token, RenderMode.SURFACE_NATIVE, 0, "foreground");
+        sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
+                UiCodec.encodeOpen(open, Limits.S2C)));
+        String json = """
+                {
+                  "schema": 1,
+                  "id": "cloudcore_hud_rpg",
+                  "surface": "hud",
+                  "title": { "runs": [ { "text": "RPG HUD" } ] },
+                  "size": [200, 64],
+                  "fonts": {
+                    "alibaba": { "provider": "nanovg_ttf", "source": "local",
+                                 "id": "公共/字体/AlibabaBold.ttf" }
+                  },
+                  "surface_options": {
+                    "anchor": "bottom_center",
+                    "offset_y": -4,
+                    "replace": ["health", "food", "xp", "hotbar"]
+                  },
+                  "elements": [
+                    { "id": "panel", "type": "panel", "x": 0, "y": 0,
+                      "width": 200, "height": 64,
+                      "style": { "background": "local:ui/hud_panel.png",
+                                 "nine_slice": [16, 16, 16, 16] } },
+
+                    { "id": "hp_key", "type": "label", "x": 10, "y": 3,
+                      "text": "生命", "font": "alibaba", "color": "#FFE8C98A" },
+                    { "id": "hp_text", "type": "label", "x": 34, "y": 3,
+                      "text": "", "text_from": "health", "font": "alibaba",
+                      "color": "#FFFFEDD0" },
+                    { "id": "hp_bar", "type": "progress", "x": 10, "y": 13,
+                      "width": 84, "height": 8,
+                      "value_from": "health",
+                      "texture_fill": "local:ui/hp_fill.png",
+                      "style": { "background": "#FF140C0C" } },
+
+                    { "id": "food_key", "type": "label", "x": 106, "y": 3,
+                      "text": "饱食", "font": "alibaba", "color": "#FFE8C98A" },
+                    { "id": "food_text", "type": "label", "x": 130, "y": 3,
+                      "text": "", "text_from": "food", "font": "alibaba",
+                      "color": "#FFFFEDD0" },
+                    { "id": "food_bar", "type": "progress", "x": 106, "y": 13,
+                      "width": 84, "height": 8,
+                      "value_from": "food",
+                      "texture_fill": "local:ui/food_fill.png",
+                      "style": { "background": "#FF140C0C" } },
+
+                    { "id": "xp_bar", "type": "progress", "x": 10, "y": 25,
+                      "width": 180, "height": 5,
+                      "value_from": "xp",
+                      "texture_fill": "local:ui/xp_fill.png",
+                      "style": { "background": "#FF0A1218" } },
+                    { "id": "lvl_key", "type": "label", "x": 10, "y": 33,
+                      "text": "等级", "font": "alibaba", "color": "#FFE8C98A" },
+                    { "id": "lvl_value", "type": "label", "x": 34, "y": 33,
+                      "text": "", "text_from": "level", "font": "alibaba",
+                      "color": "#FFFFEDD0" },
+                    { "id": "xp_text", "type": "label", "x": 158, "y": 33,
+                      "text": "", "text_from": "xp", "font": "alibaba",
+                      "color": "#FF9FD3D8" },
+
+                    { "id": "hotbar", "type": "hotbar", "x": 19, "y": 44,
+                      "slots": 9, "cell": 18, "gap": 0, "show_counts": true,
+                      "style": { "slot": "#C0181C22",
+                                 "slot_border": "#FF8E7434",
+                                 "selected": "#FFFFD479" } }
+                  ]
+                }
+                """;
+        UiDefinition definition = new UiDefinition(uiId, 1, 0,
+                json.getBytes(StandardCharsets.UTF_8));
+        getServer().getScheduler().runTaskLater(this, () -> {
+            if (player.isOnline()) {
+                sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
+                        UiCodec.encodeDefinition(definition, Limits.S2C)));
+            }
+        }, 1L);
+        getLogger().info("Sent RPG HUD to " + player.getName());
     }
 
     private void sendDiagnostic(Player player) {
