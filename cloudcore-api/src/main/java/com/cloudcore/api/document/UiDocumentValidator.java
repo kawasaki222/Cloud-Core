@@ -23,7 +23,10 @@ public final class UiDocumentValidator {
     private static final Set<String> KNOWN_ELEMENT_TYPES = Set.of(
             "panel", "row", "column", "grid", "scroll", "overlay",
             "label", "image", "button", "icon_button", "text_field", "checkbox",
-            "slider", "progress", "inventory_grid", "item_icon", "spacer");
+            "slider", "progress", "inventory_grid", "item_icon", "spacer",
+            // Drawn by the client's HUD adapter with the player's live inventory, so the
+            // builder itself emits nothing for it.
+            "hotbar");
     private static final Set<String> PROGRESS_DIRECTIONS = Set.of("left", "right", "up", "down");
     private static final Set<String> TEXT_FIELD_FILTERS =
             Set.of("printable", "digits", "numeric", "alnum", "none", "any");

@@ -250,7 +250,13 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   保留解析结果类型（`value` 以数字下发），未解析的占位符下发空串；
   `PageLoaderTest.attributesKeepTheTypeOfAWholePlaceholder` 覆盖。客户端 `number()` 同时接受
   字符串数字，`DocumentRenderListBuilderTest` 覆盖数字与带引号两种输入。
-  拖动、`min`/`max`/`step`、`live` 未实现。
+  拖动、`min`/`max`/`step`、`live` 已实现（`Sliders` + `CloudScreen.mouseDragged/mouseReleased`），
+  并在 `slider_demo` 页真机验证：拖动 `dpi_slider`（`min 0 / max 100 / step 5 / live true`）时
+  同一秒内连续上报 6 次 `EVENT ... element=dpi_slider`，证明 `live` 生效；`offset_slider`
+  （`min -10 / max 10 / step 1`）保存为 `offset=-7.0`，落在步进网格上，证明负区间与 `step` 吸附；
+  `dpi` 收敛在 `0.0` 下界，证明区间钳制。`SlidersTest` 覆盖区间换算、步进吸附、退化区间与
+  负区间；`amount`（0..1 比例）与 `value`（真实数值）同时随 `change` 上报。
+  未验证：极小窗口下的拖动精度、`live` 高频上报被事件限流丢弃中间值后的最终值一致性。
 - **scroll / hover 事件已核实**：`/cloudcore page scroll_demo` 中滚轮 3 格依次上报
   `EVENT ... element=list`，服务端得到 `state={offset=12.0}`、`24.0`、`36.0`——每一步都基于
   服务端保存的绝对偏移累加，说明文档 `scroll_y` 与客户端本地增量的合成正确；滚动后点击
@@ -456,9 +462,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **存储**：JSON 文件实现已验证；SQLite/MySQL、连接池、迁移未实现。
 - **占位符**：PlaceholderAPI 一次性展开已验证；`interval`/`tick`/`event` 周期刷新、预算、异步白名单、
   `${placeholder:...}` 形式未实现。
-- **控件/样式剩余**：滑块拖动与 `min`/`max`/`step`/`live`、`pressed` 态、`text_field` 的 `padding`
+- **控件/样式剩余**：`pressed` 态、`text_field` 的 `padding`
   补偿/光标与选区颜色/清除按钮、`progress` 的九宫格/圆角/分段、Boss 标题字体与多条堆叠、
-  `tooltip_scroll` 回传。
+  `tooltip_scroll` 回传。（滑块拖动与 `min`/`max`/`step`/`live` 已实现，见上。）
 - **附属 API 剩余**：`SurfaceProvider`、`setState`/`getState`、事件监听、testkit。
 - **M3 剩余**：依赖图增量编译/内容哈希去重。
 - **互操作与性能**：与 REI/EMI、其他 Tooltip/物品栏模组的共存矩阵未测；NanoVG FBO 的帧率与

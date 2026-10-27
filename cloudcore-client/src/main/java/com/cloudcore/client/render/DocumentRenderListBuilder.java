@@ -199,7 +199,10 @@ public final class DocumentRenderListBuilder {
                 int w = width > 0 ? width : parentWidth;
                 int h = height > 0 ? height : 8;
                 addFill(commands, x, y, w, h, 0xFF202020);
-                double value = Math.max(0.0, Math.min(1.0, number(attribute(element, "value"), 0.0)));
+                double min = number(attribute(element, "min"), 0.0);
+                double max = Sliders.maxOrDefault(min, number(attribute(element, "max"), 1.0));
+                double value = Sliders.fraction(number(attribute(element, "value"), min),
+                        min, max);
                 int filled = (int) Math.round(w * value);
                 if (filled > 0) {
                     addFill(commands, x, y, filled, h, 0xFF4FA3E8);

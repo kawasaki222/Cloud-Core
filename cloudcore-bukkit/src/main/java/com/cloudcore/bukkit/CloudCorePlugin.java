@@ -96,7 +96,7 @@ public final class CloudCorePlugin extends JavaPlugin
     /** Demo pages copied into {@code plugins/CloudCore/pages/} when missing. */
     private static final java.util.List<String> DEMO_PAGES = java.util.List.of(
             "example", "shop", "progress_demo", "scroll_demo", "actions_demo", "papi_demo",
-            "rpg_hud", "inventory_skin");
+            "rpg_hud", "inventory_skin", "slider_demo");
     private final com.cloudcore.bukkit.api.CloudCoreApi api = new Api();
 
     @Override

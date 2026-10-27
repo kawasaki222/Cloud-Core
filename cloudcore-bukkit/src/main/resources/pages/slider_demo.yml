@@ -1,0 +1,100 @@
+# 滑块演示：数值区间、步进、拖动实时上报。
+# 用法：/cloudcore page slider_demo
+schema: 1
+id: slider_demo
+surface: custom_screen
+title: "滑块演示"
+theme: dark
+size: [320, 200]
+
+elements:
+  - id: bg
+    type: panel
+    x: 0
+    y: 0
+    width: "fill"
+    height: "fill"
+    style:
+      background: "#EE10161E"
+
+  - id: title
+    type: label
+    x: 16
+    y: 10
+    text: "滑块演示"
+    color: "#FFFFE8C9"
+
+  # 0..1 连续滑块：拖到哪就是哪个比例，释放后上报。
+  - id: ratio_label
+    type: label
+    x: 16
+    y: 34
+    text: "比例：${state.ratio}"
+    color: "#FFB8F0FF"
+  - id: ratio_slider
+    type: slider
+    x: 16
+    y: 48
+    width: 280
+    height: 6
+    value: "${state.ratio}"
+    on:
+      change:
+        - action: set_state
+          key: ratio
+          value: "${amount}"
+
+  # 0..100 / step 5 滑块：value 用真实刻度，客户端按 min/max 换算成比例画轨道；
+  # live: true 让拖动过程中连续上报，否则只在释放时上报一次。
+  - id: dpi_label
+    type: label
+    x: 16
+    y: 76
+    text: "DPI：${state.dpi}"
+    color: "#FFB8F0FF"
+  - id: dpi_slider
+    type: slider
+    x: 16
+    y: 90
+    width: 280
+    height: 6
+    min: 0
+    max: 100
+    step: 5
+    live: true
+    value: "${state.dpi}"
+    on:
+      change:
+        - action: set_state
+          key: dpi
+          value: "${value}"
+
+  # -10..10 / step 1 滑块：0 居中，用来验证负区间。
+  - id: offset_label
+    type: label
+    x: 16
+    y: 118
+    text: "偏移：${state.offset}"
+    color: "#FFB8F0FF"
+  - id: offset_slider
+    type: slider
+    x: 16
+    y: 132
+    width: 280
+    height: 6
+    min: -10
+    max: 10
+    step: 1
+    value: "${state.offset}"
+    on:
+      change:
+        - action: set_state
+          key: offset
+          value: "${value}"
+
+  - id: hint
+    type: label
+    x: 16
+    y: 160
+    text: "拖动滑块；松开后服务端保存数值"
+    color: "#FF8FD0A0"

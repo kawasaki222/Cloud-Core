@@ -46,6 +46,12 @@ public final class CloudScreen extends Screen {
     private UiElement hoverEventElement;
     private String focusId;
     private boolean closed;
+    /** Non-null while a slider is being dragged; cleared on release. */
+    private SliderDrag sliderDrag;
+
+    /** Drag bookkeeping for one slider: which element, which action, and its track geometry. */
+    private record SliderDrag(String elementId, int actionId, int trackX, int trackWidth) {
+    }
 
     public CloudScreen(UiDocument document) {
         this(document, () -> {
@@ -454,6 +460,77 @@ public final class CloudScreen extends Screen {
         }
     }
 
+    /**
+     * Reports a slider position as the {@code amount} fraction plus the resolved {@code value}.
+     * {@code amount} stays {@code 0..1} so existing actions keep working; {@code value} carries
+     * the document's {@code min}/{@code max}/{@code step} mapping for pages that need the real
+     * number.
+     */
+    private void reportSlider(SliderDrag drag, double mouseX, boolean dragging) {
+        UiElement element = null;
+        for (UiElement candidate : document.elements()) {
+            if (candidate.id().equals(drag.elementId())) {
+                element = candidate;
+                break;
+            }
+        }
+        if (element == null) {
+            return;
+        }
+        double amount = Math.max(0.0, Math.min(1.0,
+                (mouseX - drag.trackX()) / Math.max(1, drag.trackWidth())));
+        double min = number(element, "min", 0.0);
+        double max = com.cloudcore.client.render.Sliders.maxOrDefault(min,
+                number(element, "max", 1.0));
+        double step = com.cloudcore.client.render.Sliders.stepOrDefault(
+                number(element, "step", 0.0));
+        double value = com.cloudcore.client.render.Sliders.value(amount, min, max, step);
+        // Without live reporting the drag stays local and only the release reaches the server.
+        if (dragging && !truthy(element.attributes().get("live"))) {
+            return;
+        }
+        com.cloudcore.client.CloudCoreClient.sendEvent(document.id(), drag.elementId(),
+                drag.actionId(), Map.of(
+                        "amount", new WireValue.DoubleValue(amount),
+                        "value", new WireValue.DoubleValue(value)));
+    }
+
+    private static double number(UiElement element, String key, double fallback) {
+        Object value = element.attributes().get(key);
+        if (value instanceof Number numeric) {
+            return numeric.doubleValue();
+        }
+        if (value instanceof String text) {
+            try {
+                return Double.parseDouble(text.trim());
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
+    }
+
+    @Override
+    public boolean mouseDragged(net.minecraft.client.input.MouseButtonEvent event,
+            double dragX, double dragY) {
+        if (sliderDrag != null) {
+            reportSlider(sliderDrag, event.x(), true);
+            return true;
+        }
+        return super.mouseDragged(event, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
+        if (sliderDrag != null && event.button() == 0) {
+            // Final position always goes out, so a non-live slider still commits on release.
+            reportSlider(sliderDrag, event.x(), false);
+            sliderDrag = null;
+            return true;
+        }
+        return super.mouseReleased(event);
+    }
+
     @Override
     public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
         // Right click prefers an element that declares right_click and falls back to click,
@@ -471,17 +548,16 @@ public final class CloudScreen extends Screen {
             activate(hit, event.button(), event.hasShiftDown(), eventName);
             return true;
         }
-        // Sliders report the clicked fraction; the server decides what it means.
+        // Sliders report the clicked fraction; the server decides what it means. The press also
+        // starts a drag so the knob follows the cursor while the button stays down.
         for (LayoutBoxes.Box box : LayoutBoxes.ofType(document, width, height, "slider")) {
             if (event.x() >= box.x() && event.x() < box.x() + box.width()
                     && event.y() >= box.y() - 2 && event.y() < box.y() + box.height() + 2) {
                 Integer actionId = box.element().events().get("change");
                 if (actionId != null) {
-                    double amount = Math.max(0.0, Math.min(1.0,
-                            (event.x() - box.x()) / Math.max(1, box.width())));
-                    com.cloudcore.client.CloudCoreClient.sendEvent(document.id(),
-                            box.element().id(), actionId,
-                            Map.of("amount", new WireValue.DoubleValue(amount)));
+                    sliderDrag = new SliderDrag(box.element().id(), actionId, box.x(),
+                            box.width());
+                    reportSlider(sliderDrag, event.x(), false);
                     return true;
                 }
             }
