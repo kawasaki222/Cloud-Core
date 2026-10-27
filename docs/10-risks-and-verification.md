@@ -442,13 +442,27 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 
 仍未验证：
 
-- NanoVG：填充/图片/合成已在 Windows 验证（opt-in）；文字仍走原版 `Font`，未接 NanoVG 字体；
-  U30 预乘 alpha、U31 状态隔离、Linux/macOS 未测；默认后端仍是 `NativeBackend`。
-- U28–U31：Linux/macOS、FBO 屏幕合成、预乘 alpha、1.21.6 提取/绘制状态。
-- 文本整形（shaping）、Tooltip 九宫格背景、Boss 样式字段数据化。
-- `TEXTURE_REQUEST`/`TEXTURE_PUT` 代理路径、远端 GIF 真机、`ELEMENT_UPDATE`。
-- 玩家背包配方书、SQLite 持久化、PlaceholderAPI 解析。
-- `allow_player_inventory: true` 与 `InventoryDragEvent` 真机验证。
+- **平台**：全部真机验证只在 Windows 11 x64 完成；Linux/macOS 未运行。
+- **NanoVG**：填充/图片/自定义字体/FBO 合成已在 Windows（opt-in，含配置开关）验证；
+  未验证的是默认化（设备分辨率 FBO 的清晰文字）、U31 状态隔离与 Linux/macOS 的运行。
+- **文本整形（shaping）**：未实现，中文断行依赖原版字体度量。
+- **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto` 未实现；
+  客户端直连只验证了成功路径，失败注入（超时、非 https、sha256 不匹配、超大图）只有单测/代码路径。
+- **远端 GIF**：本地 GIF 已验证；`url:` 指向 GIF 的真机播放未验证。
+- **`ELEMENT_UPDATE`**：未实现（只有操作码常量），当前重发完整文档。
+- **多玩家并发**：编译页已按玩家隔离并单机复测；两个客户端同时看同一张含 `repeat` 的页面未真机验证。
+- **容器**：`allow_player_inventory: true` 与 `InventoryDragEvent` 未真机验证。
+- **玩家背包 v2**：配方书（`skinned`/`custom`）、玩家模型与状态效果未实现。
+- **存储**：JSON 文件实现已验证；SQLite/MySQL、连接池、迁移未实现。
+- **占位符**：PlaceholderAPI 一次性展开已验证；`interval`/`tick`/`event` 周期刷新、预算、异步白名单、
+  `${placeholder:...}` 形式未实现。
+- **控件/样式剩余**：滑块拖动与 `min`/`max`/`step`/`live`、`pressed` 态、`text_field` 的 `padding`
+  补偿/光标与选区颜色/清除按钮、`progress` 的九宫格/圆角/分段、Boss 标题字体与多条堆叠、
+  `tooltip_scroll` 回传。
+- **附属 API 剩余**：`SurfaceProvider`、`setState`/`getState`、事件监听、testkit。
+- **M3 剩余**：依赖图增量编译/内容哈希去重。
+- **互操作与性能**：与 REI/EMI、其他 Tooltip/物品栏模组的共存矩阵未测；NanoVG FBO 的帧率与
+  显存占用没有测量数据（只有功能正确性）。
 
 ## 3. 风险登记
 
