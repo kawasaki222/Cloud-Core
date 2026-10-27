@@ -89,8 +89,10 @@ plugins/CloudCore/
 - `logs/cloudcore-client.log`，10 MiB × 5 轮转；开发可调 `logLevel`。
 - 所有配置/协议/文档/资源/渲染/动作错误都写入日志，带 `CC-*` 错误码和上下文。
 - 服务端 `DIAGNOSTIC` 的摘要也写入同一日志；detail 只含相对路径。
-- `F10` 或 `/cloudcore-client dump` 生成 `logs/cloudcore-dump-*.zip`，包含日志、配置、系统信息、
-  最近报文头（不含 body）、最近错误；默认脱敏。
+- `F10` 或 `/cloudcore-client dump` 生成 `logs/cloudcore-dump-*.zip`，包含
+  `cloudcore-client.log`（尾部 2 MiB）、`cloudcore-client-1.log`（存在时）、`config.json`、
+  `system.txt`（系统属性与会话状态）、`frames.txt`（最近 64 条报文头：方向/操作码/长度，无 body）；
+  IPv4、用户目录、Bearer 类令牌在写入前脱敏。
 - 玩家反馈问题时优先收集诊断包，而不是只截一张报错图。
 - 细节见 `18-diagnostics.md`。
 

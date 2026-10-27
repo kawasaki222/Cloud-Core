@@ -191,10 +191,10 @@ logs/cloudcore-dump-20261026-123456.zip
 
 ## 10. 运行时控制
 
-- `/cloudcore-client log <level>`：临时调整级别。
 - `/cloudcore-client dump`：生成诊断包。
 - `/cloudcore-client reloadassets`：重载本地 `CloudCore` 资源目录（等同 F9）。
-- 快捷键默认：`F9` 重载资源，`F10` 生成诊断包；都可在客户端配置中改或解绑。
+- `/cloudcore-client log <level>`：计划中；当前用 log4j 配置或启动参数调整级别。
+- 快捷键默认：`F9` 重载资源，`F10` 生成诊断包；在“选项 → 控制 → Cloud Core”里可改键或解绑。
 - 若 Fabric 客户端命令 API 不可用，退化为纯快捷键 + 配置文件。
 
 ## 11. 脱敏规则

@@ -477,9 +477,14 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `tooltip_scroll` 回传。（滑块拖动与 `min`/`max`/`step`/`live` 已实现，见上。）
 - **附属 API 剩余**：`SurfaceProvider`、`setState`/`getState`、事件监听、testkit。
 - **M3 剩余**：依赖图增量编译/内容哈希去重。
-- **客户端快捷键/命令未实现**：`docs/17`、`docs/18`、`docs/05` 描述的 `F9` 重载本地资源、
-  `F10` 诊断包与 `/cloudcore-client reloadassets|dump` 尚未在客户端注册；当前替换本地贴图
-  只能重启客户端（`LocalTextureRegistry` 按路径永久缓存）。已记入 `TODO_HANDOFF.md`。
+- **F9 重载与 F10 诊断包（2026-10-27 已核实）**：替换 `hud_panel.png` 后画面保持旧贴图
+  （`LocalTextureRegistry` 按路径缓存），按 `F9` 后同一进程内立即生效（`f9-stale.png` /
+  `f9-after.png`，日志 `Local CloudCore assets reloaded`）；`F10` 生成 `logs/cloudcore-dump-*.zip`
+  （system/config/log 尾/
+  最近 64 条报文头），聊天栏给出相对文件名；`ClientDumpTest`、`FrameLogTest` 覆盖脱敏与环形缓冲。
+  遗留：每次 `F9` 重新 `nvgCreateFontMem`，旧字体对象要等 NanoVG context 删除才释放，连续重载
+  会小幅增长；`/cloudcore-client reloadassets|dump` 复用同一实现，但未在聊天里逐条执行验证；
+  `/cloudcore-client log <level>` 与 `F3` 调试叠加层未实现；Linux/macOS 未验证。
 - **互操作与性能**：与 REI/EMI、其他 Tooltip/物品栏模组的共存矩阵未测；NanoVG FBO 的帧率与
   显存占用没有测量数据（只有功能正确性）。
 - **原生崩溃（未定位，帧不在本项目代码）**：开发客户端偶发

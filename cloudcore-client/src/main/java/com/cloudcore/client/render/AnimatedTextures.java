@@ -100,6 +100,15 @@ public final class AnimatedTextures {
         return CACHE.size();
     }
 
+    /** Releases every frame texture and forgets the decodes so an edited GIF is re-read. */
+    public static void reset() {
+        var manager = Minecraft.getInstance().getTextureManager();
+        for (Animation animation : CACHE.values()) {
+            animation.frames.forEach(manager::release);
+        }
+        CACHE.clear();
+    }
+
     private static Animation decode(String key, byte[] bytes) {
         try (ImageInputStream input = ImageIO.createImageInputStream(
                 new ByteArrayInputStream(bytes))) {

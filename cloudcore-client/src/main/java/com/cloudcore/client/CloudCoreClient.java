@@ -62,6 +62,8 @@ public final class CloudCoreClient implements ClientModInitializer {
             new java.util.concurrent.atomic.AtomicBoolean();
 
     private static SurfaceRegistry surfaceRegistry;
+    /** The single initializer instance; diagnostics needs its session maps. */
+    private static CloudCoreClient instance;
     private final FragmentAssembler assembler = new FragmentAssembler(Limits.S2C);
     private static final java.util.concurrent.atomic.AtomicInteger EVENT_REQUEST_ID =
             new java.util.concurrent.atomic.AtomicInteger();
@@ -73,6 +75,7 @@ public final class CloudCoreClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        instance = this;
         ClientLogFile.install();
         // Config first: the backend selector reads the system properties it may set.
         ClientConfig config = ClientConfig.load(net.fabricmc.loader.api.FabricLoader
@@ -104,6 +107,7 @@ public final class CloudCoreClient implements ClientModInitializer {
 
         ClientPlayNetworking.registerGlobalReceiver(CloudFramePayload.TYPE,
                 (payload, context) -> handlePayload(payload));
+        ClientHotkeys.register();
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             resetSessionState("join");
@@ -147,6 +151,7 @@ public final class CloudCoreClient implements ClientModInitializer {
                 }
                 frame = complete.get();
             }
+            FrameLog.record("S2C", frame.opcode(), frame.bodyLength(), System.currentTimeMillis());
             dispatch(frame);
         } catch (ProtocolException exception) {
             LOGGER.warn("Dropped malformed frame from server: {}", exception.getMessage());
@@ -502,8 +507,48 @@ public final class CloudCoreClient implements ClientModInitializer {
                 Integer.toHexString(hello.features()), hello.locale());
     }
 
+    /**
+     * Builds the sanitised dump described in docs/17. Kept here so it can read the session
+     * state (handshake, pending opens) without exposing setters.
+     *
+     * @return the zip, or {@code null} when writing failed (reason logged)
+     */
+    static java.nio.file.Path writeDiagnostics() {
+        Minecraft minecraft = Minecraft.getInstance();
+        java.nio.file.Path logs = minecraft.gameDirectory.toPath().resolve("logs");
+        java.nio.file.Path config = FabricLoader.getInstance().getConfigDir()
+                .resolve("cloudcore-client.json");
+        java.util.Map<String, String> state = new java.util.LinkedHashMap<>();
+        state.put("cloudcore", modVersion());
+        state.put("minecraft", FabricLoader.getInstance().getModContainer("minecraft")
+                .map(container -> container.getMetadata().getVersion().getFriendlyString())
+                .orElse("?"));
+        state.put("fabric_loader", FabricLoader.getInstance().getModContainer("fabricloader")
+                .map(container -> container.getMetadata().getVersion().getFriendlyString())
+                .orElse("?"));
+        state.put("nanovg", Boolean.toString(Boolean.getBoolean("cloudcore.nanovg")));
+        state.put("handshake", Boolean.toString(handshakeComplete));
+        CloudCoreClient current = instance;
+        state.put("pending_opens",
+                Integer.toString(current == null ? 0 : current.pendingOpens.size()));
+        state.put("open_requests",
+                Integer.toString(current == null ? 0 : current.openRequests.size()));
+        state.put("gui_scale", Integer.toString(minecraft.getWindow().getGuiScale()));
+        state.put("gui_size", minecraft.getWindow().getGuiScaledWidth() + "x"
+                + minecraft.getWindow().getGuiScaledHeight());
+        try {
+            return ClientDump.write(logs, config, FrameLog.snapshot(), state,
+                    System.currentTimeMillis());
+        } catch (java.io.IOException exception) {
+            LOGGER.error("[CC-DIAG-001] writing diagnostics dump failed", exception);
+            return null;
+        }
+    }
+
     private static void sendFrame(Frame frame) {
         try {
+            FrameLog.record("C2S", frame.opcode(), frame.bodyLength(),
+                    System.currentTimeMillis());
             Frame outbound = FrameCodec.compressIfUseful(frame);
             int fragmentId = Fragmenter.randomFragmentId(java.util.concurrent.ThreadLocalRandom.current());
             for (Frame part : Fragmenter.fragment(outbound, Limits.C2S, fragmentId)) {

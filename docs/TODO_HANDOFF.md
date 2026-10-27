@@ -114,8 +114,9 @@ docs/
 - [ ] Boss 剩余：标题字体/阴影/对齐、多条堆叠与间距
 - [x] Container 面板：NEXT_CONTAINER 绑定的箱子换背景，原版槽位保留（真机截图验证）
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
-- [ ] 客户端快捷键与命令：`F9` 重载本地资源、`F10` 诊断包、
-      `/cloudcore-client reloadassets|dump`（docs/17、docs/18 已按设计描述，客户端尚未注册）
+- [x] 客户端快捷键：`F9` 重载本地资源、`F10` 诊断包（真机验证：贴图热替换、zip 内容、聊天提示）
+- [ ] 客户端命令：`/cloudcore-client reloadassets|dump` 已注册但未在聊天执行验证；
+      `log <level>` 与 F3 调试叠加层未实现
 - [x] M2 渲染：NanoVG 后端、裁剪/滚动偏移（原生 + NanoVG 真机验证）
 - [x] 滚轮滚动：光标下 `scroll` 元素的本地偏移与钳制（真机验证 + 单元测试）
 - [x] `panel`/`button` 的背景贴图与九宫格；标签富文本按段着色

@@ -62,6 +62,19 @@ public final class LocalTextureRegistry {
     }
 
     /**
+     * Releases every texture loaded from the CloudCore folder and forgets both hits and
+     * failures, so the next draw re-reads the files. Called by {@code F9}.
+     */
+    public static void reset() {
+        var manager = Minecraft.getInstance().getTextureManager();
+        for (Identifier identifier : CACHE.values()) {
+            manager.release(identifier);
+        }
+        CACHE.clear();
+        FAILED.clear();
+    }
+
+    /**
      * Reads the raw file for backends that decode images themselves (NanoVG). The same root
      * containment and size checks apply.
      */

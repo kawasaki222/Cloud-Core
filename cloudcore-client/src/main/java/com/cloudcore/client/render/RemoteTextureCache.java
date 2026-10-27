@@ -140,6 +140,12 @@ public final class RemoteTextureCache {
         }
     }
 
+    /** Drops downloaded textures so the next draw re-requests them ({@code F9}). */
+    public static void reload() {
+        CACHE.clear();
+        GENERATION.incrementAndGet();
+    }
+
     /** Test hook: drops the cache so each test starts clean. */
     static void clear() {
         CACHE.clear();

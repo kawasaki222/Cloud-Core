@@ -44,6 +44,14 @@ public final class NanoVgBackend implements RenderBackend, RenderList.VectorText
     private NVGPaint paint;
     /** Scratch for {@code nvgTextBounds}, which returns the advance width. */
     private final float[] textBounds = new float[4];
+    /**
+     * Bumped by {@code F9}. Each backend instance notices on its next frame and drops its
+     * image handles and font ids, which is the only way to re-read edited files: NanoVG
+     * caches both inside the context.
+     */
+    private static final java.util.concurrent.atomic.AtomicLong ASSET_GENERATION =
+            new java.util.concurrent.atomic.AtomicLong();
+    private long seenAssetGeneration = Long.MIN_VALUE;
 
     public NanoVgBackend() {
         color = NVGColor.create();
@@ -114,9 +122,34 @@ public final class NanoVgBackend implements RenderBackend, RenderList.VectorText
             // so the scene is flipped before compositing.
             NanoVG.nvgTranslate(this.context, 0.0f, context.height());
             NanoVG.nvgScale(this.context, 1.0f, -1.0f);
+            syncAssets();
         } catch (RuntimeException exception) {
             fail("beginFrame failed: " + exception.getMessage());
         }
+    }
+
+    /** Marks every live backend as stale; the next frame reloads images and fonts. */
+    public static void invalidateAssets() {
+        ASSET_GENERATION.incrementAndGet();
+    }
+
+    private void syncAssets() {
+        long current = ASSET_GENERATION.get();
+        if (current == seenAssetGeneration) {
+            return;
+        }
+        seenAssetGeneration = current;
+        for (int handle : imageHandles.values()) {
+            if (handle != 0) {
+                NanoVG.nvgDeleteImage(context, handle);
+            }
+        }
+        imageHandles.clear();
+        imageSizes.clear();
+        // Font ids point into the old buffers; re-attaching clears the table so the next
+        // resolve reads the file again. NanoVG keeps the old font objects until the context
+        // is deleted, so repeated reloads grow memory slightly (see docs/10).
+        fonts.attach(context);
     }
 
     @Override
