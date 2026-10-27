@@ -424,6 +424,12 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   子元素裁剪到 200×80 的框内；原生后端（`scroll-native.png`）与 NanoVG 后端
   （`scroll-nanovg.png`）显示一致。嵌套裁剪由 `ClipPush`/`ClipPop` 的交集实现。
   本地滚轮滚动尚未接入。
+- **RPG HUD 面板九宫格对称（2026-10-27）**：新面板源图 384×256，边框四边均 24px（源
+  1536×1024）/缩放后 6px 纯色 + 2px 过渡，`nine_slice: [6,6,6,6]`；游戏内截图
+  `panel-p5wide.png` 实测框线 12px（GUI scale 2），四面差值 0，此前“上下粗细不一致”的表现消失。
+  生成侧结论：同一提示词下方形 1024² 的四边框厚可做到完全一致（`hud-art5/p5a.png` 8/8/8/8），
+  非方形 1536×1024 也支持（`p5wide.png` 24/24/24/24）；边框必须贴边，内嵌细线（`p5c.png`）
+  进入九宫格后会随中间条带拉伸，不可用。
 - **HUD 稳态零分配（2026-10-27）**：`HudValues` 每帧把实时数值写回文档，原先即使数值
   未变也会重建元素与属性表。现在只复制真正变化的元素，其余元素与原文档共享实例；
   `HudValuesTest` 断言数值不变时返回同一文档、变化时只替换对应元素、`text_from` 保留来源键。
@@ -471,6 +477,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `tooltip_scroll` 回传。（滑块拖动与 `min`/`max`/`step`/`live` 已实现，见上。）
 - **附属 API 剩余**：`SurfaceProvider`、`setState`/`getState`、事件监听、testkit。
 - **M3 剩余**：依赖图增量编译/内容哈希去重。
+- **客户端快捷键/命令未实现**：`docs/17`、`docs/18`、`docs/05` 描述的 `F9` 重载本地资源、
+  `F10` 诊断包与 `/cloudcore-client reloadassets|dump` 尚未在客户端注册；当前替换本地贴图
+  只能重启客户端（`LocalTextureRegistry` 按路径永久缓存）。已记入 `TODO_HANDOFF.md`。
 - **互操作与性能**：与 REI/EMI、其他 Tooltip/物品栏模组的共存矩阵未测；NanoVG FBO 的帧率与
   显存占用没有测量数据（只有功能正确性）。
 - **原生崩溃（未定位，帧不在本项目代码）**：开发客户端偶发
