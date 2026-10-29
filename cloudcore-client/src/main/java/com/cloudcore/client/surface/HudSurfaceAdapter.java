@@ -79,12 +79,7 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
         private volatile UiDocument document;
         private volatile Priority priority = Priority.OVERLAY;
         private RenderList cachedList = RenderList.EMPTY;
-        /** Last live document, fed back in as the baseline for the next frame's rewrite. */
-        private UiDocument cachedDocument;
-        /** Server document {@link #cachedDocument} was derived from. */
-        private UiDocument cachedSource;
-        private int cachedWidth = -1;
-        private int cachedHeight = -1;
+        private final HudLayerCache cache = new HudLayerCache();
     }
 
     @Override
@@ -177,23 +172,15 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
         // Live values change every frame, so the rewrite is fed the previous live document as
-        // its baseline. Comparing against the server document instead would look "changed" on
-        // every single frame — the server document has no live 'value' attribute at all — and
-        // rebuilt the render list (plus a log line) at the frame rate.
-        UiDocument baseline = layer.cachedSource == document && layer.cachedDocument != null
-                ? layer.cachedDocument : document;
-        UiDocument live = HudValues.apply(baseline);
-        if (layer.cachedDocument != live || layer.cachedWidth != width
-                || layer.cachedHeight != height) {
+        // its baseline; HudLayerCache also owns the "unchanged values reuse the render list"
+        // rule and is unit-tested there.
+        UiDocument live = HudValues.apply(layer.cache.baselineFor(document));
+        if (layer.cache.update(document, live, width, height)) {
             String anchor = anchorOf(document);
             int originX = originX(document, anchor, width);
             int originY = originY(document, anchor, height);
             layer.cachedList = DocumentRenderListBuilder.buildAt(live, width, height,
                     originX, originY);
-            layer.cachedDocument = live;
-            layer.cachedSource = document;
-            layer.cachedWidth = width;
-            layer.cachedHeight = height;
             LOGGER.debug("HUD layer {} ui={} origin={},{} viewport={}x{} commands={}", layerName,
                     document.id(), originX, originY, width, height,
                     layer.cachedList.commands().size());
@@ -206,7 +193,7 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
         RENDERER.render(graphics, layer.cachedList, new FrameContext(graphics, width, height,
                 minecraft.getWindow().getGuiScale(), 0.0f));
 
-        UiDocument rendered = layer.cachedDocument;
+        UiDocument rendered = layer.cache.live();
         if (rendered != null) {
             int originX = originX(rendered, anchorOf(rendered), width);
             int originY = originY(rendered, anchorOf(rendered), height);

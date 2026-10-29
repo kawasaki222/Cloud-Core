@@ -137,7 +137,7 @@ GUI 渲染改为提取/绘制两阶段；`GuiGraphics` 调用写入渲染状态�
 | U23 | 客户端直连能在 DNS/重定向层可靠阻断私网与回环 | 安全 | 安全测试用例 | 只允许预置 CDN 域名，或强制 proxy |
 | U24 | Tooltip 滚动条拖动不与滚轮/其他模组冲突 | Tooltip 交互 | 互操作测试 | 只保留滚轮，关闭拖动 |
 | U25 | Minecraft 客户端允许 `java.net.http.HttpClient` 异步下载且不触发线程/类加载问题 | 直连模式 | 最小客户端 spike | 使用独立低优先级线程池 |
-| U26 | `EditBox` 的光标/选区颜色可被安全覆盖，且不影响 IME | 输入框换皮 | 编译 + IME 测试 | 只换外框，光标/选区保持原版 |
+| U26 | `EditBox` 的光标/选区颜色可被安全覆盖，且不影响 IME | 输入框换皮 | 2026-10-29 真机截图 + 像素校验已核实（子类重写 `renderWidget`，编辑路径仍走原版） | 只用 `VarHandle` 读私有状态，不新增混入 |
 | U27 | `renderItemDecorations(Font, ...)` 可用于自定义数量字体 | 物品显示 | 编译 + 视觉 | 数量字体保持原版 |
 | U28 | `lwjgl-nanovg` 版本与 1.21.11 自带 LWJGL 对齐，三平台原生库可加载 | NanoVG 默认 | Windows x64 已验证；Linux/macOS 待测 | 回退 `NativeBackend` |
 | U29 | FBO 颜色纹理可包装成 `AbstractTexture` 并通过 `GuiGraphics.blit` 合成 | 渲染链路 | 2026-10-27 Windows x64 实测：`nvg` FBO 红色矩形经 `GUI_TEXTURED` blit 上屏 | 其余平台待测 |
@@ -269,6 +269,16 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   掩码显示，ENTER 上报 `EVENT ... element=pin_input`（`pin-focus.png`、`pin-typed.png`）。
   示例页 `name_input` 配了 normal/focused 边框，点击后同样显示焦点框（`example-focus.png`）。
   `filter` 取值与 `CC-INPUT-001/002` 写进 `03`/`18`；`Colors` 解析与 `invalid` 边框有单元测试。
+- **输入框光标色 / 选区色 / 清除按钮已核实（2026-10-29）**：示例页 `name_input` 配
+  `cursor_color: "#FFFFD479"`、`selection_color: "#804FA3E8"`、`clear_button: "builtin:white"`。
+  真机输入 `abc` 后 `Ctrl+A` 全选截图 `textfield-cursor-selection.png`：光标像素为
+  `(255,212,121)` = `#FFD479`；选区叠加色为 `(50,95,133)`，与 `#804FA3E8` 在 `(20,27,34)`
+  背景上 50% 混合一致。临时页 `verify_field`（带 `padding: [4,3,4,3]`）输入 `z` 后点清除按钮，
+  输入框变空，服务端收到 `EVENT ui=verify_field element=name`（`textfield-clear-before.png` /
+  `textfield-clear-after.png`）；同一带 padding 的字段按 ENTER 也上报 `element=name`，
+  证明按控件身份匹配的 `submit` 修复生效。实现是 `CloudEditBox extends EditBox` 重写
+  `renderWidget` + 缓存 `VarHandle`，未新增混入；`TextFieldChromeTest`、
+  `DocumentRenderListBuilderTest.textFieldClearButtonDrawsItsTextureInTheRightPadding` 覆盖几何与颜色解析。
 - **icon_button 与按钮图标已核实**：示例页的 `icon_button`（`icon: {item: minecraft:diamond}`）
   画成带背景与悬停态的物品图标按钮，点击记录 `EVENT ui=example element=gem_button`；
   “喊话”按钮的 `icon: {item: minecraft:emerald}` 画在左侧、文字右移到 `x + 21`
@@ -454,7 +464,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，221 个测试 / 45 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，270 个测试 / 54 个测试类，0 失败）。
 
 仍未验证：
 
@@ -472,10 +482,12 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **存储**：JSON 文件实现已验证；SQLite/MySQL、连接池、迁移未实现。
 - **占位符**：PlaceholderAPI 一次性展开已验证；`interval`/`tick`/`event` 周期刷新、预算、异步白名单、
   `${placeholder:...}` 形式未实现。
-- **控件/样式剩余**：`pressed` 态、`text_field` 的 `padding`
-  补偿/光标与选区颜色/清除按钮、`progress` 的九宫格/圆角/分段、Boss 标题字体与多条堆叠、
-  `tooltip_scroll` 回传。（滑块拖动与 `min`/`max`/`step`/`live` 已实现，见上。）
-- **附属 API 剩余**：`SurfaceProvider`、`setState`/`getState`、事件监听、testkit。
+- **控件/样式剩余**：文本 shaping、多条 Boss 血条堆叠与间距、`tooltip_scroll` 回传。
+  `pressed` 态、`text_field` 的 padding/光标色/选区色/清除按钮、`progress` 的九宫格/圆角/分段
+  已实现（单测 + 真机验证，见上）。
+- **附属 API**：`SurfaceProvider`、`setState`/`getState`、四类事件监听与
+  `cloudcore-api-testkit` 已实现（单测）；`registerSurfaceProvider` 的服务端生命周期尚未用
+  第二个插件真机验证。剩余：独立示例 addon 工程。
 - **M3 剩余**：依赖图增量编译/内容哈希去重。
 - **F9 重载与 F10 诊断包（2026-10-27 已核实）**：替换 `hud_panel.png` 后画面保持旧贴图
   （`LocalTextureRegistry` 按路径缓存），按 `F9` 后同一进程内立即生效（`f9-stale.png` /

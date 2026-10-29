@@ -26,6 +26,19 @@ class HudValuesTest {
     }
 
     @Test
+    void secondFrameWithTheSameValueKeepsTheLiveDocument() {
+        UiDocument document = document(element("hp", "progress",
+                Map.of("value_from", "health", "value", 0.0), List.of()));
+
+        UiDocument first = HudValues.apply(document, values(0.5, null));
+        UiDocument second = HudValues.apply(first, values(0.5, null));
+
+        assertNotSame(document, first);
+        assertSame(first, second,
+                "the previous live document is the baseline; an unchanged value must reuse it");
+    }
+
+    @Test
     void changedValueRewritesOnlyThatElement() {
         UiElement hp = element("hp", "progress",
                 Map.of("value_from", "health", "value", 0.5), List.of());

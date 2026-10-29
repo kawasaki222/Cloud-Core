@@ -1,6 +1,6 @@
 # 待办 / 交接
 
-最后更新：2026-10-28 23:55。
+最后更新：2026-10-29。
 
 ## 当前状态
 
@@ -17,10 +17,13 @@
 - 页面：YAML 单文件/`includes`/`repeat`（含嵌套）/模板；动作编译成 actionId 并只留在服务端；
   `set_state` 重编译后推送更高 revision（等值写入不推送）。
 - 客户端：六类面板 + RenderList（文字/富文本/图片/九宫格/背景贴图/裁剪/滚动/悬停/物品图标/GIF/URL 贴图/
-  滑块/复选框/输入框状态/进度条四方向含圆角分段/图标按钮/键盘焦点/pressed 态/输入框 padding）；
+  滑块/复选框/输入框状态含光标色、选区色与清除按钮/进度条四方向含圆角分段/图标按钮/键盘焦点/pressed 态/
+  输入框 padding）；
   NanoVG 后端与 FBO 合成（opt-in）；多层 Boss 血条；客户端本地面板（`match` 接管容器/血条）；
   客户端日志与诊断码。
-- 构建：`./gradlew build` 通过，250 个测试 / 50 个测试类，0 失败。
+- 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
+  `cloudcore-api-testkit`。
+- 构建：`./gradlew build` 通过，270 个测试 / 54 个测试类，0 失败。
 
 ## 已有内容
 
@@ -106,6 +109,8 @@ docs/
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
 - [x] `image` 的 `local:`/`pack:`/`builtin:` 贴图，以及 `item_icon`（原生物品、数量、缩放）（真机截图验证）
 - [x] HUD 面板：Fabric `HudElementRegistry` + 持久文档 + UI_CLOSE 清除（真机截图验证）
+- [x] HUD 回归测试：`HudLayerCache` 锁住“数值不变不重建”、视口变化重建、上一帧 live 文档作基线
+      （`HudLayerCacheTest` + `HudValuesTest`）
 - [x] Tooltip 面板：自定义背景 + 原生文本/图片（真机截图验证）
 - [x] Tooltip 滚动：`max_height` 裁剪 + 滚轮偏移 + 滚动条（真机验证）
 - [x] Tooltip 背景贴图/九宫格：`style.background` + `style.nine_slice`（真机验证，与渲染列表共用 blit）
@@ -134,7 +139,8 @@ docs/
       `filter`（含 `regex:`）、`sensitive` 掩码（真机验证 + 单测）
 - [x] `text_field` 的 `padding` 补偿：`[左,上,右,下]` 或单值，按内边距缩小 `EditBox`，
       所以文字不再贴左上角；焦点框按控件身份匹配，内缩后仍对齐元素框（单测 `InsetsTest`）
-- [ ] `text_field` 剩余：`cursor_color` / `selection_color`、清除按钮
+- [x] `text_field` 的 `cursor_color` / `selection_color` 与清除按钮：`CloudEditBox` 重写
+      `renderWidget`，不新增混入；清除按钮占右侧、控件同步收窄，点击触发 `change`（单测 + 真机验证）
 - [x] `checkbox`：`checked` 绘制 + `change{checked}` → `set_state` 往返（真机验证）
 - [x] `icon_button` 与 `button.icon`：贴图引用或 `{item, count}`，物品图标按按钮缩放（真机验证 + 单测）
 - [x] `progress`：四种方向、贴图背景/填充按进度裁剪、状态驱动（真机验证 + 单测）
@@ -155,8 +161,8 @@ docs/
 - [x] `PlaceholderResolver`：`%ns_params%` 自定义解析器（先于 PlaceholderAPI，真机验证）
 - [x] `PageProvider`：`open(player, id)` 现场构建页面（真机验证）
 - [x] 附属 API `setState`/`getState`（`CloudCoreApi`）
-- [ ] 附属 API 剩余：`registerSurfaceProvider`（`SurfaceProvider` 接口在 `server-core`，
-      未暴露到 `cloudcore-api`）、事件监听、testkit
+- [x] 附属 API：`registerSurfaceProvider`/`unregisterSurfaceProvider`（接口移至 `cloudcore-api`）、
+      四类事件监听、`cloudcore-api-testkit`（`FakeCloudCoreApi`/`DocumentAssert`/`EventCapture`）
 - [x] `scroll` 事件回传：滚轮后上报绝对偏移，`scroll_y` 由状态驱动（真机验证 + 单测 `UiElementsTest`）
 - [x] `hover_enter` / `hover_leave`：跨边界各一次，仅对声明了事件的元素（真机验证）
 - [x] `set_state` 等值保护：写入相同值不重编译推送（避免悬停/滚动到边界时抖动）
@@ -194,11 +200,6 @@ docs/
 
 ## 下一步动作（按顺序）
 
-0. **小件收尾（建议先做，成本低）**：
-   - `text_field` 的 `cursor_color` / `selection_color` 与清除按钮（当前完全没有代码）。
-   - 附属 API 的 `registerSurfaceProvider`（把 `server-core` 的 `SurfaceProvider` 暴露到
-     `cloudcore-api`）+ 事件监听 + testkit。
-   - 给 HUD 面板的“数值不变不重建”补回归测试（`HudSurfaceAdapter` 的基线比较目前只有真机验证）。
 1. **协议增量**：`ELEMENT_UPDATE`（只发改动的元素/属性，替换当前“每次状态变化重发整份文档”），
    需要服务端 diff、客户端可变的元素表与 revision 顺序测试；`Limits`、黄金向量与
    `docs/02-protocol.md` 同步。
