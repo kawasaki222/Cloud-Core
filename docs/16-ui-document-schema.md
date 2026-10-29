@@ -109,7 +109,7 @@
 | `image` | `texture`、`fit`、`tint`、`nine_slice`、`animated`、`loop`、`speed` |
 | `button` | `text`(TextRuns)、`icon`（贴图引用或 `{item, count}`）、`style`、`events` |
 | `icon_button` | `icon`、`style`、`events` |
-| `text_field` | `placeholder`、`max_length`、`filter`、`sensitive`、`invalid`、`style`、`events` |
+| `text_field` | `placeholder`、`max_length`、`filter`、`sensitive`、`invalid`、`style`（含 `padding`、`cursor_color`、`selection_color`、`clear_button`）、`events` |
 | `checkbox` | `text`(TextRuns)、`checked`、`events` |
 | `slider` | `value`（`0..1`，已实现）、`min`/`max`/`step`/`live`（计划）、`events` |
 | `progress` | `value`、`texture_bg`、`texture_fill`、`direction`（left/right/up/down）、`style` |

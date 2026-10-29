@@ -451,8 +451,8 @@ YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范�
       color: "#FFFFFFFF"
       shadow: false
     placeholder_color: "#80FFFFFF"
-    cursor_color: "#FFFFFFFF"          # 尽力支持
-    selection_color: "#804FA3E8"       # 尽力支持
+    cursor_color: "#FFFFFFFF"
+    selection_color: "#804FA3E8"
     clear_button: "local:公共/图标/clear.png"
   on:
     submit: []
@@ -479,13 +479,24 @@ YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范�
 - `style.padding`：`[左, 上, 右, 下]`（与 `nine_slice`、`fill_inset` 同一顺序），
   或写单个数字表示四边相同。客户端把输入框控件按内边距内缩，文字因此落在作者期望的位置；
   控件与元素框不再重合，焦点框仍对齐元素外框。
+- `style.cursor_color` / `style.selection_color`：光标与选区颜色，`#AARRGGBB` / `#RRGGBB`。
+  客户端用 `CloudEditBox extends EditBox` 重写 `renderWidget`，不新增混入；输入法、选区、
+  剪贴板、键盘重复仍由原版处理。未设置时分别沿用文字颜色和原版选区高亮；主题令牌（`tx:`）
+  不会被客户端解析，写了会回退原版并在诊断里可查。
+- `style.clear_button`：清除按钮的贴图引用（`local:`/`pack:`/`builtin:`/`inline:`）。
+  按钮占据元素右侧内边距，输入控件按同一宽度收窄，长文本不会压到按钮下面；点击后调用
+  `EditBox#setValue("")`，照常触发 `change`（`value` 为空串），不额外发事件。
+  贴图引用不可用时画一个 `x` 作为可点击占位；元素 `enabled: false` 时按钮不响应。
+- `submit` 现在按控件身份匹配，因此带 `padding` 的输入框也能触发 `submit`。
 
-尚未实现：`cursor_color` / `selection_color`、清除按钮。
-输入法候选窗位置由 GLFW/原版处理，不能完全自定义。
+已实现全部外观字段；输入法候选窗位置由 GLFW/原版处理，不能完全自定义。
 
 边界：
 
-- `cursor_color` / `selection_color` 需要覆盖 `EditBox` 的渲染；标记为尽力支持，不支持时回退原版并记录。
+- `cursor_color` / `selection_color` 依赖 `EditBox` 的私有状态（`displayPos`、`highlightPos`、
+  `textX`/`textY`）。客户端用缓存的 `VarHandle` 读取，不新增混入；Minecraft 升级若重命名字段，
+  会在类初始化时直接失败，而不是静默画错。
+- `clear_button` 的宽度按字段高度计算（8–14 px），设计稿需要更大按钮时请同时提高输入框高度。
 - `padding` 通过缩小控件尺寸补偿 `EditBox` 内建的文本偏移（`EditBox` 无法直接接受内边距参数）；
   单边上限 32px，超过按 32 处理，避免把可输入区域挤没。
 - 不要自己实现文本编辑；IME、选区、剪贴板、键盘重复都是长期坑。

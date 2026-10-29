@@ -124,9 +124,9 @@ final class ClientSession {
   焦点框每帧绘制：内圈取 `style.border.focused`（默认 `#FF4FA3E8`），外圈固定深色，
   深浅背景都看得见。焦点是客户端状态，不经过文档；文本输入框获得焦点时 `Tab` 交给原版控件链。
   焦点框用绝对坐标计算（与 `LayoutBoxes` 一致），滚动容器内的按钮会按未滚动位置绘制。
-- `text_field` 用原版 `EditBox` 控件：`CloudScreen.init` 按 `LayoutBoxes` 计算位置并 `addRenderableWidget`，
-  `render` 里自行绘制控件；文档只画背景。输入法/选择/剪贴板沿用原版，`change` 事件带 `value`，
-  ENTER 触发 `submit`。
+- `text_field` 用原版 `EditBox` 的子类 `CloudEditBox`：`CloudScreen.init` 按 `LayoutBoxes` 计算位置并
+  `addRenderableWidget`，`render` 里自行绘制控件；文档只画背景、边框和清除按钮。输入法/选择/剪贴板
+  沿用原版，`change` 事件带 `value`，ENTER 触发 `submit`（按控件身份匹配，带 `padding` 也生效）。
 - 断线清空全部会话，并释放 NanoVG image handle / 原生纹理。
   实现：`ClientPlayConnectionEvents.JOIN/DISCONNECT` 调用 `resetSessionState`，清空重组器、
   `pendingOpens`、`pendingDefinitions`，并 `SurfaceRegistry#reset(DISCONNECT)` 让每个面板丢弃文档
@@ -434,19 +434,23 @@ interface RenderBackend {
 
 ### 14.1 自定义输入框外观
 
-输入逻辑用原版 `EditBox`，外观由 `CloudEditBox extends EditBox` 接管：
+输入逻辑用原版 `EditBox`，`CloudEditBox extends EditBox` 只替换 `renderWidget`：
 
-- 构造时传入文档/主题的 `Font`；调用 `setBordered(false)` 关闭原生边框。
-- 背景、九宫格、边框、焦点态、错误态由外层 panel 或 `renderWidget` 绘制；文字、光标、选区、IME
-  仍由 `super` 处理。
-- `padding` 用外层布局补偿原版内建的文本偏移。
-- 占位符由我们绘制（`setHint` 置空），这样颜色和字体可配；值非空或聚焦时隐藏。
-- `invalid` 今天来自文档属性（服务端 `set_state` 后重发文档）；`ELEMENT_UPDATE` 实现后同样可以推送，切换 `border.invalid`。
-- 清除按钮是独立点击区域，点击后清空并触发 `change`。
+- 构造时传入原版 `Font`；调用 `setBordered(false)` 关闭原生边框。
+- 背景、九宫格、边框、焦点态、错误态由 `DocumentRenderListBuilder` 画；文字、光标、选区由
+  `CloudEditBox` 画。编辑行为（`charTyped`、IME、剪贴板、键盘重复）全部走 `super`，不拦截。
+- `style.cursor_color` / `style.selection_color` 是 ARGB；未设置时分别用文字颜色和原版
+  `GuiGraphics#textHighlight`。`selection_color` 设置了才改用普通 `fill`，避免覆盖原版高亮管线。
+- `EditBox` 的 `displayPos`、`highlightPos`、`textX`、`textY` 是私有字段，通过缓存的
+  `VarHandle` 读取；其余状态（可编辑、阴影、最大长度、formatter、hint、焦点时间）由覆写公开
+  setter 自行记录。这样不新增混入；Minecraft 升级重命名字段会在类初始化时失败。
+- `padding` 用外层布局补偿原版内建的文本偏移；控件与元素框不重合，焦点框仍按元素外框画。
+- 占位符仍用原版 `EditBox#setHint`（颜色跟随文字颜色）。
+- `invalid` 来自文档属性（服务端 `set_state` 后重发文档）；`ELEMENT_UPDATE` 实现后同样可以推送。
+- 清除按钮：`style.clear_button` 是贴图引用，画在元素右侧；`CloudScreen` 按同一几何把控件收窄，
+  点击优先命中按钮并 `setValue("")`，`change` 因此照常触发。贴图不可用时画 `x` 占位。
 - `sensitive: true` 时显示掩码，但 `getValue()` 仍是原文；提交时按文档声明发送。
-- `cursor_color` / `selection_color` 需要混入或重写渲染；不支持时回退原版并记录。
-- NanoVG 后端：背景、外框由 NanoVG 画，文字、光标、选区仍用原版 `EditBox` 叠在上层。
-- 绝不在 `EditBox` 之前拦截 `charTyped` 或 IME 组合事件。
+- NanoVG 后端：背景、外框由 NanoVG 画，`EditBox` 文字/光标/选区叠在上层。
 
 ## 15. 贴图与字体
 

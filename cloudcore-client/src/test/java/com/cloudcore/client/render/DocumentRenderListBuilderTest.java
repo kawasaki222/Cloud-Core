@@ -16,6 +16,31 @@ import org.junit.jupiter.api.Test;
 class DocumentRenderListBuilderTest {
 
     @Test
+    void textFieldClearButtonDrawsItsTextureInTheRightPadding() {
+        UiElement field = new UiElement("search", "text_field", 10, 10, "60", "20",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("style", Map.of("background", "#FF101010",
+                        "clear_button", "local:ui/clear.png")));
+        UiDocument document = new UiDocument(1, "demo", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("Demo"), null, 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(field));
+
+        List<RenderCommand> commands = DocumentRenderListBuilder.buildAt(document, 200, 100,
+                0, 0).commands();
+
+        RenderCommand.Image clear = commands.stream()
+                .filter(RenderCommand.Image.class::isInstance)
+                .map(RenderCommand.Image.class::cast)
+                .findFirst()
+                .orElseThrow();
+        assertEquals("local:ui/clear.png", clear.texture());
+        assertEquals(52, clear.x());
+        assertEquals(13, clear.y());
+        assertEquals(14, clear.width());
+        assertEquals(14, clear.height());
+    }
+
+    @Test
     void buildsPanelLabelAndButtonCommands() {
         UiElement label = new UiElement("label", "label", 10, 10, null, null,
                 true, true, 0, Map.of(), List.of(),

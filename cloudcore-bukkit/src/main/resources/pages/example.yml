@@ -118,6 +118,9 @@ elements:
         invalid: "#FFFF5555"
       text:
         color: "#FFFFFFFF"
+      cursor_color: "#FFFFD479"
+      selection_color: "#804FA3E8"
+      clear_button: "builtin:white"
     on:
       submit:
         - action: message

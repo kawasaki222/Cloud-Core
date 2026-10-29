@@ -237,6 +237,19 @@ public final class DocumentRenderListBuilder {
                 addFrame(commands, x, y, w, h, truthy(attribute(element, "invalid"))
                         ? color(styleBorder(element, "invalid"), DEFAULT_INVALID_BORDER)
                         : color(styleBorder(element, "normal"), 0));
+                Object clearButton = style(element, "clear_button");
+                if (clearButton instanceof String reference && !reference.isBlank()) {
+                    TextFieldChrome.ClearBar bar = TextFieldChrome.clearBar(x, y, w, h);
+                    if (isSupportedTexture(reference)) {
+                        addImage(commands, reference, bar.x(), bar.y(), bar.size(), bar.size());
+                    } else {
+                        // An unusable reference still leaves a clickable affordance; the click
+                        // itself is handled by CloudScreen, not by this list.
+                        addText(commands, "x", bar.x() + Math.max(1, (bar.size() - 5) / 2),
+                                bar.y() + Math.max(1, (bar.size() - 8) / 2),
+                                color(styleText(element), DEFAULT_TEXT));
+                    }
+                }
                 childWidth = w;
                 childHeight = h;
             }

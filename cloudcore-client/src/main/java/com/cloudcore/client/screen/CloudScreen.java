@@ -9,6 +9,7 @@ import com.cloudcore.client.render.ElementHitTester;
 import com.cloudcore.client.render.FrameContext;
 import com.cloudcore.client.render.RenderList;
 import com.cloudcore.client.render.ScrollTargets;
+import com.cloudcore.client.render.TextFieldChrome;
 import com.cloudcore.protocol.WireValue;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -95,13 +96,21 @@ public final class CloudScreen extends Screen {
             UiElement element = box.element();
             // EditBox draws its text flush against its own left edge, so the padding is
             // subtracted from the widget instead of drawn by us: the content lands where the
-            // page author asked for it.
+            // page author asked for it. The clear button owns a strip on the right, so the
+            // widget stops before it and typed text cannot slide underneath.
             int[] inset = padding(element);
+            int clearStrip = TextFieldChrome.hasClearButton(element)
+                    ? TextFieldChrome.clearBar(box.x(), box.y(), box.width(), box.height()).size()
+                            + 6
+                    : 0;
             int fieldX = box.x() + inset[0];
             int fieldY = box.y() + inset[1];
-            int fieldW = Math.max(20, box.width() - inset[0] - inset[2]);
+            int fieldW = Math.max(20, box.width() - inset[0] - inset[2] - clearStrip);
             int fieldH = Math.max(12, box.height() - inset[1] - inset[3]);
-            EditBox edit = new EditBox(font, fieldX, fieldY, fieldW, fieldH, Component.empty());
+            CloudEditBox edit = new CloudEditBox(font, fieldX, fieldY, fieldW, fieldH,
+                    Component.empty());
+            edit.setCursorColor(TextFieldChrome.cursorColor(element));
+            edit.setSelectionColor(TextFieldChrome.selectionColor(element));
             edit.setBordered(false);
             edit.setEditable(element.enabled());
             edit.setMaxLength(maxLength(element));
@@ -215,15 +224,15 @@ public final class CloudScreen extends Screen {
     @Override
     public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
         if (event.isConfirmation() && getFocused() instanceof EditBox edit) {
-            for (LayoutBoxes.Box box : LayoutBoxes.ofType(document, width, height,
-                    "text_field")) {
-                Integer submitId = box.element().events().get("submit");
-                if (submitId != null && box.x() == edit.getX() && box.y() == edit.getY()) {
-                    com.cloudcore.client.CloudCoreClient.sendEvent(document.id(),
-                            box.element().id(), submitId,
-                            Map.of("value", new WireValue.StringValue(edit.getValue())));
-                    return true;
-                }
+            // Match by widget identity: padding insets the widget, so comparing coordinates
+            // misses every padded field.
+            LayoutBoxes.Box box = textFieldBoxes.get(edit);
+            Integer submitId = box == null ? null : box.element().events().get("submit");
+            if (submitId != null) {
+                com.cloudcore.client.CloudCoreClient.sendEvent(document.id(),
+                        box.element().id(), submitId,
+                        Map.of("value", new WireValue.StringValue(edit.getValue())));
+                return true;
             }
         }
         // Keyboard focus for buttons: Tab (or the arrows) cycles, Enter/Space activates.
@@ -568,6 +577,9 @@ public final class CloudScreen extends Screen {
 
     @Override
     public boolean mouseClicked(net.minecraft.client.input.MouseButtonEvent event, boolean doubleClick) {
+        if (event.button() == 0 && clearTextFieldAt((int) event.x(), (int) event.y())) {
+            return true;
+        }
         // Right click prefers an element that declares right_click and falls back to click,
         // so a button can offer a secondary action without losing its primary one.
         boolean rightClick = event.button() == 1;
@@ -615,6 +627,31 @@ public final class CloudScreen extends Screen {
             }
         }
         return super.mouseClicked(event, doubleClick);
+    }
+
+    /**
+     * The clear button belongs to the document, not to the vanilla widget, so it is hit-tested
+     * here first: {@code EditBox} would otherwise claim the click as a caret placement.
+     * Clearing goes through {@link EditBox#setValue}, which fires the {@code change} responder.
+     */
+    private boolean clearTextFieldAt(int mouseX, int mouseY) {
+        for (Map.Entry<EditBox, LayoutBoxes.Box> entry : textFieldBoxes.entrySet()) {
+            UiElement element = entry.getValue().element();
+            if (!element.enabled() || !TextFieldChrome.hasClearButton(element)) {
+                continue;
+            }
+            LayoutBoxes.Box box = entry.getValue();
+            TextFieldChrome.ClearBar bar = TextFieldChrome.clearBar(box.x(), box.y(),
+                    box.width(), box.height());
+            if (mouseX >= bar.x() && mouseX < bar.x() + bar.size()
+                    && mouseY >= bar.y() && mouseY < bar.y() + bar.size()) {
+                EditBox edit = entry.getKey();
+                edit.setValue("");
+                edit.setFocused(true);
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
