@@ -224,7 +224,7 @@ testImplementation(project(":cloudcore-api-testkit"))
 - `DocumentAssert`：`assertValid`、`assertElement`、`assertText`、`assertElementCount`，
   失败抛 `AssertionError`，不绑定测试框架。
 - `EventCapture<T>`：实现 `Consumer<T>`，可直接传给事件总线，提供 `events()`/`last()`/`clear()`。
-- 提供示例 addon：注册动作、占位符、动态页面、事件监听。
+- 独立示例 addon 工程尚未提供（挂在 `docs/10` 的剩余项）。
 
 ## 13. 限制
 

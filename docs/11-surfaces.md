@@ -19,7 +19,7 @@
 1. `cloudcore-protocol` 的 `SurfaceType`；
 2. `cloudcore-api` 的文档 `surface` 枚举；
 3. `cloudcore-client` 的 `SurfaceAdapter`；
-4. `cloudcore-server-core` / `cloudcore-bukkit` 的 `SurfaceProvider`；
+4. `SurfaceProvider`（接口在 `cloudcore-api`，由 `server-core`/`bukkit` 或附属插件实现并注册）；
 5. 协议特性位与校验规则；
 6. 测试矩阵。
 
@@ -165,7 +165,8 @@
    - `open` 安装钩子；
    - `close` 幂等拆除；
    - `render` 或钩子绘制。
-4. 服务端实现 `SurfaceProvider`。
+4. 服务端实现 `SurfaceProvider`（`cloudcore-api` 的 `com.cloudcore.api.surface`），
+   经 `CloudCoreApi#registerSurfaceProvider` 注册。
 5. 文档 `surface` 枚举与校验规则。
 6. 单元测试、手动矩阵、互操作检查。
 
