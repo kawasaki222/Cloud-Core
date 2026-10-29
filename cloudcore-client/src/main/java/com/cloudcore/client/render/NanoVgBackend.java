@@ -9,6 +9,8 @@ import org.lwjgl.nanovg.NVGPaint;
 import org.lwjgl.nanovg.NanoVG;
 import org.lwjgl.nanovg.NanoVGGL3;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL33;
 import org.slf4j.Logger;
@@ -335,12 +337,45 @@ public final class NanoVgBackend implements RenderBackend, RenderList.VectorText
         }
         try {
             NanoVG.nvgEndFrame(context);
+            // NanoVG binds its own VAO, program and textures and enables stencil/cull.
+            // Leaving them behind made the next frame's world pass draw through NanoVG's
+            // vertex layout: the terrain rendered black while the GUI (which binds its own
+            // state per pipeline) stayed correct.
+            restoreGlState();
             compositor.end();
             compositor.composite(current.graphics(), 0, 0,
                     current.width(), current.height());
         } catch (RuntimeException exception) {
             fail("endFrame failed: " + exception.getMessage());
         }
+    }
+
+    /**
+     * Puts raw GL back into the state Blaze3D expects after a GUI pass. NanoVG saves most of
+     * what it enables, but the vertex-array binding, program and texture units are not part
+     * of that restore set.
+     */
+    private void restoreGlState() {
+        // Tracked accessors only: NanoVG binds raw, but Blaze3D caches everything it binds,
+        // and a raw reset here would leave the cache claiming the *opposite* of the real
+        // state, which is worse than the original pollution.
+        com.mojang.blaze3d.opengl.GlStateManager._glBindVertexArray(0);
+        com.mojang.blaze3d.opengl.GlStateManager._glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        com.mojang.blaze3d.opengl.GlStateManager._glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        com.mojang.blaze3d.opengl.GlStateManager._activeTexture(GL13.GL_TEXTURE0);
+        GL33.glBindSampler(0, 0);
+        com.mojang.blaze3d.opengl.GlStateManager._bindTexture(0);
+        com.mojang.blaze3d.opengl.GlStateManager._disableScissorTest();
+        GL11.glDisable(GL11.GL_STENCIL_TEST);
+        com.mojang.blaze3d.opengl.GlStateManager._disableCull();
+        GL11.glColorMask(true, true, true, true);
+        GL11.glDepthMask(true);
+        GL11.glStencilMask(0xFF);
+        org.lwjgl.opengl.GL20.glBlendEquationSeparate(
+                org.lwjgl.opengl.GL14.GL_FUNC_ADD, org.lwjgl.opengl.GL14.GL_FUNC_ADD);
+        com.mojang.blaze3d.opengl.GlStateManager._enableBlend();
+        com.mojang.blaze3d.opengl.GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA,
+                GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
     }
 
     private void fail(String reason) {
