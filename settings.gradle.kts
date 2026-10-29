@@ -19,6 +19,7 @@ rootProject.name = "cloud-core"
 
 include(
     "cloudcore-api",
+    "cloudcore-api-testkit",
     "cloudcore-protocol",
     "cloudcore-server-core",
     "cloudcore-bukkit",

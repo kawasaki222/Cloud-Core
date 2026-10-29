@@ -88,6 +88,14 @@ public final class CloudCorePlugin extends JavaPlugin
             new ConcurrentHashMap<>();
     private final Map<String, com.cloudcore.bukkit.api.PageProvider> pageProviders =
             new ConcurrentHashMap<>();
+    /** Addon surface providers; the built-in surfaces keep their own send paths. */
+    private final com.cloudcore.server.surface.SurfaceProviderRegistry surfaceProviders =
+            new com.cloudcore.server.surface.SurfaceProviderRegistry();
+    /** Addon event listeners. A broken listener is logged, never allowed to break a UI. */
+    private final com.cloudcore.server.event.AddonEventBus addonEvents =
+            new com.cloudcore.server.event.AddonEventBus((type, error) -> getLogger().log(
+                    Level.WARNING, "Addon listener for " + type.getSimpleName() + " failed",
+                    error));
     private final Placeholders placeholders = new Placeholders(this, placeholderResolvers);
     private com.cloudcore.server.state.PlayerStateStore stateStore;
     private static final Set<String> BUILT_IN_ACTIONS = Set.of(
@@ -173,6 +181,8 @@ public final class CloudCorePlugin extends JavaPlugin
         actionHandlers.clear();
         placeholderResolvers.clear();
         pageProviders.clear();
+        surfaceProviders.clear();
+        addonEvents.clear();
         if (pageWatcher != null) {
             pageWatcher.close();
             pageWatcher = null;
@@ -240,18 +250,21 @@ public final class CloudCorePlugin extends JavaPlugin
                 event.uiId());
         java.util.List<com.cloudcore.api.page.PageLoader.PageAction> actions =
                 page == null ? null : page.actions().get(event.actionId());
+        publishElementEvent(player, event);
         if (actions == null) {
             getLogger().warning("EVENT for unknown action ui=" + event.uiId()
                     + " element=" + event.elementId() + " action=" + event.actionId()
                     + " player=" + player.getName());
             sendEventResult(player, event.requestId(),
                     com.cloudcore.protocol.EventResult.UNKNOWN_ELEMENT);
+            publishActionResult(player, event, com.cloudcore.protocol.EventResult.UNKNOWN_ELEMENT);
             return;
         }
         if (!eventLimiter.tryAcquire(player.getUniqueId())) {
             getLogger().warning("Rate limited EVENT from " + player.getName());
             sendEventResult(player, event.requestId(),
                     com.cloudcore.protocol.EventResult.RATE_LIMITED);
+            publishActionResult(player, event, com.cloudcore.protocol.EventResult.RATE_LIMITED);
             return;
         }
         getLogger().info("EVENT ui=" + event.uiId() + " element=" + event.elementId()
@@ -270,6 +283,24 @@ public final class CloudCorePlugin extends JavaPlugin
             }
         }
         sendEventResult(player, event.requestId(), status);
+        publishActionResult(player, event, status);
+    }
+
+    /** Copies the wire payload into plain values; protocol types stay on the wire boundary. */
+    private void publishElementEvent(Player player, com.cloudcore.protocol.UiEvent event) {
+        Map<String, Object> payload = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, com.cloudcore.protocol.WireValue> entry
+                : event.payload().entrySet()) {
+            payload.put(entry.getKey(), plainValue(entry.getValue()));
+        }
+        addonEvents.publish(new com.cloudcore.api.event.ElementEvent(player.getUniqueId(),
+                event.uiId(), event.elementId(), event.actionId(), payload));
+    }
+
+    private void publishActionResult(Player player, com.cloudcore.protocol.UiEvent event,
+            int status) {
+        addonEvents.publish(new com.cloudcore.api.event.ActionResultEvent(player.getUniqueId(),
+                event.uiId(), event.elementId(), event.actionId(), status));
     }
 
     private void sendEventResult(Player player, int requestId, int status) {
@@ -677,6 +708,9 @@ public final class CloudCorePlugin extends JavaPlugin
         UiClosed closed = UiCodec.decodeClosed(frame.body(), Limits.C2S);
         getLogger().info("UI_CLOSED from " + player.getName()
                 + " ui=" + closed.uiId() + " reason=" + closed.reason());
+        surfaceProviders.close(player.getUniqueId(), closed.uiId());
+        addonEvents.publish(new com.cloudcore.api.event.SessionCloseEvent(player.getUniqueId(),
+                closed.uiId(), "client"));
     }
 
     private void handleUiReady(Player player, Frame frame) {
@@ -1375,10 +1409,14 @@ public final class CloudCorePlugin extends JavaPlugin
             getLogger().info("No probe UI open for " + player.getName());
             return;
         }
+        String uiId = session.lastUiId;
         sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_CLOSE,
-                UiCodec.encodeClose(new UiClose(session.lastUiId, 0), Limits.S2C)));
-        getLogger().info("Sent UI_CLOSE to " + player.getName() + " ui=" + session.lastUiId);
+                UiCodec.encodeClose(new UiClose(uiId, 0), Limits.S2C)));
+        getLogger().info("Sent UI_CLOSE to " + player.getName() + " ui=" + uiId);
         session.lastUiId = null;
+        surfaceProviders.close(player.getUniqueId(), uiId);
+        addonEvents.publish(new com.cloudcore.api.event.SessionCloseEvent(player.getUniqueId(),
+                uiId, "server"));
     }
 
     private void sendBoss(Player player) {
@@ -1637,8 +1675,41 @@ public final class CloudCorePlugin extends JavaPlugin
         session.lastUiId = uiId;
         int revision = session.pageRevisions.merge(uiId, 1, Integer::sum);
         UiOpen open = openForSurface(surface, uiId, revision, token, surfaceKey, document);
+        // An addon provider runs before the wire: it may bind its own backing state and
+        // decide the correlation token. Declining leaves the client untouched.
+        com.cloudcore.api.surface.SurfaceProvider provider =
+                surfaceProviders.find(surface).orElse(null);
+        com.cloudcore.api.surface.SurfaceSession providerSession = null;
+        if (provider != null) {
+            java.util.Optional<com.cloudcore.api.surface.SurfaceSession> opened;
+            try {
+                opened = provider.open(player.getUniqueId(), uiId, new com.cloudcore.api.OpenOptions(
+                        open.surface(), open.bindMode(), open.renderMode(), document.theme(),
+                        true));
+            } catch (RuntimeException exception) {
+                getLogger().log(Level.WARNING, "Surface provider " + surface
+                        + " failed for page '" + uiId + "'", exception);
+                return;
+            }
+            if (opened.isEmpty()) {
+                getLogger().warning("Surface provider " + surface + " declined page '" + uiId
+                        + "' for " + player.getName());
+                return;
+            }
+            providerSession = opened.get();
+            if (!uiId.equals(providerSession.uiId())) {
+                getLogger().warning("Surface provider " + surface + " returned uiId '"
+                        + providerSession.uiId() + "' for page '" + uiId + "'; ignoring it");
+                return;
+            }
+            open = new UiOpen(uiId, revision, open.surface(), open.surfaceId(),
+                    open.bindMode(), providerSession.token(), open.renderMode(), open.flags(),
+                    open.surfaceKey());
+        }
         sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_OPEN,
                 UiCodec.encodeOpen(open, Limits.S2C)));
+        addonEvents.publish(new com.cloudcore.api.event.SessionOpenEvent(player.getUniqueId(),
+                uiId, surface, document.id(), revision));
         sendTextureRefs(player, compiled);
         String json = com.cloudcore.api.document.UiDocumentJson.write(document);
         UiDefinition definition = new UiDefinition(uiId, revision, 0,
@@ -1649,6 +1720,14 @@ public final class CloudCorePlugin extends JavaPlugin
                         UiCodec.encodeDefinition(definition, Limits.S2C)));
             }
         }, 1L);
+        if (providerSession != null) {
+            try {
+                provider.apply(providerSession);
+            } catch (RuntimeException exception) {
+                getLogger().log(Level.WARNING, "Surface provider " + surface
+                        + " apply failed for page '" + uiId + "'", exception);
+            }
+        }
         if (surface == SurfaceType.BOSS_BAR) {
             createDemoBossBars(player, session, document);
         }
@@ -2558,6 +2637,38 @@ public final class CloudCorePlugin extends JavaPlugin
                 getLogger().info("Unregistered page provider '" + pageId + "'");
             }
             return removed;
+        }
+
+        @Override
+        public void registerSurfaceProvider(com.cloudcore.api.surface.SurfaceProvider provider) {
+            java.util.Objects.requireNonNull(provider, "provider");
+            if (provider.type() == SurfaceType.UNKNOWN) {
+                throw new IllegalArgumentException(
+                        "UNKNOWN is not a surface; the client cannot render it");
+            }
+            surfaceProviders.register(provider);
+            getLogger().info("Registered surface provider " + provider.type());
+        }
+
+        @Override
+        public boolean unregisterSurfaceProvider(SurfaceType surface) {
+            boolean removed = surfaceProviders.unregister(surface);
+            if (removed) {
+                getLogger().info("Unregistered surface provider " + surface);
+            }
+            return removed;
+        }
+
+        @Override
+        public <T> void addEventListener(Class<T> type,
+                java.util.function.Consumer<? super T> listener) {
+            addonEvents.add(type, listener);
+        }
+
+        @Override
+        public <T> boolean removeEventListener(Class<T> type,
+                java.util.function.Consumer<? super T> listener) {
+            return addonEvents.remove(type, listener);
         }
 
         @Override

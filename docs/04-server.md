@@ -562,7 +562,10 @@ public void onInventoryOpen(InventoryOpenEvent event) {
 ## 13. 公共 Java API
 
 已实现：`open(Player, String pageId[, OpenOptions])`、`registerActionHandler`、
-`unregisterActionHandler`、`isModded`（详见 `19-addon-api.md`）。下面其余方法为计划形态。
+`unregisterActionHandler`、`registerPlaceholderResolver`、`registerPageProvider`、
+`setState`/`getState`、`registerSurfaceProvider`/`unregisterSurfaceProvider`、
+`addEventListener`/`removeEventListener`、`isModded`（详见 `19-addon-api.md`）。
+下面其余方法为计划形态。
 
 ```java
 public interface CloudCoreApi {
@@ -573,6 +576,9 @@ public interface CloudCoreApi {
     void registerActionHandler(String name, ActionHandler handler);
     void registerPlaceholderResolver(String namespace, PlaceholderResolver resolver);
     void registerSurfaceProvider(SurfaceProvider provider);
+    boolean unregisterSurfaceProvider(SurfaceType surface);
+    <T> void addEventListener(Class<T> type, Consumer<? super T> listener);
+    <T> boolean removeEventListener(Class<T> type, Consumer<? super T> listener);
 
     void setState(Player player, String uiId, String key, Object value);
     Optional<Object> getState(Player player, String uiId, String key);

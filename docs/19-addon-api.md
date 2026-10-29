@@ -5,9 +5,10 @@ YAML 反射。公共 API 是合同：1.x 不做破坏性变更。
 
 当前实现状态：`open`（按页面 id 或代码页）、`registerActionHandler` / `unregisterActionHandler`、
 `registerPlaceholderResolver` / `unregisterPlaceholderResolver`、
-`registerPageProvider` / `unregisterPageProvider`、`isModded` 已实现并在第二个插件里真机验证
-（`10-risks-and-verification.md`）；`PageBuilder` 已在 `cloudcore-api`；
-`SurfaceProvider`、`setState`/`getState`、事件监听与 testkit 计划中。
+`registerPageProvider` / `unregisterPageProvider`、`setState`/`getState`、`isModded`、
+`registerSurfaceProvider` / `unregisterSurfaceProvider`、事件监听与 `cloudcore-api-testkit`
+均已实现；前一组已在第二个插件真机验证，surface 提供器与事件监听目前由单元测试覆盖
+（`10-risks-and-verification.md`）。`PageBuilder` 已在 `cloudcore-api`。
 
 ## 1. 稳定面与内部面
 
@@ -161,9 +162,15 @@ api.registerPageProvider("rpg_shop", player -> PageBuilder
 api.registerSurfaceProvider(new RpgSurfaceProvider());
 ```
 
-- 需要客户端 mod 同时支持该 `SurfaceType`；服务端不能单独发明。
-- 未实现的面板在客户端返回 `UI_READY(state=4)`，服务端回退原版。
-- 新面板需要协议常量、特性位、客户端适配器；属于高级扩展。
+- 接口在 `cloudcore-api` 的 `com.cloudcore.api.surface.SurfaceProvider`，附属插件只依赖 API 即可实现。
+- 生命周期：`open` 在文档发送前调用（返回空表示拒绝），`apply` 在 `UI_DEFINITION` 排队后调用，
+  `close` 在服务端 `UI_CLOSE` 或客户端 `UI_CLOSED` 时调用；`close` 必须幂等。
+- 一个面板类型只能注册一个提供器；`UNKNOWN` 会被拒绝。
+- 服务端仍负责发送 `UI_OPEN`/`UI_DEFINITION` 并拥有文档；提供器可以绑定自己的后备状态
+  （物品栏、BossBar、外部会话）并通过 `SurfaceSession.token()` 决定关联令牌。
+- 客户端 mod 必须已经认识该 `SurfaceType`；未实现的类型在客户端返回 `UI_READY(state=4)`，
+  服务端回退原版。发明全新面板需要协议常量、特性位与客户端适配器（`11-surfaces.md`）。
+- 未注册提供器时，内置面板走原有路径，行为不变；插件卸载会清空注册表。
 
 ## 9. 状态与事件
 
@@ -172,13 +179,22 @@ api.setState(player, uiId, "selected", 3);
 Optional<Object> value = api.getState(player, uiId, "selected");
 
 api.addEventListener(SessionOpenEvent.class, event -> ...);
+api.addEventListener(SessionCloseEvent.class, event -> ...);
 api.addEventListener(ElementEvent.class, event -> ...);
 api.addEventListener(ActionResultEvent.class, event -> ...);
+boolean removed = api.removeEventListener(ElementEvent.class, listener);
 ```
 
+- 事件类型在 `cloudcore-api` 的 `com.cloudcore.api.event`：
+  - `SessionOpenEvent(playerId, uiId, surface, documentId, revision)`：`UI_OPEN` 发送后；
+  - `SessionCloseEvent(playerId, uiId, reason)`：`reason` 为 `server` 或 `client`；
+  - `ElementEvent(playerId, uiId, elementId, actionId, payload)`：客户端事件解码后、动作执行前，
+    `payload` 是只读的普通 Java 值（String/Double/Boolean），不含协议类型；
+  - `ActionResultEvent(playerId, uiId, elementId, actionId, status)`：动作执行后，`status` 与
+    `EVENT_RESULT` 一致（0 正常、1 未知元素、2 拒绝、3 限流）。
+- 监听器在主线程同步执行；异常被 `AddonEventBus` 捕获并写服务端警告，不影响 UI 和其他监听器。
+- 事件只读；修改会话请调用 API。
 - 状态作用域：`session`、`player.vars`（v2）。
-- 事件只读；不要在主线程外修改会话。
-- 事件监听器异常被捕获，不影响 UI。
 
 ## 10. 线程与调度
 
@@ -197,8 +213,17 @@ api.addEventListener(ActionResultEvent.class, event -> ...);
 
 ## 12. 测试工具包
 
-- `cloudcore-api-testkit`：内存 API、假玩家、文档断言、事件捕获。
-- 附属插件可在无 Paper 的环境下测试页面构造和动作逻辑。
+已实现：`cloudcore-api-testkit`（纯 Java，无 Paper/Minecraft 依赖）。
+
+```java
+testImplementation(project(":cloudcore-api-testkit"))
+```
+
+- `FakeCloudCoreApi`：内存实现 `cloudcore-api` 的 `CloudCoreApi`，记录 `open` 调用、
+  按玩家/`uiId` 保存状态、统计 `reload`，用于测试附属插件的页面与动作逻辑。
+- `DocumentAssert`：`assertValid`、`assertElement`、`assertText`、`assertElementCount`，
+  失败抛 `AssertionError`，不绑定测试框架。
+- `EventCapture<T>`：实现 `Consumer<T>`，可直接传给事件总线，提供 `events()`/`last()`/`clear()`。
 - 提供示例 addon：注册动作、占位符、动态页面、事件监听。
 
 ## 13. 限制

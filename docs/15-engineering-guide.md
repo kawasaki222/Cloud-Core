@@ -33,7 +33,13 @@ cloud-core/
       state/           StateModel、模板求值、repeat 展开
       action/          ActionEngine、LinearActionEngine、内置处理器
       placeholder/     PlaceholderResolver SPI
-      surface/         SurfaceProvider、SurfacePolicy
+      event/           AddonEventBus、监听器异常隔离
+      surface/         SurfaceProviderRegistry、SurfacePolicy
+  cloudcore-api-testkit/
+    src/main/java/com/cloudcore/testkit/
+      FakeCloudCoreApi  内存 API（open/state/reload 记录）
+      DocumentAssert    文档断言
+      EventCapture      事件捕获
   cloudcore-bukkit/
     src/main/java/com/cloudcore/bukkit/
       plugin/           CloudCorePlugin、配置
@@ -146,7 +152,8 @@ cloud-core/
 ### 6.3 新增面板
 
 1. 协议分配 `SurfaceType` 值，增加特性位。
-2. 客户端实现 `SurfaceAdapter`，服务端实现 `SurfaceProvider`。
+2. 客户端实现 `SurfaceAdapter`，服务端实现 `SurfaceProvider`（接口在 `cloudcore-api` 的
+   `com.cloudcore.api.surface`，通过 `CloudCoreApi#registerSurfaceProvider` 注册）。
 3. 定义生命周期、绑定方式、数据来源、失败回退。
 4. 更新 `11-surfaces.md`、`02-protocol.md`、`05-client.md`。
 5. 加互操作与回退测试。

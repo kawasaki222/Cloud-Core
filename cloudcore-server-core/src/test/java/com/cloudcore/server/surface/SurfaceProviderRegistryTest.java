@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.cloudcore.api.OpenOptions;
 import com.cloudcore.api.SurfaceType;
+import com.cloudcore.api.surface.SurfaceProvider;
+import com.cloudcore.api.surface.SurfaceSession;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -41,6 +43,16 @@ class SurfaceProviderRegistryTest {
         registry.register(new FakeProvider(SurfaceType.HUD, true));
         assertThrows(IllegalStateException.class,
                 () -> registry.register(new FakeProvider(SurfaceType.HUD, true)));
+    }
+
+    @Test
+    void unregisterRemovesTheProvider() {
+        SurfaceProviderRegistry registry = new SurfaceProviderRegistry();
+        registry.register(new FakeProvider(SurfaceType.HUD, true));
+
+        assertTrue(registry.unregister(SurfaceType.HUD));
+        assertFalse(registry.unregister(SurfaceType.HUD));
+        assertFalse(registry.find(SurfaceType.HUD).isPresent());
     }
 
     private record FakeProvider(SurfaceType type, boolean available) implements SurfaceProvider {

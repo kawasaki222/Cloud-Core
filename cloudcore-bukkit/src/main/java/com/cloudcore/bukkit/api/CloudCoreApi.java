@@ -1,5 +1,8 @@
 package com.cloudcore.bukkit.api;
 
+import com.cloudcore.api.SurfaceType;
+import com.cloudcore.api.surface.SurfaceProvider;
+import java.util.function.Consumer;
 import org.bukkit.entity.Player;
 
 /**
@@ -77,6 +80,34 @@ public interface CloudCoreApi {
 
     /** @return true when a provider was removed */
     boolean unregisterPageProvider(String pageId);
+
+    /**
+     * Participates in a surface's lifecycle: {@code open} before the document is sent,
+     * {@code apply} after it is queued, {@code close} when the UI closes. The core still sends
+     * the document and owns the layout; the provider may bind external state (an inventory, a
+     * boss bar) and supplies the correlation token. One provider per surface.
+     *
+     * <p>The client mod must already render the surface type, so this cannot introduce a new
+     * surface on its own. {@link SurfaceType#UNKNOWN} is rejected.
+     *
+     * @throws IllegalArgumentException for {@code UNKNOWN} or an already registered surface
+     */
+    void registerSurfaceProvider(SurfaceProvider provider);
+
+    /** @return true when a provider was removed */
+    boolean unregisterSurfaceProvider(SurfaceType surface);
+
+    /**
+     * Subscribes to a Cloud Core event type ({@code SessionOpenEvent},
+     * {@code SessionCloseEvent}, {@code ElementEvent}, {@code ActionResultEvent}).
+     *
+     * <p>Listeners run synchronously on the main thread. Exceptions are caught and logged and
+     * never interrupt the UI or the other listeners. Subscribe/unsubscribe on the main thread.
+     */
+    <T> void addEventListener(Class<T> type, Consumer<? super T> listener);
+
+    /** @return true when the listener was registered */
+    <T> boolean removeEventListener(Class<T> type, Consumer<? super T> listener);
 
     /** @return true when the player's client completed the Cloud Core handshake */
     boolean isModded(Player player);
