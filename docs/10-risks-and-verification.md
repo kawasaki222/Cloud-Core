@@ -270,10 +270,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   示例页 `name_input` 配了 normal/focused 边框，点击后同样显示焦点框（`example-focus.png`）。
   `filter` 取值与 `CC-INPUT-001/002` 写进 `03`/`18`；`Colors` 解析与 `invalid` 边框有单元测试。
 - **输入框光标色 / 选区色 / 清除按钮已核实（2026-10-29）**：示例页 `name_input` 配
-  `cursor_color: "#FFFFD479"`、`selection_color: "#804FA3E8"`、`clear_button: "builtin:white"`。
+  `cursor_color: "#FFFFD479"`、`selection_color: "#804FA3E8"`、`clear_button: "builtin:clear"`。
   真机输入 `abc` 后 `Ctrl+A` 全选截图 `textfield-cursor-selection.png`：光标像素为
   `(255,212,121)` = `#FFD479`；选区叠加色为 `(50,95,133)`，与 `#804FA3E8` 在 `(20,27,34)`
-  背景上 50% 混合一致。临时页 `verify_field`（带 `padding: [4,3,4,3]`）输入 `z` 后点清除按钮，
+  背景上 50% 混合一致。`builtin:clear` 是生成的 8×8 叉，按钮位置见 `textfield-clear-icon.png`。临时页 `verify_field`（带 `padding: [4,3,4,3]`）输入 `z` 后点清除按钮，
   输入框变空，服务端收到 `EVENT ui=verify_field element=name`（`textfield-clear-before.png` /
   `textfield-clear-after.png`）；同一带 padding 的字段按 ENTER 也上报 `element=name`，
   证明按控件身份匹配的 `submit` 修复生效。实现是 `CloudEditBox extends EditBox` 重写

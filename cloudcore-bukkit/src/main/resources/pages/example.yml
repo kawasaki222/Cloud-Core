@@ -120,7 +120,7 @@ elements:
         color: "#FFFFFFFF"
       cursor_color: "#FFFFD479"
       selection_color: "#804FA3E8"
-      clear_button: "builtin:white"
+      clear_button: "builtin:clear"
     on:
       submit:
         - action: message

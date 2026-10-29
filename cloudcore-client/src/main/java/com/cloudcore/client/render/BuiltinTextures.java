@@ -16,10 +16,13 @@ import net.minecraft.resources.Identifier;
 public final class BuiltinTextures {
     public static final String WHITE = "builtin:white";
     public static final String ERROR = "builtin:error";
+    /** A generated cross, used by the text field clear button when no art is supplied. */
+    public static final String CLEAR = "builtin:clear";
 
     private static final Map<String, Identifier> CACHE = new HashMap<>();
     private static final Identifier WHITE_ID = Identifier.fromNamespaceAndPath("cloudcore", "builtin/white");
     private static final Identifier ERROR_ID = Identifier.fromNamespaceAndPath("cloudcore", "builtin/error");
+    private static final Identifier CLEAR_ID = Identifier.fromNamespaceAndPath("cloudcore", "builtin/clear");
 
     private BuiltinTextures() {
     }
@@ -39,10 +42,22 @@ public final class BuiltinTextures {
                 });
     }
 
+    /** An 8×8 white cross on transparency; a page can use it as a working clear button. */
+    public static Identifier clear() {
+        return register(CLEAR, CLEAR_ID, () -> "cloudcore-builtin:clear", 8,
+                (pixels, size) -> {
+                    for (int index = 0; index < size; index++) {
+                        pixels.setPixel(index, index, 0xFFE8E8E8);
+                        pixels.setPixel(size - 1 - index, index, 0xFFE8E8E8);
+                    }
+                });
+    }
+
     public static Identifier resolve(String name) {
         return switch (name) {
             case "white" -> white();
             case "error" -> error();
+            case "clear" -> clear();
             default -> null;
         };
     }

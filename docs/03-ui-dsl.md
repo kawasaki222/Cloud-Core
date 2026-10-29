@@ -483,10 +483,10 @@ YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范�
   客户端用 `CloudEditBox extends EditBox` 重写 `renderWidget`，不新增混入；输入法、选区、
   剪贴板、键盘重复仍由原版处理。未设置时分别沿用文字颜色和原版选区高亮；主题令牌（`tx:`）
   不会被客户端解析，写了会回退原版并在诊断里可查。
-- `style.clear_button`：清除按钮的贴图引用（`local:`/`pack:`/`builtin:`/`inline:`）。
-  按钮占据元素右侧内边距，输入控件按同一宽度收窄，长文本不会压到按钮下面；点击后调用
-  `EditBox#setValue("")`，照常触发 `change`（`value` 为空串），不额外发事件。
-  贴图引用不可用时画一个 `x` 作为可点击占位；元素 `enabled: false` 时按钮不响应。
+- `style.clear_button`：清除按钮的贴图引用（`local:`/`pack:`/`builtin:`/`inline:`）；
+  模组自带 `builtin:clear` 是一个 8×8 的叉。按钮占据元素右侧内边距，输入控件按同一宽度收窄，
+  长文本不会压到按钮下面；点击后调用 `EditBox#setValue("")`，照常触发 `change`（`value` 为空串），
+  不额外发事件。贴图引用不可用时画一个 `x` 作为可点击占位；元素 `enabled: false` 时按钮不响应。
 - `submit` 现在按控件身份匹配，因此带 `padding` 的输入框也能触发 `submit`。
 
 已实现全部外观字段；输入法候选窗位置由 GLFW/原版处理，不能完全自定义。
