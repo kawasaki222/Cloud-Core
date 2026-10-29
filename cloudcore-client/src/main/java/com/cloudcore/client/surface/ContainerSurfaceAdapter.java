@@ -50,17 +50,32 @@ public final class ContainerSurfaceAdapter implements SurfaceAdapter {
     }
 
     public static Screen replace(Screen screen) {
-        UiDocument document = DOCUMENT.get();
-        if (!armed || document == null || !(screen instanceof AbstractContainerScreen<?> container)) {
+        if (!(screen instanceof AbstractContainerScreen<?> container)) {
             return screen;
         }
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null) {
             return screen;
         }
-        armed = false;
+        UiDocument document = DOCUMENT.get();
+        if (armed && document != null) {
+            armed = false;
+        } else {
+            // Nothing was sent for this container: look for a client-side page whose 'match'
+            // accepts this screen's title, so a local skin applies on any server.
+            document = com.cloudcore.client.render.LocalPageRegistry.find(
+                    SurfaceType.CONTAINER, plainTitle(container));
+            if (document == null) {
+                return screen;
+            }
+        }
         Inventory inventory = minecraft.player.getInventory();
         AbstractContainerMenu menu = container.getMenu();
         return new CloudContainerScreen(menu, inventory, container.getTitle(), document);
+    }
+
+    /** Container title as the player reads it, without styling. */
+    private static String plainTitle(AbstractContainerScreen<?> container) {
+        return container.getTitle().getString();
     }
 }

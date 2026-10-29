@@ -1,6 +1,7 @@
 package com.cloudcore.client;
 
 import com.cloudcore.client.render.AnimatedTextures;
+import com.cloudcore.client.render.LocalPageRegistry;
 import com.cloudcore.client.render.LocalTextureRegistry;
 import com.cloudcore.client.render.NanoVgBackend;
 import com.cloudcore.client.render.RemoteTextureCache;
@@ -25,6 +26,7 @@ public final class ClientResources {
         AnimatedTextures.reset();
         RemoteTextureCache.reload();
         NanoVgBackend.invalidateAssets();
+        LocalPageRegistry.reset();
         LOGGER.info("Local CloudCore assets reloaded (textures, GIF frames, fonts, remote cache)");
     }
 }

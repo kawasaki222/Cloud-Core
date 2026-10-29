@@ -265,6 +265,7 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
 - 皮肤绑定状态在 `PlayerInventorySession`：`PERSISTENT` 持续到 `UI_CLOSE`，其他绑定只用一次；
   规则有单元测试 `PlayerInventorySessionTest`。
 - 创造模式物品栏 `CreativeModeInventoryScreen` 不在 v1 范围。
+- 服务端没有下发皮肤时，按容器标题查客户端本地面板（`match` 正则），见第 19 节。
 
 ## 9. HUD
 
@@ -551,3 +552,31 @@ F3 叠加层显示：活动会话（uiId、surface、修订号）、绑定令牌
 - NanoVG 上下文、FBO 创建/重建/销毁、字体创建、合成只在渲染线程。
 - TTF/OTF 和图片字节可以在工作线程读取，上传/字体创建切回渲染线程。
 - FBO 按逻辑分辨率整数倍分配；窗口/GUI 缩放变化才重建，不逐帧重建。
+
+## 19. 客户端本地面板（`LocalPageRegistry`）
+
+玩家可以把普通 Cloud Core 页面放进 `.minecraft/resourcepacks/CloudCore/页面/`，让它**在没有服务端**
+的情况下接管一个容器界面或一条 Boss 血条。
+
+```yaml
+schema: 1
+surface: container        # 或 boss_bar
+id: my_chest_skin
+match: "^我的箱子$"        # 正则，匹配容器标题 / 血条名称
+size: [176, 166]
+elements: []
+```
+
+- `match` 是 Java 正则，用 `Matcher#find()` 匹配玩家看到的标题（容器用 `getTitle().getString()`，
+  血条用剥掉哨兵后的名称），不是整串完全相等。
+- `surface` 必须是 `container` 或 `boss_bar`；其他面板不查本地面板。文件只读顶层
+  `surface`/`match`/`id` 做索引，文档本身仍走 `PageLoader`，所以支持 `includes` 等全部页面能力。
+- **服务端下发的页面优先**：只有在没有为这个 surface 下发过文档时才会查本地文件
+  （`ContainerSurfaceAdapter.replace` / `BossBarSurfaceAdapter.render`），
+  所以显式的 `UI_OPEN` 永远不会被本地文件顶掉。
+- 本地面板没有会话，状态从空开始，只渲染自己声明的默认值；因此 `set_state` 对它无效。
+- 编译结果按源文件缓存，编译失败记为失败值，只报一次日志而不是逐帧刷屏；`F9`
+  （`ClientResources`）会清空索引与缓存后重读。
+- 单文件上限 512 KiB，超出告警跳过；错误码 `CC-LOCAL-001`（目录不可读）、`-002`（编译失败）、
+  `-003`（文件过大）、`-004`（未知 surface）、`-005`（`match` 正则非法）、`-006`（读取失败）。
+- 只在渲染线程访问。
