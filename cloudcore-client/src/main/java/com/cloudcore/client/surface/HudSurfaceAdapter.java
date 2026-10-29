@@ -79,7 +79,10 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
         private volatile UiDocument document;
         private volatile Priority priority = Priority.OVERLAY;
         private RenderList cachedList = RenderList.EMPTY;
+        /** Last live document, fed back in as the baseline for the next frame's rewrite. */
         private UiDocument cachedDocument;
+        /** Server document {@link #cachedDocument} was derived from. */
+        private UiDocument cachedSource;
         private int cachedWidth = -1;
         private int cachedHeight = -1;
     }
@@ -173,9 +176,13 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
         Minecraft minecraft = Minecraft.getInstance();
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
-        // Live values change every frame; a rewritten document compares structurally, so the
-        // list is rebuilt only when an actual value changed.
-        UiDocument live = HudValues.apply(document);
+        // Live values change every frame, so the rewrite is fed the previous live document as
+        // its baseline. Comparing against the server document instead would look "changed" on
+        // every single frame — the server document has no live 'value' attribute at all — and
+        // rebuilt the render list (plus a log line) at the frame rate.
+        UiDocument baseline = layer.cachedSource == document && layer.cachedDocument != null
+                ? layer.cachedDocument : document;
+        UiDocument live = HudValues.apply(baseline);
         if (layer.cachedDocument != live || layer.cachedWidth != width
                 || layer.cachedHeight != height) {
             String anchor = anchorOf(document);
@@ -184,6 +191,7 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
             layer.cachedList = DocumentRenderListBuilder.buildAt(live, width, height,
                     originX, originY);
             layer.cachedDocument = live;
+            layer.cachedSource = document;
             layer.cachedWidth = width;
             layer.cachedHeight = height;
             LOGGER.debug("HUD layer {} ui={} origin={},{} viewport={}x{} commands={}", layerName,

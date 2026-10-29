@@ -456,18 +456,22 @@ public final class CloudCoreClient implements ClientModInitializer {
     }
 
     public static void onBossBar(String title) {
+        // Called from BossHealthOverlay's render hook, so this runs every frame. A title is
+        // logged once when first seen and then stays quiet: an unchanged boss bar is not an
+        // event, and logging it per frame produced ~180 lines/s and filled the 10 MiB log
+        // ring in minutes.
         if (title == null || !title.contains("\u0000CCB:")) {
-            LOGGER.debug("Boss bar observed title={}", title);
+            if (title != null && OBSERVED_BOSS_TITLES.size() < 64
+                    && OBSERVED_BOSS_TITLES.add(title)) {
+                LOGGER.debug("Boss bar observed title={}", title);
+            }
             return;
         }
         String printable = title.replace('\u0000', '|');
-        if (OBSERVED_BOSS_TITLES.contains(title)
-                || OBSERVED_BOSS_TITLES.size() >= 64
-                || !OBSERVED_BOSS_TITLES.add(title)) {
-            LOGGER.debug("Boss bar observed title={}", printable);
-        } else {
-            LOGGER.info("Boss bar observed title={}", printable);
+        if (OBSERVED_BOSS_TITLES.size() >= 64 || !OBSERVED_BOSS_TITLES.add(title)) {
+            return;
         }
+        LOGGER.info("Boss bar observed title={}", printable);
     }
 
     public static void onScreenChanged(net.minecraft.client.gui.screens.Screen screen) {
