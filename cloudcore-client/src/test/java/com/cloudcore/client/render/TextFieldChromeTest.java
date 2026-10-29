@@ -55,6 +55,14 @@ class TextFieldChromeTest {
                 "white is -1; a sentinel fallback would silently drop it");
     }
 
+    @Test
+    void placeholderColourComesFromStyle() {
+        UiElement field = element(Map.of("placeholder_color", "#80FFFFFF"));
+
+        assertEquals(0x80FFFFFF, TextFieldChrome.placeholderColor(field));
+        assertNull(TextFieldChrome.placeholderColor(element(Map.of())));
+    }
+
     private static UiElement element(Map<String, Object> style) {
         return new UiElement("field", "text_field", 0, 0, "40", "20", true, true, 0,
                 Map.of(), List.of(), Map.of("style", style));

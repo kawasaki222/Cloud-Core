@@ -479,7 +479,8 @@ YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范�
 - `style.padding`：`[左, 上, 右, 下]`（与 `nine_slice`、`fill_inset` 同一顺序），
   或写单个数字表示四边相同。客户端把输入框控件按内边距内缩，文字因此落在作者期望的位置；
   控件与元素框不再重合，焦点框仍对齐元素外框。
-- `style.cursor_color` / `style.selection_color`：光标与选区颜色，`#AARRGGBB` / `#RRGGBB`。
+- `style.placeholder_color` / `style.cursor_color` / `style.selection_color`：占位文字、光标与
+  选区颜色，`#AARRGGBB` / `#RRGGBB`。
   客户端用 `CloudEditBox extends EditBox` 重写 `renderWidget`，不新增混入；输入法、选区、
   剪贴板、键盘重复仍由原版处理。未设置时分别沿用文字颜色和原版选区高亮；主题令牌（`tx:`）
   不会被客户端解析，写了会回退原版并在诊断里可查。

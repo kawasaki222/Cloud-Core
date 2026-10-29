@@ -445,7 +445,7 @@ interface RenderBackend {
   `VarHandle` 读取；其余状态（可编辑、阴影、最大长度、formatter、hint、焦点时间）由覆写公开
   setter 自行记录。这样不新增混入；Minecraft 升级重命名字段会在类初始化时失败。
 - `padding` 用外层布局补偿原版内建的文本偏移；控件与元素框不重合，焦点框仍按元素外框画。
-- 占位符仍用原版 `EditBox#setHint`（颜色跟随文字颜色）。
+- 占位符仍用原版 `EditBox#setHint`，颜色取 `style.placeholder_color`，未设置时跟随文字颜色。
 - `invalid` 来自文档属性（服务端 `set_state` 后重发文档）；`ELEMENT_UPDATE` 实现后同样可以推送。
 - 清除按钮：`style.clear_button` 是贴图引用，画在元素右侧；`CloudScreen` 按同一几何把控件收窄，
   点击优先命中按钮并 `setValue("")`，`change` 因此照常触发。贴图不可用时画 `x` 占位。

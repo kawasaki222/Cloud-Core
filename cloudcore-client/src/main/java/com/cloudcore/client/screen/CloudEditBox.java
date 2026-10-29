@@ -62,6 +62,8 @@ final class CloudEditBox extends EditBox {
     private Integer cursorColor;
     /** ARGB selection fill; {@code null} keeps vanilla's highlight pipeline. */
     private Integer selectionColor;
+    /** ARGB hint colour; {@code null} follows the text colour, like vanilla. */
+    private Integer hintColor;
 
     CloudEditBox(Font font, int x, int y, int width, int height, Component hint) {
         super(font, x, y, width, height, Component.empty());
@@ -76,6 +78,10 @@ final class CloudEditBox extends EditBox {
 
     void setSelectionColor(Integer selectionColor) {
         this.selectionColor = selectionColor;
+    }
+
+    void setHintColor(Integer hintColor) {
+        this.hintColor = hintColor;
     }
 
     @Override
@@ -181,7 +187,8 @@ final class CloudEditBox extends EditBox {
                     drawX, textY, color, textShadow);
         }
         if (hint != null && visible.isEmpty() && !isFocused()) {
-            graphics.drawString(font, hint, drawX, textY, color);
+            graphics.drawString(font, hint, drawX, textY,
+                    hintColor != null ? hintColor : color);
         }
         if (highlight != cursorPos - displayPos) {
             int highlightX = (int) TEXT_X.get(this) + font.width(visible.substring(0, highlight));

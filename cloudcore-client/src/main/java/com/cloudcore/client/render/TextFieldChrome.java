@@ -35,6 +35,11 @@ public final class TextFieldChrome {
         return optionalColor(styleValue(element, "selection_color"));
     }
 
+    /** @return {@code style.placeholder_color}, or {@code null} when unset */
+    public static Integer placeholderColor(UiElement element) {
+        return optionalColor(styleValue(element, "placeholder_color"));
+    }
+
     public static ClearBar clearBar(int x, int y, int width, int height) {
         int size = Math.max(8, Math.min(14, height - 4));
         return new ClearBar(x + width - size - 4, y + (height - size) / 2, size);

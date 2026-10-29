@@ -111,6 +111,7 @@ public final class CloudScreen extends Screen {
                     Component.empty());
             edit.setCursorColor(TextFieldChrome.cursorColor(element));
             edit.setSelectionColor(TextFieldChrome.selectionColor(element));
+            edit.setHintColor(TextFieldChrome.placeholderColor(element));
             edit.setBordered(false);
             edit.setEditable(element.enabled());
             edit.setMaxLength(maxLength(element));
