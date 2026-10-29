@@ -1,6 +1,7 @@
 package com.cloudcore.client.surface;
 
 import com.cloudcore.api.SurfaceType;
+import com.cloudcore.api.document.UiDocument;
 import net.minecraft.client.Minecraft;
 
 /**
@@ -13,6 +14,15 @@ public interface SurfaceAdapter {
     boolean canHandle(OpenRequest request, Minecraft minecraft);
 
     void open(OpenRequest request, UiRuntime runtime);
+
+    /**
+     * Replaces the live document in place after an {@code ELEMENT_UPDATE}. Returning false
+     * tells the client to keep waiting for a full definition; surfaces whose layout depends on
+     * the document (containers, tooltip chrome) do not support this yet.
+     */
+    default boolean update(String uiId, UiDocument document) {
+        return false;
+    }
 
     void close(String uiId, CloseReason reason);
 

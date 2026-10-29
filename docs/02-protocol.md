@@ -204,7 +204,7 @@ state=4)` 中回传；`cloudcore-api` 内部用 `SurfaceType.UNKNOWN` 表示，�
 | `0x10` | `UI_OPEN` | 见下 |
 | `0x11` | `UI_CLOSE` | `string uiId, u8 reason` |
 | `0x12` | `UI_DEFINITION` | `string uiId, varint revision, u8 encoding, bytes data` |
-| `0x14` | `ELEMENT_UPDATE` | `string uiId, varint revision, varint count, entry[count]`（**未实现**：只有常量，编解码与发送计划中） |
+| `0x14` | `ELEMENT_UPDATE` | `string uiId, varint revision, varint count, entry[count]`（已实现，`ElementUpdateCodec`） |
 | `0x15` | `EVENT_RESULT` | `varint requestId, u8 status, string message`（已实现，`EventResultCodec`） |
 | `0x16` | `NOTIFICATION` | `u8 kind, string title, string body, varint durationMs` |
 | `0x17` | `DIAGNOSTIC` | `u8 severity, string code, u32 traceId, string scope, string message, string detail` |
@@ -299,12 +299,32 @@ WireValue value
 | `3` | `enabled` | bool |
 | `4` | `texture` | string |
 | `5` | `item` | map |
-| `6` | `progress` | f32 |
+| `6` | `progress` | f32（进度条的兼容别名，客户端写入 `value`） |
 | `7` | `value` | WireValue |
 | `8` | `tooltip` | string |
 | `9` | `style_override` | map |
 | `10` | `selected` | bool |
 | `11` | `invalid` | bool（输入框错误态） |
+| `12` | `checked` | bool（复选框） |
+| `13` | `scroll_y` | number |
+| `14` | `color` | string |
+| `15` | `placeholder` | string |
+
+`count` 上限是 `Limits.maxWireEntries`（当前 4096）；编码后 body 仍受 `maxDecompressedBytes` 约束。
+`revision` 必须大于 0。`entries` 为空是合法的 no-op，但服务端不会发送空包。
+
+服务端只在 `CUSTOM_SCREEN` 与 `HUD` 上尝试增量：文档结构、元素顺序、id、几何、`z`、事件、
+子元素数量、标题/主题/尺寸/字体等文档级字段发生变化时回退完整 `UI_DEFINITION`；任何
+`text_field` 的属性变化也回退，因为输入框的文字、选区和焦点在客户端控件里，不能只改文档。
+没有变化时不发包（revision 也不递增）。
+
+客户端应用规则：
+
+- 只接受 `revision == current + 1`。更旧的是 stale，跳号的是 gap，两种情况都丢弃当前包并等待
+  下一次完整 `UI_DEFINITION`；不会把半套更新应用到界面上。
+- 未知 `elementId`、未知 `propertyId` 或应用后校验失败会整包拒绝并记录 `CC-UPDATE-003`。
+- 客户端适配器不支持原地更新时记录 `CC-UPDATE-004`；容器/背包/tooltip 仍走完整文档。
+- 属性 `1` 的 string 值写 `text`，非 string（富文本 run 数组）写 `runs`；`NullValue` 表示删除该属性。
 
 HUD 的层由 `UI_OPEN.surfaceKey` 表示：`background`、`foreground`、`overlay`。HUD 文档同样使用
 `UI_DEFINITION` / `ELEMENT_UPDATE` / `UI_CLOSE`，不单独定义一套报文。

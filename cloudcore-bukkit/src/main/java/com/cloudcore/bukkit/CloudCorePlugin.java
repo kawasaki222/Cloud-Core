@@ -9,6 +9,8 @@ import com.cloudcore.api.page.PageLoadException;
 import com.cloudcore.protocol.Diagnostic;
 import com.cloudcore.protocol.DiagnosticCodec;
 import com.cloudcore.protocol.DiagnosticSeverity;
+import com.cloudcore.protocol.ElementUpdate;
+import com.cloudcore.protocol.ElementUpdateCodec;
 import com.cloudcore.protocol.FeatureFlags;
 import com.cloudcore.protocol.Frame;
 import com.cloudcore.protocol.FrameCodec;
@@ -31,6 +33,7 @@ import com.cloudcore.protocol.UiDefinition;
 import com.cloudcore.protocol.UiOpen;
 import com.cloudcore.protocol.UiReady;
 import com.cloudcore.server.surface.ContainerClickPolicy;
+import com.cloudcore.server.update.ElementDiffer;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -543,15 +546,43 @@ public final class CloudCorePlugin extends JavaPlugin
             return;
         }
         putCompiledPage(player.getUniqueId(), compiled);
+        UiDocument expanded = expandPlaceholders(player, compiled.document());
+        UiDocument previousSent = session.sentDocuments.get(uiId);
+        if (previousSent != null && supportsIncremental(expanded.surface())) {
+            ElementDiffer.Result diff = ElementDiffer.diff(previousSent, expanded);
+            if (diff.mode() == ElementDiffer.Mode.UNCHANGED) {
+                getLogger().info("Page '" + name + "' unchanged for " + player.getName());
+                return;
+            }
+            if (diff.mode() == ElementDiffer.Mode.INCREMENTAL) {
+                int revision = session.pageRevisions.merge(uiId, 1, Integer::sum);
+                session.sentDocuments.put(uiId, expanded);
+                // A style/texture change can reference an asset the client has not seen yet;
+                // resending refs is cheap and keeps the incremental path self-contained.
+                sendTextureRefs(player, compiled);
+                ElementUpdate update = new ElementUpdate(uiId, revision, diff.entries());
+                sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.ELEMENT_UPDATE,
+                        ElementUpdateCodec.encode(update, Limits.S2C)));
+                getLogger().info("Updated page '" + name + "' revision=" + revision
+                        + " incrementally entries=" + diff.entries().size()
+                        + " for " + player.getName());
+                return;
+            }
+        }
         int revision = session.pageRevisions.merge(uiId, 1, Integer::sum);
-        String json = com.cloudcore.api.document.UiDocumentJson.write(
-                expandPlaceholders(player, compiled.document()));
+        String json = com.cloudcore.api.document.UiDocumentJson.write(expanded);
         UiDefinition definition = new UiDefinition(uiId, revision, 0,
                 json.getBytes(StandardCharsets.UTF_8));
         sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.UI_DEFINITION,
                 UiCodec.encodeDefinition(definition, Limits.S2C)));
+        session.sentDocuments.put(uiId, expanded);
         getLogger().info("Updated page '" + name + "' revision=" + revision
                 + " state=" + state + " for " + player.getName());
+    }
+
+    /** Surfaces whose client adapter can replace a document in place. */
+    private static boolean supportsIncremental(SurfaceType surface) {
+        return surface == SurfaceType.CUSTOM_SCREEN || surface == SurfaceType.HUD;
     }
 
     /**
@@ -1673,6 +1704,7 @@ public final class CloudCorePlugin extends JavaPlugin
         String uiId = document.id();
         int token = random.nextInt();
         session.lastUiId = uiId;
+        session.sentDocuments.put(uiId, document);
         int revision = session.pageRevisions.merge(uiId, 1, Integer::sum);
         UiOpen open = openForSurface(surface, uiId, revision, token, surfaceKey, document);
         // An addon provider runs before the wire: it may bind its own backing state and
@@ -2703,6 +2735,8 @@ public final class CloudCorePlugin extends JavaPlugin
         /** uiId -> page name, so a set_state action can recompile the right page. */
         private final Map<String, String> pageNames = new ConcurrentHashMap<>();
         private final Map<String, Integer> pageRevisions = new ConcurrentHashMap<>();
+        /** Last document actually sent per uiId, the baseline for the next incremental diff. */
+        private final Map<String, UiDocument> sentDocuments = new ConcurrentHashMap<>();
         /** Set by set_state; the persistence task writes the state and clears it. */
         private volatile boolean stateDirty;
         /** Bumped on every state write so a save in flight does not clear a newer change. */

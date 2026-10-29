@@ -279,6 +279,17 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   证明按控件身份匹配的 `submit` 修复生效。实现是 `CloudEditBox extends EditBox` 重写
   `renderWidget` + 缓存 `VarHandle`，未新增混入；`TextFieldChromeTest`、
   `DocumentRenderListBuilderTest.textFieldClearButtonDrawsItsTextureInTheRightPadding` 覆盖几何与颜色解析。
+- **ELEMENT_UPDATE 已核实（2026-10-29）**：示例页点击 `+1` 后服务端记录
+  `Updated page 'example' revision=6 incrementally entries=1`，客户端计数标签从 0 变成 1，
+  界面没有重开、输入框焦点与滑块值都保留（`element-update-before.png` /
+  `element-update-after.png`）。拖动音量滑块产生 `entries=2`（音量标签文本 + 滑块 `value`），
+  证明同一次刷新可以携带多个元素/属性。
+  协议侧 `ElementUpdateCodecTest.goldenBytes` 锁定固定字节
+  `01750201016101060178`，`WireValuesTest` 覆盖属性到 WireValue 的转换；服务端
+  `ElementDifferTest` 覆盖结构/几何/事件/text_field/未知属性回退完整文档；客户端
+  `DocumentUpdatesTest` 覆盖嵌套元素、富文本、属性删除与整包拒绝，`UpdateRevisionTest`
+  覆盖 stale/gap。HUD 的增量路径只走了代码与单测，未单独真机截图；`text_field` 变化回退
+  完整文档的路径也未真机触发。
 - **icon_button 与按钮图标已核实**：示例页的 `icon_button`（`icon: {item: minecraft:diamond}`）
   画成带背景与悬停态的物品图标按钮，点击记录 `EVENT ui=example element=gem_button`；
   “喊话”按钮的 `icon: {item: minecraft:emerald}` 画在左侧、文字右移到 `x + 21`
@@ -464,7 +475,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，270 个测试 / 54 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，305 个测试 / 59 个测试类，0 失败）。
 
 仍未验证：
 
@@ -475,7 +486,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto` 未实现；
   客户端直连只验证了成功路径，失败注入（超时、非 https、sha256 不匹配、超大图）只有单测/代码路径。
 - **远端 GIF**：本地 GIF 已验证；`url:` 指向 GIF 的真机播放未验证。
-- **`ELEMENT_UPDATE`**：未实现（只有操作码常量），当前重发完整文档。
+- **`ELEMENT_UPDATE` 剩余**：自定义页面已真机验证；HUD 增量、`text_field` 回退、revision
+  gap 后等待完整文档的恢复路径只有单测/代码覆盖。占位符周期刷新尚未接上该通道。
 - **多玩家并发**：编译页已按玩家隔离并单机复测；两个客户端同时看同一张含 `repeat` 的页面未真机验证。
 - **容器**：`allow_player_inventory: true` 与 `InventoryDragEvent` 未真机验证。
 - **玩家背包 v2**：配方书（`skinned`/`custom`）、玩家模型与状态效果未实现。

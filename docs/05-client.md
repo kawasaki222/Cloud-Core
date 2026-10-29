@@ -105,9 +105,13 @@ final class ClientSession {
 
 - `uiId` 在单条连接内唯一；同一 id 的第二次 `UI_OPEN` 替换会话。
 - 未知 `uiId` 的 `UI_DEFINITION` 进入 `pendingDefinitions`（最多 8 个，LRU，60 秒），不直接丢弃。
-- 文档 `revision` 必须严格大于缓存值；元素更新若更旧则丢弃。
+- 文档 `revision` 必须严格大于缓存值；`ELEMENT_UPDATE` 只接受 `current + 1`，跳号（gap）或更旧
+  （stale）都丢弃并等待下一次完整 `UI_DEFINITION`，不会把半套属性应用到界面。
 - 同一 `uiId` 收到更高 revision 的 `UI_DEFINITION` 时按“更新”处理：重新解析、校验并
   `SurfaceAdapter.open`（`CloudScreen` 会换成新文档），不再发 `UI_READY` 失败。
+- `ELEMENT_UPDATE` 先由 `DocumentUpdates` 生成新文档（未改动的元素和属性 map 共享），再交给
+  `SurfaceAdapter.update`：自定义页面走 `CloudScreen.updateDocument`（保留输入框控件状态、重置
+  本地滚动增量、重建渲染列表），HUD 直接替换层文档。未知元素/属性或校验失败整包拒绝。
 - 点击带 `click` 事件的元素时发 `EVENT`（actionId 来自文档）；未命中的点击交给 `Screen` 默认处理。
   点击载荷带 `button` 与 `shift`，滑块带 `amount`（点击横坐标在轨道内的比例，`0..1`），
   复选框带 `checked`（取反后的新值）。
@@ -446,7 +450,8 @@ interface RenderBackend {
   setter 自行记录。这样不新增混入；Minecraft 升级重命名字段会在类初始化时失败。
 - `padding` 用外层布局补偿原版内建的文本偏移；控件与元素框不重合，焦点框仍按元素外框画。
 - 占位符仍用原版 `EditBox#setHint`，颜色取 `style.placeholder_color`，未设置时跟随文字颜色。
-- `invalid` 来自文档属性（服务端 `set_state` 后重发文档）；`ELEMENT_UPDATE` 实现后同样可以推送。
+- `invalid` 来自文档属性（服务端 `set_state` 后重发文档或 `ELEMENT_UPDATE`）；文本字段的属性
+  变化会回退完整文档并重建界面，输入框控件自身状态不会被增量更新打断。
 - 清除按钮：`style.clear_button` 是贴图引用，画在元素右侧；`CloudScreen` 按同一几何把控件收窄，
   点击优先命中按钮并 `setValue("")`，`change` 因此照常触发。贴图不可用时画 `x` 占位。
 - `sensitive: true` 时显示掩码，但 `getValue()` 仍是原文；提交时按文档声明发送。

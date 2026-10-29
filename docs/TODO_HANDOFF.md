@@ -21,9 +21,10 @@
   输入框 padding）；
   NanoVG 后端与 FBO 合成（opt-in）；多层 Boss 血条；客户端本地面板（`match` 接管容器/血条）；
   客户端日志与诊断码。
+- 协议：`ELEMENT_UPDATE`（元素/属性增量、revision 顺序、完整文档回退；自定义页真机验证）。
 - 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
   `cloudcore-api-testkit`。
-- 构建：`./gradlew build` 通过，270 个测试 / 54 个测试类，0 失败。
+- 构建：`./gradlew build` 通过，305 个测试 / 59 个测试类，0 失败。
 
 ## 已有内容
 
@@ -200,21 +201,18 @@ docs/
 
 ## 下一步动作（按顺序）
 
-1. **协议增量**：`ELEMENT_UPDATE`（只发改动的元素/属性，替换当前“每次状态变化重发整份文档”），
-   需要服务端 diff、客户端可变的元素表与 revision 顺序测试；`Limits`、黄金向量与
-   `docs/02-protocol.md` 同步。
-2. **占位符周期刷新**：`interval`/`tick`/`event` 三种模式、解析预算与异步白名单、
-   `${placeholder:...}` 形式（当前只有发送时解析一次）。
-3. **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto`，服务端允许列表、
+1. **占位符周期刷新**：`interval`/`tick`/`event` 三种模式、解析预算与异步白名单、
+   `${placeholder:...}` 形式（当前只有发送时解析一次）；下发走已实现的 `ELEMENT_UPDATE`。
+2. **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto`，服务端允许列表、
    哈希缓存；配合远端 GIF 真机验证。
-4. **持久化后端**：在 `PlayerStateStore` 后面实现 SQLite（默认）与 MySQL（可选），
+3. **持久化后端**：在 `PlayerStateStore` 后面实现 SQLite（默认）与 MySQL（可选），
    含连接池、迁移脚本与容量上限；文件实现对单服仍可用。
-5. **NanoVG 默认化**：设备分辨率 FBO（清晰文字）、U31 状态隔离、失败整帧回退、Linux/macOS 验证。
-6. **玩家背包 v2**：配方书四档（`skinned`/`custom`）、玩家模型与状态效果；`allow_player_inventory`
+4. **NanoVG 默认化**：设备分辨率 FBO（清晰文字）、U31 状态隔离、失败整帧回退、Linux/macOS 验证。
+5. **玩家背包 v2**：配方书四档（`skinned`/`custom`）、玩家模型与状态效果；`allow_player_inventory`
    与 `InventoryDragEvent` 的真机验证顺带补上。
-7. **渲染与交互剩余**：文本 shaping、多条 Boss 血条堆叠与间距、
+6. **渲染与交互剩余**：文本 shaping、多条 Boss 血条堆叠与间距、
    滚动容器内元素的焦点/输入框定位（当前按未滚动位置计算）。
-8. 之后按 `08-roadmap.md` 的 M4–M10 推进（动作引擎 v2、加固与发布）。
+7. 之后按 `08-roadmap.md` 的 M4–M10 推进（动作引擎 v2、加固与发布）。
 
 ## 环境搭建
 

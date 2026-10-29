@@ -102,6 +102,19 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
     }
 
     @Override
+    public boolean update(String uiId, UiDocument document) {
+        for (Layer layer : LAYERS.values()) {
+            UiDocument current = layer.document;
+            if (current != null && current.id().equals(uiId)) {
+                layer.priority = priorityOf(document);
+                layer.document = document;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
     public void close(String uiId, CloseReason reason) {
         LAYERS.values().forEach(layer -> {
             UiDocument document = layer.document;

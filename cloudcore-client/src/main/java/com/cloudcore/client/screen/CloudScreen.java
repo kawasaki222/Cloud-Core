@@ -34,7 +34,7 @@ public final class CloudScreen extends Screen {
     private static final int BACKGROUND = 0xB0000000;
     private static final int SCROLL_STEP = 12;
 
-    private final UiDocument document;
+    private UiDocument document;
     private final DocumentRenderer backend = new DocumentRenderer();
     private final Runnable onCloseAction;
     private RenderList cachedList = RenderList.EMPTY;
@@ -80,6 +80,23 @@ public final class CloudScreen extends Screen {
 
     public UiDocument document() {
         return document;
+    }
+
+    /**
+     * Applies an incremental update from the server. Text field widgets keep their live state
+     * (typed text, selection, focus); the server only sends property updates for elements it
+     * knows the widget can absorb, and falls back to a full definition for text fields.
+     */
+    public void updateDocument(UiDocument updated) {
+        this.document = Objects.requireNonNull(updated, "updated");
+        // A server revision used to replace the whole screen, which reset the wheel delta.
+        // Keep that behaviour: the document's own scroll_y is authoritative again.
+        localScroll.clear();
+        hoveredId = null;
+        pressedId = null;
+        cachedPressedId = null;
+        hoverEventElement = null;
+        rebuild();
     }
 
     @Override

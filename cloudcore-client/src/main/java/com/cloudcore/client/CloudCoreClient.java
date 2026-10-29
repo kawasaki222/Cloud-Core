@@ -8,13 +8,17 @@ import com.cloudcore.api.document.ValidationResult;
 import com.cloudcore.api.page.PageLoadException;
 import com.cloudcore.client.net.CloudFramePayload;
 import com.cloudcore.client.surface.CloseReason;
+import com.cloudcore.client.surface.DocumentUpdates;
 import com.cloudcore.client.surface.OpenRequest;
 import com.cloudcore.client.surface.SurfaceAdapter;
 import com.cloudcore.client.surface.SurfaceRegistry;
 import com.cloudcore.client.surface.UiRuntime;
+import com.cloudcore.client.surface.UpdateRevision;
 import com.cloudcore.protocol.Diagnostic;
 import com.cloudcore.protocol.DiagnosticCodec;
 import com.cloudcore.protocol.DiagnosticSeverity;
+import com.cloudcore.protocol.ElementUpdate;
+import com.cloudcore.protocol.ElementUpdateCodec;
 import com.cloudcore.protocol.FeatureFlags;
 import com.cloudcore.protocol.Frame;
 import com.cloudcore.protocol.FrameCodec;
@@ -70,6 +74,7 @@ public final class CloudCoreClient implements ClientModInitializer {
     private final Map<String, OpenRequest> pendingOpens = new HashMap<>();
     private final Map<String, OpenRequest> openRequests = new HashMap<>();
     private final Map<String, Integer> openRevisions = new HashMap<>();
+    private final Map<String, UiDocument> openDocuments = new HashMap<>();
     private final Map<String, UiDefinition> pendingDefinitions = new HashMap<>();
     private static volatile boolean handshakeComplete;
 
@@ -133,6 +138,7 @@ public final class CloudCoreClient implements ClientModInitializer {
         pendingDefinitions.clear();
         openRequests.clear();
         openRevisions.clear();
+        openDocuments.clear();
         surfaceRegistry.reset(CloseReason.DISCONNECT);
         LOGGER.info("Cleared session state on {}", cause);
     }
@@ -166,6 +172,7 @@ public final class CloudCoreClient implements ClientModInitializer {
             case Opcode.PING -> handlePing(frame);
             case Opcode.UI_OPEN -> handleUiOpen(frame);
             case Opcode.UI_DEFINITION -> handleUiDefinition(frame);
+            case Opcode.ELEMENT_UPDATE -> handleElementUpdate(frame);
             case Opcode.UI_CLOSE -> handleUiClose(frame);
             case Opcode.DIAGNOSTIC -> handleDiagnostic(frame);
             case Opcode.TEXTURE_REF -> handleTextureRef(frame);
@@ -296,6 +303,7 @@ public final class CloudCoreClient implements ClientModInitializer {
             pendingOpens.remove(definition.uiId());
             openRequests.put(definition.uiId(), request);
             openRevisions.put(definition.uiId(), definition.revision());
+            openDocuments.put(definition.uiId(), document);
             sendReady(request, definition.revision(), UiReadyState.OK, "");
             LOGGER.info("Opened ui={} surface={} revision={}",
                     definition.uiId(), request.surface(), definition.revision());
@@ -304,6 +312,59 @@ public final class CloudCoreClient implements ClientModInitializer {
                     exception.getMessage());
             LOGGER.error("Failed to open ui=" + definition.uiId(), exception);
         }
+    }
+
+    /**
+     * Applies an incremental revision. Strict ordering: only {@code current + 1} is accepted,
+     * so a lost update can never be mistaken for a complete document. A gap leaves the current
+     * document alone until the server sends a full {@code UI_DEFINITION} again.
+     */
+    private void handleElementUpdate(Frame frame) {
+        ElementUpdate update = ElementUpdateCodec.decode(frame.body(), Limits.S2C);
+        OpenRequest request = openRequests.get(update.uiId());
+        UiDocument current = openDocuments.get(update.uiId());
+        if (request == null || current == null) {
+            LOGGER.warn("[CC-UPDATE-002] ELEMENT_UPDATE without an open document ui={} revision={}",
+                    update.uiId(), update.revision());
+            return;
+        }
+        int currentRevision = openRevisions.getOrDefault(update.uiId(), -1);
+        UpdateRevision.Decision decision = UpdateRevision.decide(currentRevision,
+                update.revision());
+        if (decision == UpdateRevision.Decision.STALE) {
+            LOGGER.debug("Ignoring stale ELEMENT_UPDATE ui={} revision={} (current {})",
+                    update.uiId(), update.revision(), currentRevision);
+            return;
+        }
+        if (decision == UpdateRevision.Decision.GAP) {
+            LOGGER.warn("[CC-UPDATE-002] ELEMENT_UPDATE gap ui={} revision={} current={}; "
+                    + "waiting for a full document", update.uiId(), update.revision(),
+                    currentRevision);
+            return;
+        }
+        DocumentUpdates.Result result = DocumentUpdates.apply(current, update.entries());
+        if (!result.applied()) {
+            LOGGER.warn("[CC-UPDATE-003] ELEMENT_UPDATE rejected ui={} revision={}: {}",
+                    update.uiId(), update.revision(), result.problem());
+            return;
+        }
+        ValidationResult validation = UiDocumentValidator.validate(result.document());
+        if (!validation.valid()) {
+            LOGGER.warn("[CC-UPDATE-003] ELEMENT_UPDATE produced an invalid document ui={} "
+                    + "revision={} issues={}", update.uiId(), update.revision(),
+                    validation.errors());
+            return;
+        }
+        SurfaceAdapter adapter = surfaceRegistry.get(request.surface());
+        if (adapter == null || !adapter.update(update.uiId(), result.document())) {
+            LOGGER.warn("[CC-UPDATE-004] Surface {} cannot apply an incremental update ui={}",
+                    request.surface(), update.uiId());
+            return;
+        }
+        openDocuments.put(update.uiId(), result.document());
+        openRevisions.put(update.uiId(), update.revision());
+        LOGGER.debug("Applied ELEMENT_UPDATE ui={} revision={} entries={}", update.uiId(),
+                update.revision(), update.entries().size());
     }
 
     private void handleEventResult(Frame frame) {
@@ -374,6 +435,7 @@ public final class CloudCoreClient implements ClientModInitializer {
         pendingDefinitions.remove(close.uiId());
         openRequests.remove(close.uiId());
         openRevisions.remove(close.uiId());
+        openDocuments.remove(close.uiId());
         CloseReason reason = switch (close.reason()) {
             case 0, 1 -> CloseReason.SERVER;
             case 2 -> CloseReason.REPLACED;

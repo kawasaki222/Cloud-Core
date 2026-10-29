@@ -1,6 +1,7 @@
 package com.cloudcore.client.surface;
 
 import com.cloudcore.api.SurfaceType;
+import com.cloudcore.api.document.UiDocument;
 import com.cloudcore.client.screen.CloudScreen;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -39,6 +40,21 @@ public final class CustomScreenAdapter implements SurfaceAdapter {
         Minecraft minecraft = runtime.minecraft();
         minecraft.execute(() -> minecraft.setScreen(new CloudScreen(runtime.document(),
                 () -> onPlayerClosed.accept(request.uiId()))));
+    }
+
+    @Override
+    public boolean update(String uiId, UiDocument document) {
+        Minecraft minecraft = Minecraft.getInstance();
+        Screen screen = minecraft.screen;
+        if (!(screen instanceof CloudScreen cloudScreen) || !cloudScreen.uiId().equals(uiId)) {
+            return false;
+        }
+        minecraft.execute(() -> {
+            if (minecraft.screen == cloudScreen) {
+                cloudScreen.updateDocument(document);
+            }
+        });
+        return true;
     }
 
     @Override

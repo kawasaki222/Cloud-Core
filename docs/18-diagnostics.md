@@ -81,6 +81,7 @@
 | `CC-RENDER-*` | NanoVG/原生绘制异常 |
 | `CC-FBO-*` | FBO 创建、合成、回退 |
 | `CC-INPUT-*` | 输入路由、焦点、IME |
+| `CC-UPDATE-*` | `ELEMENT_UPDATE` 顺序、元素、适配器、校验 |
 | `CC-ACT-*` | 动作拒绝、冷却、权限、异常 |
 | `CC-PERF-*` | 帧预算、缓存、限流 |
 | `CC-SEC-*` | 脱敏、越界路径、非法 URL |
@@ -103,6 +104,9 @@
 - `CC-BIND-001` 绑定超时，已回退原版。
 - `CC-INPUT-001` `text_field` 的 `filter: regex:...` 正则无效，已放行输入。
 - `CC-INPUT-002` 未知的 `filter` 值，已放行输入并保留日志。
+- `CC-UPDATE-002` `ELEMENT_UPDATE` 跳号或没有对应会话，已丢弃并等待完整文档。
+- `CC-UPDATE-003` 更新引用了未知元素/属性，或应用后文档校验失败，整包拒绝。
+- `CC-UPDATE-004` 当前面板适配器不支持原地更新。
 
 完整码表在实现时生成，文档保留前缀和示例。
 
