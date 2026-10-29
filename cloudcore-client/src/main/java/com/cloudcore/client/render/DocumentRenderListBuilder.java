@@ -23,11 +23,18 @@ public final class DocumentRenderListBuilder {
     private static final int DEFAULT_PANEL = 0x66000000;
     private static final int DEFAULT_BUTTON = 0xAA4A4A4A;
     private static final int DEFAULT_BUTTON_HOVER = 0xCC6E6E6E;
+    /** Pressed reads as "pushed in": darker than the resting state, not brighter. */
+    private static final int DEFAULT_BUTTON_PRESSED = 0xCC2E2E2E;
     private static final int DEFAULT_FIELD = 0xAA202020;
     private static final int DEFAULT_INVALID_BORDER = 0xFFFF5555;
     private static final int DEFAULT_TEXT = 0xFFFFFFFF;
     private static final int MAX_COMMANDS = 20_000;
     private static final int MAX_DEPTH = 64;
+    /** A bar is a readable gauge up to a few dozen notches; beyond that it is just noise. */
+    private static final int MAX_SEGMENTS = 64;
+    private static final int MAX_SEGMENT_GAP = 16;
+    /** Corner radius is capped so a small bar cannot turn into a circle. */
+    private static final int MAX_RADIUS_RATIO = 2;
 
     private DocumentRenderListBuilder() {
     }
@@ -54,8 +61,33 @@ public final class DocumentRenderListBuilder {
     public static RenderList buildAt(UiDocument document, int screenWidth, int screenHeight,
             int originX, int originY,
             java.util.function.ToIntFunction<String> localScroll, String hoveredId) {
+        return buildAt(document, screenWidth, screenHeight, originX, originY, localScroll,
+                hoveredId, null);
+    }
+
+    /**
+     * @param pressedId element held down by the mouse, or null; it wins over {@code hoveredId}
+     *                  because a pressed button is also hovered and the press is the newer
+     *                  information
+     */
+    public static RenderList buildAt(UiDocument document, int screenWidth, int screenHeight,
+            int originX, int originY,
+            java.util.function.ToIntFunction<String> localScroll, String hoveredId,
+            String pressedId) {
+        return buildWithInteraction(document, screenWidth, screenHeight, originX, originY,
+                localScroll, new Interaction(hoveredId, pressedId));
+    }
+
+    /**
+     * Shared entry for the two public {@code buildAt} forms. It cannot be an overload of them:
+     * every call that passes a literal {@code null} would match both and stop compiling.
+     */
+    static RenderList buildWithInteraction(UiDocument document, int screenWidth, int screenHeight,
+            int originX, int originY,
+            java.util.function.ToIntFunction<String> localScroll, Interaction interaction) {
         Objects.requireNonNull(document, "document");
         Objects.requireNonNull(localScroll, "localScroll");
+        Objects.requireNonNull(interaction, "interaction");
         if (screenWidth <= 0 || screenHeight <= 0) {
             return RenderList.EMPTY;
         }
@@ -65,9 +97,22 @@ public final class DocumentRenderListBuilder {
         Map<String, FontSpec> fonts = document.fonts();
         for (UiElement element : document.elements()) {
             append(element, originX, originY, documentWidth, documentHeight,
-                    commands, 1, fonts, localScroll, hoveredId);
+                    commands, 1, fonts, localScroll, interaction);
         }
         return commands.isEmpty() ? RenderList.EMPTY : new RenderList(commands);
+    }
+
+    /** Which element is under the cursor and which one is held down; both may be null. */
+    record Interaction(String hoveredId, String pressedId) {
+        static final Interaction NONE = new Interaction(null, null);
+
+        Interaction {
+            // An id can only be pressed while it is also the hovered one: dragging off a
+            // button has to release the press, or it would stay dark under the cursor.
+            if (pressedId != null && !pressedId.equals(hoveredId)) {
+                pressedId = null;
+            }
+        }
     }
 
     /**
@@ -85,7 +130,7 @@ public final class DocumentRenderListBuilder {
     private static void append(UiElement element, int parentX, int parentY,
             int parentWidth, int parentHeight, List<RenderCommand> commands, int depth,
             Map<String, FontSpec> fonts,
-            java.util.function.ToIntFunction<String> localScroll, String hoveredId) {
+            java.util.function.ToIntFunction<String> localScroll, Interaction interaction) {
         if (!element.visible() || depth > MAX_DEPTH || commands.size() >= MAX_COMMANDS) {
             return;
         }
@@ -103,12 +148,12 @@ public final class DocumentRenderListBuilder {
             case "panel" -> {
                 int w = width > 0 ? width : parentWidth;
                 int h = height > 0 ? height : parentHeight;
-                boolean hovered = element.id().equals(hoveredId);
-                Object background = styled(element, "background", hovered);
+                boolean hovered = element.id().equals(interaction.hoveredId());
+                Object background = styled(element, "background", hovered, false);
                 if (background instanceof String reference && isSupportedTexture(reference)) {
                     // A texture background may stretch or use a nine-slice border.
                     addImage(commands, reference, x, y, w, h,
-                            intArray(styled(element, "nine_slice", hovered)));
+                            intArray(styled(element, "nine_slice", hovered, false)));
                 } else {
                     addFill(commands, x, y, w, h, color(background, DEFAULT_PANEL));
                 }
@@ -118,21 +163,29 @@ public final class DocumentRenderListBuilder {
             case "button" -> {
                 int w = width > 0 ? width : Math.max(40, text(element).length() * 6 + 12);
                 int h = height > 0 ? height : 20;
-                boolean hovered = element.enabled() && element.id().equals(hoveredId);
-                Object background = styled(element, "background", hovered);
+                boolean hovered = element.enabled() && element.id().equals(interaction.hoveredId());
+                boolean pressed = hovered && element.id().equals(interaction.pressedId());
+                Object background = styled(element, "background", hovered, pressed);
                 if (background instanceof String reference && isSupportedTexture(reference)) {
                     addImage(commands, reference, x, y, w, h,
-                            intArray(styled(element, "nine_slice", hovered)));
+                            intArray(styled(element, "nine_slice", hovered, pressed)));
                 } else {
                     addFill(commands, x, y, w, h, dim(element, color(background,
-                            hovered ? DEFAULT_BUTTON_HOVER : DEFAULT_BUTTON)));
+                            pressed ? DEFAULT_BUTTON_PRESSED
+                                    : hovered ? DEFAULT_BUTTON_HOVER : DEFAULT_BUTTON)));
+                }
+                int textY = y + Math.max(2, (h - 8) / 2);
+                // A 1px downward nudge is what sells the press with no other styling available.
+                if (pressed) {
+                    textY += 1;
                 }
                 int textX = x + 6;
                 if (attribute(element, "icon") != null) {
-                    addIcon(commands, element, x + 3, y + Math.max(1, (h - 14) / 2), 14);
+                    addIcon(commands, element, x + 3,
+                            y + Math.max(1, (h - 14) / 2) + (pressed ? 1 : 0), 14);
                     textX = x + 21;
                 }
-                addText(commands, text(element), textX, y + Math.max(2, (h - 8) / 2),
+                addText(commands, text(element), textX, textY,
                         dim(element, color(styleText(element), DEFAULT_TEXT)),
                         fontPath(element, fonts), fontSize(element));
                 childWidth = w;
@@ -141,16 +194,19 @@ public final class DocumentRenderListBuilder {
             case "icon_button" -> {
                 int w = width > 0 ? width : 20;
                 int h = height > 0 ? height : 20;
-                boolean hovered = element.enabled() && element.id().equals(hoveredId);
-                Object background = styled(element, "background", hovered);
+                boolean hovered = element.enabled() && element.id().equals(interaction.hoveredId());
+                boolean pressed = hovered && element.id().equals(interaction.pressedId());
+                Object background = styled(element, "background", hovered, pressed);
                 if (background instanceof String reference && isSupportedTexture(reference)) {
                     addImage(commands, reference, x, y, w, h,
-                            intArray(styled(element, "nine_slice", hovered)));
+                            intArray(styled(element, "nine_slice", hovered, pressed)));
                 } else {
                     addFill(commands, x, y, w, h, dim(element, color(background,
-                            hovered ? DEFAULT_BUTTON_HOVER : DEFAULT_BUTTON)));
+                            pressed ? DEFAULT_BUTTON_PRESSED
+                                    : hovered ? DEFAULT_BUTTON_HOVER : DEFAULT_BUTTON)));
                 }
-                addIcon(commands, element, x + 2, y + 2, Math.max(4, Math.min(w, h) - 4));
+                addIcon(commands, element, x + 2, y + 2 + (pressed ? 1 : 0),
+                        Math.max(4, Math.min(w, h) - 4));
                 childWidth = w;
                 childHeight = h;
             }
@@ -217,29 +273,55 @@ public final class DocumentRenderListBuilder {
             case "progress" -> {
                 int w = width > 0 ? width : parentWidth;
                 int h = height > 0 ? height : 8;
+                int radius = radius(element, w, h);
                 Object background = attribute(element, "texture_bg");
                 if (background instanceof String reference && isSupportedTexture(reference)) {
-                    addImage(commands, reference, x, y, w, h);
+                    // nine_slice keeps a framed track's border and caps from stretching.
+                    addImage(commands, reference, x, y, w, h,
+                            intArray(attribute(element, "nine_slice")));
                 } else {
-                    addFill(commands, x, y, w, h, color(style(element, "background"), 0xAA202020));
+                    addRounded(commands, x, y, w, h,
+                            color(style(element, "background"), 0xAA202020), radius);
                 }
                 double value = Math.max(0.0, Math.min(1.0,
                         number(attribute(element, "value"), 0.0)));
-                // The fill keeps its full size and is clipped, so texture_fill is never squashed.
                 Object direction = attribute(element, "direction");
-                int[] area = progressFill(x, y, w, h, value,
-                        direction instanceof String text ? text : null);
-                if (area[2] > 0 && area[3] > 0) {
-                    Object fillTexture = attribute(element, "texture_fill");
-                    if (fillTexture instanceof String reference
-                            && isSupportedTexture(reference)) {
+                String dir = direction instanceof String text ? text : null;
+                Object fillTexture = attribute(element, "texture_fill");
+                boolean textured = fillTexture instanceof String reference
+                        && isSupportedTexture(reference);
+                int fillColor = color(style(element, "fill_color"), 0xFF3C8CE7);
+                // A segmented bar is a row of cells: each fills independently, so a 10-cell bar
+                // reads as discrete notches instead of one continuous edge.
+                int segments = (int) Math.max(1, Math.min(MAX_SEGMENTS,
+                        number(attribute(element, "segments"), 1.0)));
+                int gap = segments > 1
+                        ? (int) Math.max(0, Math.min(MAX_SEGMENT_GAP,
+                                number(attribute(element, "segment_gap"), 1.0)))
+                        : 0;
+                for (int index = 0; index < segments; index++) {
+                    int cellX = x + (int) Math.round((double) w * index / segments);
+                    int cellRight = x + (int) Math.round((double) w * (index + 1) / segments);
+                    int cellW = cellRight - cellX - (index < segments - 1 ? gap : 0);
+                    if (cellW <= 0) {
+                        continue;
+                    }
+                    double segmentValue = segments == 1 ? value
+                            : Math.max(0.0, Math.min(1.0, value * segments - index));
+                    // The fill keeps its full size and is clipped, so texture_fill is never
+                    // squashed into the part that is currently showing.
+                    int[] area = progressFill(cellX, y, cellW, h, segmentValue, dir);
+                    if (area[2] <= 0 || area[3] <= 0) {
+                        continue;
+                    }
+                    if (textured) {
                         commands.add(new RenderCommand.ClipPush(area[0], area[1], area[2],
                                 area[3]));
-                        addImage(commands, reference, x, y, w, h);
+                        addImage(commands, (String) fillTexture, cellX, y, cellW, h);
                         commands.add(new RenderCommand.ClipPop());
                     } else {
-                        addFill(commands, area[0], area[1], area[2], area[3],
-                                color(style(element, "fill_color"), 0xFF3C8CE7));
+                        addRounded(commands, area[0], area[1], area[2], area[3], fillColor,
+                                radius);
                     }
                 }
                 childWidth = w;
@@ -296,11 +378,11 @@ public final class DocumentRenderListBuilder {
         if ("row".equals(element.type()) || "column".equals(element.type())
                 || "grid".equals(element.type())) {
             layoutChildren(element, childX, childY, childWidth, childHeight, commands, depth,
-                    fonts, localScroll, hoveredId);
+                    fonts, localScroll, interaction);
         } else {
             for (UiElement child : element.children()) {
                 append(child, childX, childY, childWidth, childHeight, commands, depth + 1,
-                        fonts, localScroll, hoveredId);
+                        fonts, localScroll, interaction);
             }
         }
         if (clipChildren && commands.size() < MAX_COMMANDS) {
@@ -314,12 +396,12 @@ public final class DocumentRenderListBuilder {
      */
     private static void layoutChildren(UiElement element, int x, int y, int width, int height,
             List<RenderCommand> commands, int depth, Map<String, FontSpec> fonts,
-            java.util.function.ToIntFunction<String> localScroll, String hoveredId) {
+            java.util.function.ToIntFunction<String> localScroll, Interaction interaction) {
         ContainerCursor cursor = new ContainerCursor(element, x, y, width, height);
         for (UiElement child : element.children()) {
             int[] offset = cursor.next(child);
             append(child, offset[0], offset[1], width, height, commands, depth + 1, fonts,
-                    localScroll, hoveredId);
+                    localScroll, interaction);
         }
     }
 
@@ -328,6 +410,66 @@ public final class DocumentRenderListBuilder {
         if (width > 0 && height > 0 && commands.size() < MAX_COMMANDS) {
             commands.add(new RenderCommand.FillRect(x, y, width, height, argb));
         }
+    }
+
+    /**
+     * Radius in pixels from {@code radius}, clamped so it never eats more than half the box.
+     * A percentage is resolved against the shorter side, which keeps a bar's caps circular.
+     */
+    private static int radius(UiElement element, int width, int height) {
+        Object value = attribute(element, "radius");
+        if (value == null) {
+            return 0;
+        }
+        double raw;
+        if (value instanceof String text && text.trim().endsWith("%")) {
+            raw = number(text.trim().substring(0, text.trim().length() - 1), 0.0)
+                    * Math.min(width, height) / 100.0;
+        } else {
+            raw = number(value, 0.0);
+        }
+        int limit = Math.min(width, height) / MAX_RADIUS_RATIO;
+        return (int) Math.max(0, Math.min(limit, Math.round(raw)));
+    }
+
+    /**
+     * A rectangle with rounded corners, approximated row by row: the backends only know how to
+     * fill rects, and a per-row inset is indistinguishable from a true arc at these sizes.
+     */
+    private static void addRounded(List<RenderCommand> commands, int x, int y, int width,
+            int height, int argb, int radius) {
+        if (width <= 0 || height <= 0) {
+            return;
+        }
+        if (radius <= 0 || height <= 2 * radius) {
+            addFill(commands, x, y, width, height, argb);
+            return;
+        }
+        for (int row = 0; row < height; row++) {
+            // Distance from the nearest cap centre, 0 in the straight middle section.
+            int inset = 0;
+            if (row < radius) {
+                inset = capInset(radius, radius - row);
+            } else if (row >= height - radius) {
+                inset = capInset(radius, row - (height - radius) + 1);
+            }
+            addFill(commands, x + inset, y + row, width - 2 * inset, 1, argb);
+        }
+    }
+
+    /**
+     * Horizontal inset of a rounded cap at vertical distance {@code dy} from its arc centre:
+     * 0 at the centre (the straight section), {@code radius} at the outer edge.
+     */
+    private static int capInset(int radius, int dy) {
+        if (dy <= 0) {
+            return 0;
+        }
+        if (dy >= radius) {
+            return radius;
+        }
+        double covered = Math.sqrt((double) radius * radius - (double) dy * dy);
+        return (int) Math.round(radius - covered);
     }
 
     /**
@@ -560,18 +702,25 @@ public final class DocumentRenderListBuilder {
     }
 
     /**
-     * Style lookup that prefers {@code style.hover.<key>} when the element is hovered, so a
-     * button can declare both states in the document.
+     * Style lookup that prefers {@code style.pressed.<key>}, then {@code style.hover.<key>},
+     * so a button can declare all three states in the document. Pressed is checked first
+     * because a held button is hovered too and the press is the more specific state.
      */
-    private static Object styled(UiElement element, String key, boolean hovered) {
-        if (hovered) {
-            Object style = element.attributes().get("style");
-            if (style instanceof Map<?, ?> map && map.get("hover") instanceof Map<?, ?> hover
-                    && hover.containsKey(key)) {
-                return hover.get(key);
+    private static Object styled(UiElement element, String key, boolean hovered,
+            boolean pressed) {
+        Object style = element.attributes().get("style");
+        if (style instanceof Map<?, ?> map) {
+            if (pressed && map.get("pressed") instanceof Map<?, ?> states
+                    && states.containsKey(key)) {
+                return states.get(key);
             }
+            if (hovered && map.get("hover") instanceof Map<?, ?> states
+                    && states.containsKey(key)) {
+                return states.get(key);
+            }
+            return map.get(key);
         }
-        return style(element, key);
+        return null;
     }
 
     private static Object style(UiElement element, String key) {

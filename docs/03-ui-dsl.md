@@ -389,9 +389,19 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
 
 状态：`normal`、`hover`、`pressed`、`disabled`。已实现 `hover`：元素声明
 `style.hover: { background: ... }` 时，客户端命中该元素就用悬停样式重绘（每帧只为变化的悬停目标重建一次列表）。
+已实现 `pressed`：左键按下且光标仍在元素上时用 `style.pressed` 重绘（背景、`nine_slice`、文字随之下移 1px，
+做出「按进去」的手感），松开或把光标拖离即恢复。每个键按 `pressed` → `hover` → 基础样式 的顺序回退，
+所以只写想改的那个键即可：
+
+```yaml
+style:
+  background: "#FF1E2430"
+  hover:   { background: "#FF2A3342" }
+  pressed: { background: "#FF151A22" }   # 只覆盖背景，其余沿用 hover/基础样式
+```
+
 已实现 `disabled`：元素写 `enabled: false` 时整体降低一半不透明度、不再使用悬停样式、
 点击不触发事件（服务端收不到 `EVENT`），键盘焦点也会跳过；输入框同时变为不可编辑。
-`pressed` 尚未实现。
 
 `on:` 已实现：编译期把每个事件编译成 actionId 写进文档的 `events`，动作体留在服务端。
 YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范成字符串键，作者照常写 `on:`。
@@ -415,7 +425,7 @@ YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范�
 ```
 
 `button` 也可以带同一格式的 `icon`：图标画在左侧 14px，文字从 `x + 21` 开始。
-已实现：背景（颜色/贴图/九宫格）、`style.hover`、图标与事件；未实现：`pressed`/`disabled` 样式。
+已实现：背景（颜色/贴图/九宫格）、`style.hover`、`style.pressed`、图标与事件。
 
 ### 5.5 `text_field`
 
@@ -466,13 +476,18 @@ YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范�
 - `sensitive: true`：客户端用 `EditBox` formatter 把显示替换成 `*`；**服务端仍收到原文**用于校验，
   日志与诊断包绝不记录内容。掩码按等长字符渲染，光标宽度可能与原字不完全一致（尽力支持）。
 
-尚未实现：`padding` 补偿、`cursor_color` / `selection_color`、清除按钮。
+- `style.padding`：`[左, 上, 右, 下]`（与 `nine_slice`、`fill_inset` 同一顺序），
+  或写单个数字表示四边相同。客户端把输入框控件按内边距内缩，文字因此落在作者期望的位置；
+  控件与元素框不再重合，焦点框仍对齐元素外框。
+
+尚未实现：`cursor_color` / `selection_color`、清除按钮。
 输入法候选窗位置由 GLFW/原版处理，不能完全自定义。
 
 边界：
 
 - `cursor_color` / `selection_color` 需要覆盖 `EditBox` 的渲染；标记为尽力支持，不支持时回退原版并记录。
-- `padding` 通过外层布局补偿 `EditBox` 内建的文本偏移。
+- `padding` 通过缩小控件尺寸补偿 `EditBox` 内建的文本偏移（`EditBox` 无法直接接受内边距参数）；
+  单边上限 32px，超过按 32 处理，避免把可输入区域挤没。
 - 不要自己实现文本编辑；IME、选区、剪贴板、键盘重复都是长期坑。
 
 `change` 客户端 250 ms 防抖。服务端仍会重新校验长度、过滤器和权限。
@@ -557,7 +572,8 @@ YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范�
 
 已实现：`value`（`0..1`）、`direction`（`left` 默认 / `right` / `up` / `down`）、
 `texture_bg` 与 `texture_fill`（贴图引用，填充贴图按 `value` 裁剪而不是压扁）、
-`style.background` 与 `style.fill_color`（颜色路径）。
+`style.background` 与 `style.fill_color`（颜色路径）、`nine_slice`（背景贴图九宫格）、
+`radius` 圆角、`segments`/`segment_gap` 分段。
 
 ```yaml
 - type: progress
@@ -578,7 +594,26 @@ YAML 1.1 会把裸 `on` 解析成布尔值，加载器在读取时把它规范�
   所以纹理不会被拉伸变形。
 - `value` 可以来自状态：`set_state` 后文档重编译，进度条随新值更新
   （见 `pages/progress_demo.yml` 的滑块 → 进度条联动）。
-- 九宫格背景、圆角与分段（`segments`）尚未实现。
+- `nine_slice: [l, t, r, b]` 只作用于 `texture_bg`：有边框的轨道贴图边框和端头不拉伸，
+  只有中间被拉长。颜色背景走 `radius`。
+- `radius` 接受像素数或百分比（按短边算），会被钳到短边的一半，所以小血条不会变成圆形；
+  圆角逐行绘制，一条 12px 高的条只多出十几条填充指令。
+- `segments: 10` 把条切成 10 格，每格独立填充：`value = 0.35` 是 3 格满 + 第 4 格半格，
+  适合「10 颗心」「5 段怒气」这类离散显示。`segment_gap`（默认 1，仅分段时生效）是格间空隙。
+
+```yaml
+- type: progress
+  id: rage
+  width: 180
+  height: 14
+  value: "${state.rage}"
+  segments: 5
+  segment_gap: 2
+  radius: 3
+  style:
+    background: "#FF101418"
+    fill_color: "#FFE06030"
+```
 
 ### 5.8b 背景贴图与富文本
 

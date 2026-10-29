@@ -473,6 +473,116 @@ class DocumentRenderListBuilderTest {
     }
 
     @Test
+    void pressedStyleWinsOverHoverAndFallsBackToIt() {
+        // Only one element can be hovered per build, so each case gets its own document.
+        UiElement declaring = new UiElement("a", "button", 0, 0, "60", "20",
+                true, true, 0, Map.of(), List.of(), Map.of("text", "A",
+                        "style", Map.of("background", "#FF111111",
+                                "hover", Map.of("background", "#FF222222"),
+                                "pressed", Map.of("background", "#FF333333"))));
+        UiElement silent = new UiElement("a", "button", 0, 0, "60", "20",
+                true, true, 0, Map.of(), List.of(), Map.of("text", "A",
+                        "style", Map.of("background", "#FF111111",
+                                "hover", Map.of("background", "#FF222222"),
+                                "pressed", Map.of("text_color", "#FF000000"))));
+
+        assertEquals(0xFF333333, firstFill(declaring, "a", "a"),
+                "a pressed button uses style.pressed");
+        assertEquals(0xFF222222, firstFill(silent, "a", "a"),
+                "a pressed button without a pressed background still shows its hover one");
+        assertEquals(0xFF111111, firstFill(silent, null, null),
+                "without hover or press the resting background is used");
+    }
+
+    @Test
+    void pressedIsDroppedWhenTheCursorLeavesTheElement() {
+        UiElement button = new UiElement("a", "button", 0, 0, "60", "20",
+                true, true, 0, Map.of(), List.of(), Map.of("text", "A",
+                        "style", Map.of("background", "#FF111111",
+                                "pressed", Map.of("background", "#FF333333"))));
+
+        // Held on 'a' but hovering nothing: dragging off must release the pressed look.
+        assertEquals(0xFF111111, firstFill(button, null, "a"));
+    }
+
+    /** Background of the single button in a one-element document. */
+    private static int firstFill(UiElement button, String hoveredId, String pressedId) {
+        UiDocument document = new UiDocument(1, "states", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(button));
+        return ((RenderCommand.FillRect) DocumentRenderListBuilder
+                .buildAt(document, 200, 100, 0, 0, id -> 0, hoveredId, pressedId)
+                .commands().get(0)).argb();
+    }
+
+    @Test
+    void segmentedProgressFillsOneCellAtATime() {
+        UiElement bar = new UiElement("hp", "progress", 0, 0, "100", "10",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("value", 0.35, "segments", 10, "segment_gap", 0,
+                        "style", Map.of("fill_color", "#FF00FF00")));
+        UiDocument document = new UiDocument(1, "seg", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(bar));
+
+        // 0.35 of 10 cells: 3 whole cells plus a partly filled fourth.
+        List<RenderCommand.FillRect> fills = DocumentRenderListBuilder
+                .build(document, 200, 100).commands().stream()
+                .filter(RenderCommand.FillRect.class::isInstance)
+                .map(RenderCommand.FillRect.class::cast)
+                .filter(fill -> fill.argb() == 0xFF00FF00)
+                .toList();
+
+        assertEquals(4, fills.size(), "three full cells and one partially filled");
+        assertEquals(10, fills.get(0).width());
+        assertEquals(5, fills.get(3).width(), "the growing cell is the last one");
+        assertEquals(30, fills.get(3).x());
+    }
+
+    @Test
+    void roundedProgressDrawsCornersRowByRowAndClampsTheRadius() {
+        // Tall enough for real caps: 20px with a 6px radius leaves a straight middle section.
+        UiElement rounded = new UiElement("hp", "progress", 0, 0, "100", "20",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("value", 1.0, "radius", 6,
+                        "style", Map.of("fill_color", "#FF00FF00")));
+        // A radius larger than the bar is clamped to half its shorter side, so it stays a bar.
+        UiElement clamped = new UiElement("hp", "progress", 0, 0, "100", "8",
+                true, true, 0, Map.of(), List.of(),
+                Map.of("value", 1.0, "radius", 64,
+                        "style", Map.of("fill_color", "#FF00FF00")));
+
+        List<RenderCommand.FillRect> rows = fillRects(rounded, 0xFF00FF00);
+        assertEquals(20, rows.size(), "one rect per pixel row");
+        assertEquals(1, rows.get(0).height());
+        assertTrue(rows.get(0).x() > 0, "the top row is inset by the cap");
+        assertTrue(rows.get(0).width() < 100);
+        assertEquals(0, rows.get(10).x(), "the middle of the bar is full width");
+        assertEquals(100, rows.get(10).width());
+        for (RenderCommand.FillRect row : rows) {
+            assertTrue(row.x() >= 0 && row.x() + row.width() <= 100,
+                    "every rounded row stays within the bar");
+        }
+
+        List<RenderCommand.FillRect> clampedRows = fillRects(clamped, 0xFF00FF00);
+        assertEquals(1, clampedRows.size(), "a fully rounded small bar is one rect");
+        assertEquals(8, clampedRows.get(0).height());
+        assertEquals(100, clampedRows.get(0).width());
+    }
+
+    /** Fill rects of the given colour from a one-progress-bar document. */
+    private static List<RenderCommand.FillRect> fillRects(UiElement bar, int argb) {
+        UiDocument document = new UiDocument(1, "round", SurfaceType.CUSTOM_SCREEN,
+                TextRuns.plain("t"), "default", 200, 100, 1.0f, null,
+                Map.of(), Map.of(), List.of(bar));
+        return DocumentRenderListBuilder.build(document, 200, 100).commands().stream()
+                .filter(RenderCommand.FillRect.class::isInstance)
+                .map(RenderCommand.FillRect.class::cast)
+                .filter(fill -> fill.argb() == argb)
+                .toList();
+    }
+
+    @Test
     void resolvesPercentAndFillDimensions() {
         UiElement panel = new UiElement("root", "panel", 0, 0, "50%", "fill",
                 true, true, 0, Map.of(), List.of(), Map.of());

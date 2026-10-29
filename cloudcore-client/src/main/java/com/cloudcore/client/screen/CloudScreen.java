@@ -41,8 +41,17 @@ public final class CloudScreen extends Screen {
     private int cachedHeight = -1;
     private int cachedTextureGeneration = -1;
     private String hoveredId;
+    /** Element held down by the left mouse button; cleared on release. */
+    private String pressedId;
+    /** Pressed element the cached list was built for, so the press repaints exactly once. */
+    private String cachedPressedId;
     private final Map<String, Integer> localScroll = new HashMap<>();
     private final List<EditBox> textFields = new ArrayList<>();
+    /**
+     * Element box for each field, keyed by widget. Fields are inset by their padding, so the
+     * widget's own x/y no longer equals the element's; the focus ring needs the element box.
+     */
+    private final Map<EditBox, LayoutBoxes.Box> textFieldBoxes = new java.util.LinkedHashMap<>();
     private UiElement hoverEventElement;
     private String focusId;
     private boolean closed;
@@ -77,14 +86,22 @@ public final class CloudScreen extends Screen {
         // Text fields are real vanilla EditBox widgets so IME, selection and clipboard stay
         // vanilla; the document still draws their background.
         textFields.clear();
+        textFieldBoxes.clear();
         List<LayoutBoxes.Box> fields = LayoutBoxes.ofType(document, width, height, "text_field");
         if (!fields.isEmpty()) {
             LOGGER.debug("Adding {} text field widget(s) for ui={}", fields.size(), document.id());
         }
         for (LayoutBoxes.Box box : fields) {
             UiElement element = box.element();
-            EditBox edit = new EditBox(font, box.x(), box.y(), Math.max(20, box.width()),
-                    Math.max(12, box.height()), Component.empty());
+            // EditBox draws its text flush against its own left edge, so the padding is
+            // subtracted from the widget instead of drawn by us: the content lands where the
+            // page author asked for it.
+            int[] inset = padding(element);
+            int fieldX = box.x() + inset[0];
+            int fieldY = box.y() + inset[1];
+            int fieldW = Math.max(20, box.width() - inset[0] - inset[2]);
+            int fieldH = Math.max(12, box.height() - inset[1] - inset[3]);
+            EditBox edit = new EditBox(font, fieldX, fieldY, fieldW, fieldH, Component.empty());
             edit.setBordered(false);
             edit.setEditable(element.enabled());
             edit.setMaxLength(maxLength(element));
@@ -112,7 +129,15 @@ public final class CloudScreen extends Screen {
             }
             addRenderableWidget(edit);
             textFields.add(edit);
+            textFieldBoxes.put(edit, box);
         }
+    }
+
+    /** {@code style.padding} insets for this field, following the CSS shorthand in {@link Insets}. */
+    private static int[] padding(UiElement element) {
+        Object style = element.attributes().get("style");
+        Object value = style instanceof Map<?, ?> map ? map.get("padding") : null;
+        return com.cloudcore.client.render.Insets.parse(value);
     }
 
     private static int maxLength(UiElement element) {
@@ -287,11 +312,19 @@ public final class CloudScreen extends Screen {
             graphics.fill(controlX, height - 72, controlX + 64, height - 8, 0xFFFF0000);
         }
         String hit = hoveredElementId(mouseX, mouseY);
+        // A press only shows while the cursor is still on the element, so losing the hover
+        // (or releasing) has to refresh the list too, which the same comparison covers.
+        String held = pressedId;
+        if (held != null && !held.equals(hit)) {
+            pressedId = null;
+            held = null;
+        }
         if (width != cachedWidth || height != cachedHeight
                 || cachedTextureGeneration != com.cloudcore.client.render.RemoteTextureCache
                         .generation()
-                || !Objects.equals(hit, hoveredId)) {
+                || !Objects.equals(hit, hoveredId) || !Objects.equals(held, cachedPressedId)) {
             hoveredId = hit;
+            cachedPressedId = held;
             rebuild();
         }
         updateHoverEvents(mouseX, mouseY);
@@ -338,22 +371,22 @@ public final class CloudScreen extends Screen {
         if (!(getFocused() instanceof EditBox focused)) {
             return;
         }
-        for (LayoutBoxes.Box box : LayoutBoxes.ofType(document, width, height, "text_field")) {
-            if (box.x() != focused.getX() || box.y() != focused.getY()) {
-                continue;
-            }
-            int argb = com.cloudcore.client.render.Colors.parse(styleBorder(box.element(),
-                    "focused"), 0xFF4FA3E8);
-            int x = box.x();
-            int y = box.y();
-            int w = box.width();
-            int h = box.height();
-            graphics.fill(x, y, x + w, y + 1, argb);
-            graphics.fill(x, y + h - 1, x + w, y + h, argb);
-            graphics.fill(x, y + 1, x + 1, y + h - 1, argb);
-            graphics.fill(x + w - 1, y + 1, x + w, y + h - 1, argb);
+        // The widget is inset by its padding, so match by widget identity instead of by
+        // position: comparing coordinates would miss every inset field.
+        LayoutBoxes.Box box = textFieldBoxes.get(focused);
+        if (box == null) {
             return;
         }
+        int argb = com.cloudcore.client.render.Colors.parse(styleBorder(box.element(),
+                "focused"), 0xFF4FA3E8);
+        int x = box.x();
+        int y = box.y();
+        int w = box.width();
+        int h = box.height();
+        graphics.fill(x, y, x + w, y + 1, argb);
+        graphics.fill(x, y + h - 1, x + w, y + h, argb);
+        graphics.fill(x, y + 1, x + 1, y + h - 1, argb);
+        graphics.fill(x + w - 1, y + 1, x + w, y + h - 1, argb);
     }
 
     private String hoveredElementId(int mouseX, int mouseY) {
@@ -398,7 +431,7 @@ public final class CloudScreen extends Screen {
         cachedList = DocumentRenderListBuilder.buildAt(document, width, height,
                 (width - Math.round(document.width() * document.scale())) / 2,
                 (height - Math.round(document.height() * document.scale())) / 2,
-                this::scrolled, hoveredId);
+                this::scrolled, hoveredId, pressedId);
         cachedWidth = width;
         cachedHeight = height;
         cachedTextureGeneration = com.cloudcore.client.render.RemoteTextureCache.generation();
@@ -467,13 +500,9 @@ public final class CloudScreen extends Screen {
      * number.
      */
     private void reportSlider(SliderDrag drag, double mouseX, boolean dragging) {
-        UiElement element = null;
-        for (UiElement candidate : document.elements()) {
-            if (candidate.id().equals(drag.elementId())) {
-                element = candidate;
-                break;
-            }
-        }
+        // A recursive lookup: a slider inside a row/column/grid is not a top-level element,
+        // and scanning only the top level silently dropped every nested slider's reports.
+        UiElement element = UiElements.findById(document, drag.elementId());
         if (element == null) {
             return;
         }
@@ -522,6 +551,12 @@ public final class CloudScreen extends Screen {
 
     @Override
     public boolean mouseReleased(net.minecraft.client.input.MouseButtonEvent event) {
+        if (event.button() == 0 && pressedId != null) {
+            // Releasing always ends the press, even if the cursor left the button: it must not
+            // stay drawn as held down.
+            pressedId = null;
+            rebuild();
+        }
         if (sliderDrag != null && event.button() == 0) {
             // Final position always goes out, so a non-live slider still commits on release.
             reportSlider(sliderDrag, event.x(), false);
@@ -545,6 +580,11 @@ public final class CloudScreen extends Screen {
                     (int) event.y(), this::scrolled, eventName);
         }
         if (hit != null) {
+            // Left-press paints the button as held until release; the click still fires now,
+            // so a press and a click never disagree about what was activated.
+            if (!rightClick && hit.enabled()) {
+                pressedId = hit.id();
+            }
             activate(hit, event.button(), event.hasShiftDown(), eventName);
             return true;
         }
