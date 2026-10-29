@@ -3,6 +3,7 @@ package com.cloudcore.bukkit;
 import com.cloudcore.api.document.UiDocument;
 import com.cloudcore.bukkit.api.PlaceholderResolver;
 import com.cloudcore.server.placeholder.DocumentText;
+import com.cloudcore.server.placeholder.PlaceholderExpressions;
 import com.cloudcore.server.placeholder.PlaceholderToken;
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -65,9 +66,23 @@ final class Placeholders {
     }
 
     private String apply(Player player, String text, boolean papiEnabled) {
-        if (text == null || text.indexOf('%') < 0) {
+        if (text == null || text.isEmpty()) {
             return text;
         }
+        boolean hasPercent = text.indexOf('%') >= 0;
+        boolean hasExplicit = text.indexOf("${") >= 0
+                && text.toLowerCase(java.util.Locale.ROOT).contains("${placeholder:");
+        if (!hasPercent && !hasExplicit) {
+            return text;
+        }
+        if (hasExplicit) {
+            return PlaceholderExpressions.expand(text,
+                    chunk -> applyPercent(player, chunk, papiEnabled));
+        }
+        return applyPercent(player, text, papiEnabled);
+    }
+
+    private String applyPercent(Player player, String text, boolean papiEnabled) {
         String resolved = applyCustom(player, text);
         return papiEnabled && available() ? applyPapi(player, resolved) : resolved;
     }

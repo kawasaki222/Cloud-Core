@@ -832,28 +832,23 @@ elements:
 - 配置 `placeholders.enabled: false` 可关闭；没有安装 PlaceholderAPI 时 `%token%` 原样显示，
   启动日志写 `PlaceholderAPI not installed; %placeholders% stay as text`。
 - 未知令牌（未安装的扩展）保持原样；扩展抛异常时写一次警告，文本按未展开发送。
-- 展开只作用于 YAML 页面（`/cloudcore page` 与 `set_state` 刷新）；诊断用的内置 demo 文档不展开。
+- `${placeholder:foo}` 与 `%foo%` 等价，但显式形式不会被页面模板当成状态表达式吃掉；两种写法
+  在同一个字符串里可以混用。展开结果不会再次当作占位符解释。
+- 展开只作用于 YAML 页面（`/cloudcore page`、`set_state` 刷新与周期刷新）；诊断用的内置 demo
+  文档不展开。
 
-计划中：下面这套周期刷新/预算/异步白名单（`interval`、`tick`、`event` 模式）。
-`ELEMENT_UPDATE` 已就绪，可直接作为这些刷新的下发通道。
-在它落地前，页面重开或 `set_state` 刷新时才会重新解析一次占位符。
-
-页面级默认：
+周期刷新：页面级默认加元素级覆盖：
 
 ```yaml
 placeholders:
   mode: interval          # static | interval | tick | manual | event
-  interval_ticks: 20
-  async: false
-```
-
-元素级覆盖：
-
-```yaml
-- type: label
-  id: balance
-  text: "余额: %player_balance%"
-  refresh: { mode: interval, ticks: 10 }
+  interval_ticks: 20      # 1..72000，默认 20
+  async: false            # true：编译与展开在工作线程，diff/下发回主线程
+elements:
+  - type: label
+    id: balance
+    text: "余额: %player_balance%"
+    refresh: { mode: interval, ticks: 10 }   # 覆盖该元素的间隔
 ```
 
 | 模式 | 行为 | 成本 |
@@ -861,18 +856,21 @@ placeholders:
 | `static` | 打开/重载时解析一次 | 最低 |
 | `interval` | 每 N tick 解析一次 | 低 |
 | `tick` | 每 tick 解析 | 高，仅用于少量元素 |
-| `event` | 元素事件后解析 | 低 |
+| `event` | 该页面有元素事件后解析一次 | 低 |
 | `manual` | 仅 `refresh` 动作或 API | 最低 |
 
-同步与异步：
-
-- 默认**同步**：主线程批量解析，每玩家 2 ms/tick、全局 10 ms/tick 预算；超出的元素推迟到下一 tick。
-- 同一 tick 内相同原始字符串只解析一次，按玩家缓存。
-- 只把变化的值作为 `ELEMENT_UPDATE` 下发，不重发整份文档（已实现；客户端按 revision 顺序应用）。
-- `async: true` 是高级选项：解析放到工作线程，结果在下一 tick 应用到主线程。PlaceholderAPI 的扩展
-  不保证线程安全，因此只有服务端 `placeholders.async-namespaces` 中显式列出的命名空间才允许异步；
-  未声明的命名空间仍走同步。
-- 客户端永远不同步/异步解析占位符，它只收到解析后的文本。
+- 调度器每 tick 检查一次；任一页面/元素到期就重编译整页、展开占位符，再用
+  `ELEMENT_UPDATE` 只发变化属性。当前只对 `custom_screen` 与 `hud` 启用周期刷新，
+  其他面板会记录警告并退回“只在打开/`set_state` 时解析”。
+- 默认**同步**：主线程执行，软预算 `placeholders.player-budget-ms`（默认 2）与
+  `placeholders.global-budget-ms`（默认 10）；超预算的页面顺延，不阻塞服务器 tick。
+- `async: true`：页面编译和 PlaceholderAPI 展开在异步线程，结果回到主线程做 diff/下发；
+  同一页面同时最多一个在途任务。若期间 `set_state` 改了状态，快照版本不匹配，结果直接丢弃，
+  避免旧快照覆盖新状态。异步路径要求用到的 PlaceholderAPI 扩展线程安全；当前没有实现
+  `placeholders.async-namespaces` 白名单，页面作者自行保证。
+- `event` 模式只标记“该页面需要刷新”，不按元素单独展开；刷新仍以整页为粒度。
+- 内置动作 `refresh` 立即重编译并下发当前页，适合 `manual` 页面上的按钮。
+- 客户端永远不解析占位符，只收到解析后的文本。
 
 ## 8. 事件与动作
 

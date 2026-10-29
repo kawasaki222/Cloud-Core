@@ -54,13 +54,21 @@ public final class PageLoader {
     public record CompiledPage(UiDocument document,
             Map<Integer, List<PageAction>> actions,
             Map<String, Object> state,
-            List<RemoteTexture> textures) {
+            List<RemoteTexture> textures,
+            RefreshPlan refresh) {
         public CompiledPage {
             Objects.requireNonNull(document, "document");
             Objects.requireNonNull(state, "state");
             actions = Map.copyOf(actions);
             state = Map.copyOf(state);
             textures = List.copyOf(textures);
+            Objects.requireNonNull(refresh, "refresh");
+        }
+
+        /** Pages that do not opt into refreshs keep the static policy. */
+        public CompiledPage(UiDocument document, Map<Integer, List<PageAction>> actions,
+                Map<String, Object> state, List<RemoteTexture> textures) {
+            this(document, actions, state, textures, RefreshPlan.NONE);
         }
     }
 
@@ -77,6 +85,7 @@ public final class PageLoader {
         private final Map<Integer, List<PageAction>> actions = new LinkedHashMap<>();
         private final Set<Integer> usedActionIds = new LinkedHashSet<>();
         private final Map<String, RemoteTexture> textures = new LinkedHashMap<>();
+        private final Map<String, RefreshSpec> refresh = new LinkedHashMap<>();
 
         private BuildContext(String pageId) {
             this.pageId = pageId;
@@ -137,10 +146,11 @@ public final class PageLoader {
     public static final long MAX_FILE_BYTES = 256L * 1024L;
 
     private static final Set<String> MANIFEST_ONLY_FIELDS = Set.of(
-            "id", "surface", "container", "size", "scale", "title", "permission", "theme");
+            "id", "surface", "container", "size", "scale", "title", "permission", "theme",
+            "placeholders");
     private static final Set<String> STRUCTURE_FIELDS = Set.of(
             "id", "type", "x", "y", "width", "height", "visible", "enabled", "z",
-            "events", "children");
+            "events", "children", "refresh");
 
     private PageLoader() {
     }
@@ -222,7 +232,31 @@ public final class PageLoader {
             throw new PageLoadException(issue.code() + " " + issue.path() + ": " + issue.message());
         }
         return new CompiledPage(document, context.actions, mergedState,
-                new ArrayList<>(context.textures.values()));
+                new ArrayList<>(context.textures.values()),
+                pageRefresh(manifest.get("placeholders"), context));
+    }
+
+    /**
+     * Parses the page-level {@code placeholders} block; element {@code refresh} overrides were
+     * collected while building elements.
+     */
+    private static RefreshPlan pageRefresh(Object raw, BuildContext context)
+            throws PageLoadException {
+        RefreshSpec page = RefreshSpec.STATIC;
+        boolean async = false;
+        if (raw != null) {
+            if (!(raw instanceof Map<?, ?> map)) {
+                throw new PageLoadException("placeholders must be a mapping");
+            }
+            try {
+                page = RefreshSpec.parse(map.get("mode"), map.get("interval_ticks"),
+                        "placeholders");
+            } catch (IllegalArgumentException exception) {
+                throw new PageLoadException(exception.getMessage());
+            }
+            async = Boolean.TRUE.equals(map.get("async"));
+        }
+        return new RefreshPlan(page, context.refresh, async);
     }
 
     private static void mergeInclude(Path root, Path baseDir, String relative,
@@ -426,6 +460,18 @@ public final class PageLoader {
         }
         String fullId = idPrefix + id;
         Map<String, Integer> events = compileEvents(raw.get("on"), fullId, scope, context);
+        Object rawRefresh = raw.get("refresh");
+        if (rawRefresh != null) {
+            if (!(rawRefresh instanceof Map<?, ?> refreshMap)) {
+                throw new PageLoadException("Element '" + fullId + "' refresh must be a mapping");
+            }
+            try {
+                context.refresh.put(fullId, RefreshSpec.parse(refreshMap.get("mode"),
+                        refreshMap.get("ticks"), "element '" + fullId + "'"));
+            } catch (IllegalArgumentException exception) {
+                throw new PageLoadException(exception.getMessage());
+            }
+        }
 
         return new UiElement(
                 fullId,
@@ -543,6 +589,9 @@ public final class PageLoader {
             // Only a lone placeholder keeps its type; "${a} ${b}" is ordinary interpolation.
             if (trimmed.startsWith("${") && trimmed.indexOf('}') == trimmed.length() - 1) {
                 String expression = trimmed.substring(2, trimmed.length() - 1);
+                if (isExplicitPlaceholder(expression)) {
+                    return text;
+                }
                 Object resolved = resolveExpression(expression, scope);
                 return resolved == null ? "" : resolved;
             }
@@ -600,6 +649,13 @@ public final class PageLoader {
             }
             result.append(text, cursor, start);
             String expression = text.substring(start + 2, end);
+            if (isExplicitPlaceholder(expression)) {
+                // Resolved after compilation by the server placeholder expander; dropping it
+                // here would turn a typo into silent empty text.
+                result.append("${").append(expression).append('}');
+                cursor = end + 1;
+                continue;
+            }
             // Inner templates resolve first, so "${state.balance - ${entry.price}}" becomes
             // "${state.balance - 120}" for the runtime expression evaluator.
             if (expression.contains("${")) {
@@ -621,8 +677,11 @@ public final class PageLoader {
         return result.toString();
     }
 
-    private static Object evaluateQuietly(String expression, Map<String, Object> scope) {
-        try {
+    private static boolean isExplicitPlaceholder(String expression) {
+        return expression.trim().regionMatches(true, 0, "placeholder:", 0, "placeholder:".length());
+    }
+
+    private static Object evaluateQuietly(String expression, Map<String, Object> scope) {        try {
             return com.cloudcore.api.expression.ExpressionEvaluator.evaluate(expression, scope);
         } catch (RuntimeException exception) {
             return null;

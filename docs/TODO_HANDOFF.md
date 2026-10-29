@@ -10,7 +10,8 @@
 - 协议：信封/DEFLATE/分片重组/握手/PING-PONG/UI_OPEN-READY-CLOSE-CLOSED/EVENT-EVENT_RESULT/
   TEXTURE_REF/DIAGNOSTIC 全部实现并有测试；未知 surface 与 bind/render 模式前向兼容。
 - 服务端：Paper 插件自包含；容器三种点击策略、`inventory_grid` 槽位重排、事件限流（20/s 突发 40）、
-  `command` 动作闸门、`open_page`/`sound` 动作、PlaceholderAPI 展开（软依赖）、
+  `command` 动作闸门、`open_page`/`sound`/`refresh` 动作、PlaceholderAPI 展开（软依赖）、
+  页面/元素级周期刷新（`interval`/`tick`/`event`/`manual`，同步或异步）、
   会话状态持久化（`state/<uuid>.json`，异步写）、`/cloudcore validate|reload|page|demo-*`。
 - 附属 API：`CloudCoreApi` 的 `open`（YAML 或代码页）、`registerActionHandler`、
   `registerPlaceholderResolver`、`registerPageProvider`、`isModded`；`PageBuilder` 在 `cloudcore-api`。
@@ -24,7 +25,7 @@
 - 协议：`ELEMENT_UPDATE`（元素/属性增量、revision 顺序、完整文档回退；自定义页真机验证）。
 - 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
   `cloudcore-api-testkit`。
-- 构建：`./gradlew build` 通过，305 个测试 / 59 个测试类，0 失败。
+- 构建：`./gradlew build` 通过，316 个测试 / 61 个测试类，0 失败。
 
 ## 已有内容
 
@@ -201,18 +202,16 @@ docs/
 
 ## 下一步动作（按顺序）
 
-1. **占位符周期刷新**：`interval`/`tick`/`event` 三种模式、解析预算与异步白名单、
-   `${placeholder:...}` 形式（当前只有发送时解析一次）；下发走已实现的 `ELEMENT_UPDATE`。
-2. **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto`，服务端允许列表、
+1. **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto`，服务端允许列表、
    哈希缓存；配合远端 GIF 真机验证。
-3. **持久化后端**：在 `PlayerStateStore` 后面实现 SQLite（默认）与 MySQL（可选），
+2. **持久化后端**：在 `PlayerStateStore` 后面实现 SQLite（默认）与 MySQL（可选），
    含连接池、迁移脚本与容量上限；文件实现对单服仍可用。
-4. **NanoVG 默认化**：设备分辨率 FBO（清晰文字）、U31 状态隔离、失败整帧回退、Linux/macOS 验证。
-5. **玩家背包 v2**：配方书四档（`skinned`/`custom`）、玩家模型与状态效果；`allow_player_inventory`
+3. **NanoVG 默认化**：设备分辨率 FBO（清晰文字）、U31 状态隔离、失败整帧回退、Linux/macOS 验证。
+4. **玩家背包 v2**：配方书四档（`skinned`/`custom`）、玩家模型与状态效果；`allow_player_inventory`
    与 `InventoryDragEvent` 的真机验证顺带补上。
-6. **渲染与交互剩余**：文本 shaping、多条 Boss 血条堆叠与间距、
+5. **渲染与交互剩余**：文本 shaping、多条 Boss 血条堆叠与间距、
    滚动容器内元素的焦点/输入框定位（当前按未滚动位置计算）。
-7. 之后按 `08-roadmap.md` 的 M4–M10 推进（动作引擎 v2、加固与发布）。
+6. 之后按 `08-roadmap.md` 的 M4–M10 推进（动作引擎 v2、加固与发布）。
 
 ## 环境搭建
 

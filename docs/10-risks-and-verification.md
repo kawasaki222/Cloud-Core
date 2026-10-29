@@ -290,6 +290,17 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `DocumentUpdatesTest` 覆盖嵌套元素、富文本、属性删除与整包拒绝，`UpdateRevisionTest`
   覆盖 stale/gap。HUD 的增量路径只走了代码与单测，未单独真机截图；`text_field` 变化回退
   完整文档的路径也未真机触发。
+- **PAPI 周期刷新已核实（2026-10-29）**：`papi_refresh` 页面配
+  `placeholders: {mode: interval, interval_ticks: 20, async: true}`，元素 `health` 覆盖为
+  `ticks: 10`。真机修改玩家等级后服务端记录
+  `Updated page 'papi_refresh' revision=5 incrementally entries=1`，页面“等级：5”随下一次
+  async 刷新更新（`papi-refresh-async.png`），证明异步编译/展开、回主线程 diff 与
+  `ELEMENT_UPDATE` 下发都生效。`papi_sync`（`async: false`）同样在 10 tick 内把等级 7
+  推给客户端（`papi-refresh-sync.png`）；点击“立即刷新”触发 `EVENT ... element=refresh`，
+  走内置 `refresh` 动作。`PageLoaderTest` 覆盖页面/元素策略解析与
+  `${placeholder:...}` 保留，`RefreshPlanTest` 覆盖间隔、event 与非法 ticks。
+  未验证：预算打满后的顺延、`tick`/`event` 模式的真机行为、异步 PlaceholderAPI 扩展的
+  线程安全（当前没有 `async-namespaces` 白名单），以及刷新期间页面切换的压力场景。
 - **icon_button 与按钮图标已核实**：示例页的 `icon_button`（`icon: {item: minecraft:diamond}`）
   画成带背景与悬停态的物品图标按钮，点击记录 `EVENT ui=example element=gem_button`；
   “喊话”按钮的 `icon: {item: minecraft:emerald}` 画在左侧、文字右移到 `x + 21`
@@ -475,7 +486,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，305 个测试 / 59 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，316 个测试 / 61 个测试类，0 失败）。
 
 仍未验证：
 
@@ -492,8 +503,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **容器**：`allow_player_inventory: true` 与 `InventoryDragEvent` 未真机验证。
 - **玩家背包 v2**：配方书（`skinned`/`custom`）、玩家模型与状态效果未实现。
 - **存储**：JSON 文件实现已验证；SQLite/MySQL、连接池、迁移未实现。
-- **占位符**：PlaceholderAPI 一次性展开已验证；`interval`/`tick`/`event` 周期刷新、预算、异步白名单、
-  `${placeholder:...}` 形式未实现。
+- **占位符剩余**：一次性展开、页面/元素 `interval` 刷新、同步/异步、`refresh` 动作已真机验证；
+  `interval` 预算打满、`tick`/`event` 模式、`${placeholder:...}` 的自定义命名空间与
+  `async-namespaces` 白名单尚未验证/实现。
 - **控件/样式剩余**：文本 shaping、多条 Boss 血条堆叠与间距、`tooltip_scroll` 回传。
   `pressed` 态、`text_field` 的 padding/光标色/选区色/清除按钮、`progress` 的九宫格/圆角/分段
   已实现（单测 + 真机验证，见上）。

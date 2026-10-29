@@ -1,6 +1,7 @@
 package com.cloudcore.api.page;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -496,6 +497,139 @@ class PageLoaderTest {
         assertEquals(true, document.elements().get(1).attributes().get("checked"));
         assertEquals("", document.elements().get(2).attributes().get("text"),
                 "an unresolved placeholder must not leak into the document");
+    }
+
+    @Test
+    void parsesRefreshPoliciesForPageAndExpandedElementsWithoutSendingMetadata() throws Exception {
+        Path page = write("refresh.yml", """
+                schema: 1
+                id: refresh
+                surface: custom_screen
+                title: "Refresh"
+                size: [200, 100]
+                placeholders:
+                  mode: interval
+                  interval_ticks: 20
+                  async: true
+                state:
+                  rows:
+                    - { name: one }
+                    - { name: two }
+                elements:
+                  - type: repeat
+                    id: rows
+                    source: "${state.rows}"
+                    as: row
+                    children:
+                      - type: label
+                        id: balance
+                        x: 0
+                        y: 0
+                        text: "${placeholder:balance} ${row.name}"
+                        refresh: { mode: tick }
+                  - type: label
+                    id: manual
+                    x: 0
+                    y: 20
+                    text: "${placeholder:manual}"
+                    refresh: { mode: manual }
+                """);
+
+        PageLoader.CompiledPage compiled = PageLoader.load(pages, page, Map.of());
+
+        assertEquals(RefreshSpec.parse("interval", 20, "test"), compiled.refresh().page());
+        assertTrue(compiled.refresh().async());
+        assertEquals(RefreshSpec.parse("tick", null, "test"),
+                compiled.refresh().effectiveSpec("rows[0].balance"));
+        assertEquals(RefreshSpec.parse("tick", null, "test"),
+                compiled.refresh().effectiveSpec("rows[1].balance"));
+        assertEquals(RefreshSpec.parse("manual", null, "test"),
+                compiled.refresh().effectiveSpec("manual"));
+        assertEquals(List.of("rows[0].balance", "rows[1].balance", "manual"),
+                compiled.document().elements().stream().map(UiElement::id).toList());
+        assertEquals("${placeholder:balance} one",
+                compiled.document().elements().get(0).attributes().get("text"));
+        assertEquals("${placeholder:balance} two",
+                compiled.document().elements().get(1).attributes().get("text"));
+        assertEquals("${placeholder:manual}",
+                compiled.document().elements().get(2).attributes().get("text"));
+        for (UiElement element : compiled.document().elements()) {
+            assertFalse(element.attributes().containsKey("refresh"));
+        }
+        assertFalse(compiled.document().toString().contains("placeholders"));
+    }
+
+    @Test
+    void preservesWholeAndMixedExplicitPlaceholderExpressions() throws Exception {
+        Path page = write("explicit-placeholders.yml", """
+                schema: 1
+                id: explicit_placeholders
+                surface: custom_screen
+                title: "Placeholders"
+                size: [200, 100]
+                elements:
+                  - type: label
+                    id: whole
+                    x: 0
+                    y: 0
+                    text: "${placeholder:server_tps}"
+                  - type: label
+                    id: mixed
+                    x: 0
+                    y: 20
+                    text: "TPS: ${placeholder:server_tps}; player=${state.player}"
+                """);
+
+        UiDocument document = PageLoader.loadDocument(pages, page, Map.of("player", "Alex"));
+
+        assertEquals("${placeholder:server_tps}",
+                document.elements().get(0).attributes().get("text"));
+        assertEquals("TPS: ${placeholder:server_tps}; player=Alex",
+                document.elements().get(1).attributes().get("text"));
+    }
+
+    @Test
+    void rejectsInvalidRefreshModesAndIntervals() throws Exception {
+        Path unknownMode = write("unknown-refresh.yml", """
+                schema: 1
+                id: unknown_refresh
+                surface: custom_screen
+                title: "Bad"
+                size: [100, 100]
+                placeholders: { mode: forever }
+                elements: []
+                """);
+        Path invalidTicks = write("invalid-refresh.yml", """
+                schema: 1
+                id: invalid_refresh
+                surface: custom_screen
+                title: "Bad"
+                size: [100, 100]
+                placeholders: { mode: interval, interval_ticks: 72001 }
+                elements: []
+                """);
+        Path invalidElementMode = write("invalid-element-refresh.yml", """
+                schema: 1
+                id: invalid_element_refresh
+                surface: custom_screen
+                title: "Bad"
+                size: [100, 100]
+                elements:
+                  - type: label
+                    id: bad
+                    refresh: { mode: forever }
+                """);
+
+        PageLoadException unknownError = assertThrows(PageLoadException.class,
+                () -> PageLoader.load(pages, unknownMode, Map.of()));
+        PageLoadException intervalError = assertThrows(PageLoadException.class,
+                () -> PageLoader.load(pages, invalidTicks, Map.of()));
+        PageLoadException elementError = assertThrows(PageLoadException.class,
+                () -> PageLoader.load(pages, invalidElementMode, Map.of()));
+
+        assertTrue(unknownError.getMessage().contains("unknown refresh mode"));
+        assertTrue(intervalError.getMessage().contains("ticks must be 1.."));
+        assertTrue(elementError.getMessage().contains("unknown refresh mode"));
     }
 
     @Test

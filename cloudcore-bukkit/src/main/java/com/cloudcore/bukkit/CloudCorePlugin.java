@@ -103,11 +103,15 @@ public final class CloudCorePlugin extends JavaPlugin
     private com.cloudcore.server.state.PlayerStateStore stateStore;
     private static final Set<String> BUILT_IN_ACTIONS = Set.of(
             "message", "close_ui", "close", "set_state", "if", "delay", "command",
-            "open_page", "sound");
+            "open_page", "sound", "refresh");
+    private long playerRefreshBudget = 2_000_000L;
+    private long globalRefreshBudget = 10_000_000L;
+    private org.bukkit.scheduler.BukkitTask refreshTask;
+    private long refreshTick;
     /** Demo pages copied into {@code plugins/CloudCore/pages/} when missing. */
     private static final java.util.List<String> DEMO_PAGES = java.util.List.of(
             "example", "shop", "progress_demo", "scroll_demo", "actions_demo", "papi_demo",
-            "rpg_hud", "inventory_skin", "slider_demo", "boss_dnf");
+            "papi_refresh", "rpg_hud", "inventory_skin", "slider_demo", "boss_dnf");
     private final com.cloudcore.bukkit.api.CloudCoreApi api = new Api();
 
     @Override
@@ -123,9 +127,14 @@ public final class CloudCorePlugin extends JavaPlugin
             getLogger().warning("Command 'cloudcore' is missing from plugin.yml");
         }
         saveDefaultConfig();
+        playerRefreshBudget = Math.max(1L,
+                getConfig().getLong("placeholders.player-budget-ms", 2L)) * 1_000_000L;
+        globalRefreshBudget = Math.max(1L,
+                getConfig().getLong("placeholders.global-budget-ms", 10L)) * 1_000_000L;
         preparePagesDirectory();
         startPageWatcher();
         startStatePersistence();
+        refreshTask = getServer().getScheduler().runTaskTimer(this, this::tickPageRefresh, 1L, 1L);
         getLogger().info("Cloud Core transport online on " + CHANNEL
                 + " (protocol " + ProtocolVersion.MAJOR + "." + ProtocolVersion.MINOR + ")");
     }
@@ -177,6 +186,10 @@ public final class CloudCorePlugin extends JavaPlugin
 
     @Override
     public void onDisable() {
+        if (refreshTask != null) {
+            refreshTask.cancel();
+            refreshTask = null;
+        }
         if (stateStore != null) {
             flushDirtyState();
         }
@@ -287,6 +300,10 @@ public final class CloudCorePlugin extends JavaPlugin
         }
         sendEventResult(player, event.requestId(), status);
         publishActionResult(player, event, status);
+        PageRefresh refresh = session.refreshes.get(event.uiId());
+        if (refresh != null && refresh.plan.hasEvent()) {
+            refresh.eventDue = true;
+        }
     }
 
     /** Copies the wire payload into plain values; protocol types stay on the wire boundary. */
@@ -415,6 +432,7 @@ public final class CloudCorePlugin extends JavaPlugin
                     refreshPage(player, session, page);
                 }
             }
+            case "refresh" -> refreshPage(player, session, page);
             case "if" -> {
                 boolean condition = truthy(evaluateCondition(
                         action.params().get("condition"), state, payload));
@@ -547,11 +565,18 @@ public final class CloudCorePlugin extends JavaPlugin
         }
         putCompiledPage(player.getUniqueId(), compiled);
         UiDocument expanded = expandPlaceholders(player, compiled.document());
+        deliverRefresh(player, session, name, compiled, expanded);
+    }
+
+    /** Diffs one already-expanded revision against the last sent document and delivers it. */
+    private void deliverRefresh(Player player, Session session, String name,
+            com.cloudcore.api.page.PageLoader.CompiledPage compiled, UiDocument expanded) {
+        String uiId = expanded.id();
         UiDocument previousSent = session.sentDocuments.get(uiId);
         if (previousSent != null && supportsIncremental(expanded.surface())) {
             ElementDiffer.Result diff = ElementDiffer.diff(previousSent, expanded);
             if (diff.mode() == ElementDiffer.Mode.UNCHANGED) {
-                getLogger().info("Page '" + name + "' unchanged for " + player.getName());
+                getLogger().log(Level.FINE, "Page '" + name + "' unchanged for " + player.getName());
                 return;
             }
             if (diff.mode() == ElementDiffer.Mode.INCREMENTAL) {
@@ -577,12 +602,106 @@ public final class CloudCorePlugin extends JavaPlugin
                 UiCodec.encodeDefinition(definition, Limits.S2C)));
         session.sentDocuments.put(uiId, expanded);
         getLogger().info("Updated page '" + name + "' revision=" + revision
-                + " state=" + state + " for " + player.getName());
+                + " state=" + compiled.state() + " for " + player.getName());
+    }
+
+    /**
+     * Compiles and expands one page off the main thread, then diffs and sends on it. A page
+     * with {@code placeholders.async: true} opts into this path; PlaceholderAPI extensions
+     * that are not thread-safe must stay on synchronous pages.
+     */
+    private void startAsyncRefresh(Player player, Session session, String uiId,
+            PageRefresh refresh) {
+        String name = session.pageNames.get(uiId);
+        if (name == null) {
+            return;
+        }
+        java.nio.file.Path pageFile = resolvePageFile(name);
+        if (pageFile == null) {
+            getLogger().warning("Cannot refresh page '" + name + "': file missing");
+            return;
+        }
+        Map<String, Object> state = new java.util.LinkedHashMap<>(session.pageState
+                .computeIfAbsent(name, ignored -> new ConcurrentHashMap<>()));
+        long version = session.stateVersion.get();
+        refresh.inFlight = true;
+        getServer().getScheduler().runTaskAsynchronously(this, () -> {
+            com.cloudcore.api.page.PageLoader.CompiledPage compiled;
+            UiDocument expanded;
+            try {
+                compiled = com.cloudcore.api.page.PageLoader.load(pagesRoot, pageFile, state);
+                expanded = expandPlaceholders(player, compiled.document());
+            } catch (Throwable failure) {
+                getLogger().log(Level.WARNING, "Async refresh of '" + name + "' failed", failure);
+                getServer().getScheduler().runTask(this, () -> refresh.inFlight = false);
+                return;
+            }
+            com.cloudcore.api.page.PageLoader.CompiledPage ready = compiled;
+            UiDocument document = expanded;
+            getServer().getScheduler().runTask(this, () -> {
+                refresh.inFlight = false;
+                if (!player.isOnline()
+                        || session.refreshes.get(uiId) != refresh
+                        || session.stateVersion.get() != version) {
+                    getLogger().log(Level.FINE, "Dropped stale async refresh for '" + name + "'");
+                    return;
+                }
+                putCompiledPage(player.getUniqueId(), ready);
+                deliverRefresh(player, session, name, ready, document);
+            });
+        });
     }
 
     /** Surfaces whose client adapter can replace a document in place. */
     private static boolean supportsIncremental(SurfaceType surface) {
         return surface == SurfaceType.CUSTOM_SCREEN || surface == SurfaceType.HUD;
+    }
+
+    /**
+     * Runs on the server tick. Both budgets are soft: a page that misses its slot waits for
+     * the next interval instead of blocking gameplay. Refreshes only recompile pages that
+     * opted in; static pages cost one empty-map check per tick.
+     */
+    private void tickPageRefresh() {
+        refreshTick++;
+        long globalStart = System.nanoTime();
+        for (Map.Entry<UUID, Session> entry : sessions.entrySet()) {
+            Session session = entry.getValue();
+            if (session.refreshes.isEmpty()) {
+                continue;
+            }
+            Player player = getServer().getPlayer(entry.getKey());
+            if (player == null || !player.isOnline()) {
+                continue;
+            }
+            long playerStart = System.nanoTime();
+            for (Map.Entry<String, PageRefresh> scheduled : session.refreshes.entrySet()) {
+                PageRefresh refresh = scheduled.getValue();
+                if (!refresh.eventDue && !refresh.plan.due(refreshTick)) {
+                    continue;
+                }
+                refresh.eventDue = false;
+                com.cloudcore.api.page.PageLoader.CompiledPage compiled =
+                        compiledPage(entry.getKey(), scheduled.getKey());
+                if (compiled == null) {
+                    continue;
+                }
+                if (refresh.plan.async()) {
+                    if (!refresh.inFlight) {
+                        startAsyncRefresh(player, session, scheduled.getKey(), refresh);
+                    }
+                    continue;
+                }
+                refreshPage(player, session, compiled);
+                if (System.nanoTime() - playerStart >= playerRefreshBudget
+                        || System.nanoTime() - globalStart >= globalRefreshBudget) {
+                    break;
+                }
+            }
+            if (System.nanoTime() - globalStart >= globalRefreshBudget) {
+                break;
+            }
+        }
     }
 
     /**
@@ -739,6 +858,10 @@ public final class CloudCorePlugin extends JavaPlugin
         UiClosed closed = UiCodec.decodeClosed(frame.body(), Limits.C2S);
         getLogger().info("UI_CLOSED from " + player.getName()
                 + " ui=" + closed.uiId() + " reason=" + closed.reason());
+        Session session = sessions.get(player.getUniqueId());
+        if (session != null) {
+            session.refreshes.remove(closed.uiId());
+        }
         surfaceProviders.close(player.getUniqueId(), closed.uiId());
         addonEvents.publish(new com.cloudcore.api.event.SessionCloseEvent(player.getUniqueId(),
                 closed.uiId(), "client"));
@@ -1445,6 +1568,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 UiCodec.encodeClose(new UiClose(uiId, 0), Limits.S2C)));
         getLogger().info("Sent UI_CLOSE to " + player.getName() + " ui=" + uiId);
         session.lastUiId = null;
+        session.refreshes.remove(uiId);
         surfaceProviders.close(player.getUniqueId(), uiId);
         addonEvents.publish(new com.cloudcore.api.event.SessionCloseEvent(player.getUniqueId(),
                 uiId, "server"));
@@ -1703,8 +1827,26 @@ public final class CloudCorePlugin extends JavaPlugin
         // The protocol requires UI_OPEN.uiId and document.id to match.
         String uiId = document.id();
         int token = random.nextInt();
+        if (session.lastUiId != null && !session.lastUiId.equals(uiId)) {
+            // The client replaces the previous screen; stop refreshing a page nobody sees.
+            session.refreshes.remove(session.lastUiId);
+        }
         session.lastUiId = uiId;
         session.sentDocuments.put(uiId, document);
+        com.cloudcore.api.page.RefreshPlan plan = compiled.refresh();
+        if ((plan.hasPeriodic() || plan.hasEvent()) && supportsIncremental(surface)) {
+            session.refreshes.put(uiId, new PageRefresh(plan));
+            if (plan.async()) {
+                getLogger().info("Page '" + uiId + "' refreshes placeholders asynchronously; "
+                        + "PlaceholderAPI expansions must be thread-safe");
+            }
+        } else if (plan.hasPeriodic() || plan.hasEvent()) {
+            getLogger().warning("Page '" + uiId + "' requests placeholder refresh on surface "
+                    + surface + "; only custom_screen and hud are supported");
+            session.refreshes.remove(uiId);
+        } else {
+            session.refreshes.remove(uiId);
+        }
         int revision = session.pageRevisions.merge(uiId, 1, Integer::sum);
         UiOpen open = openForSurface(surface, uiId, revision, token, surfaceKey, document);
         // An addon provider runs before the wire: it may bind its own backing state and
@@ -2710,6 +2852,16 @@ public final class CloudCorePlugin extends JavaPlugin
         }
     }
 
+    private static final class PageRefresh {
+        private final com.cloudcore.api.page.RefreshPlan plan;
+        private volatile boolean eventDue;
+        private volatile boolean inFlight;
+
+        private PageRefresh(com.cloudcore.api.page.RefreshPlan plan) {
+            this.plan = plan;
+        }
+    }
+
     private static final class Session {
         private final FragmentAssembler assembler = new FragmentAssembler(Limits.C2S);
         private Hello hello;
@@ -2737,6 +2889,8 @@ public final class CloudCorePlugin extends JavaPlugin
         private final Map<String, Integer> pageRevisions = new ConcurrentHashMap<>();
         /** Last document actually sent per uiId, the baseline for the next incremental diff. */
         private final Map<String, UiDocument> sentDocuments = new ConcurrentHashMap<>();
+        /** Pages that asked for periodic or event-driven placeholder refreshes. */
+        private final Map<String, PageRefresh> refreshes = new ConcurrentHashMap<>();
         /** Set by set_state; the persistence task writes the state and clears it. */
         private volatile boolean stateDirty;
         /** Bumped on every state write so a save in flight does not clear a newer change. */

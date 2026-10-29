@@ -39,10 +39,8 @@ apply-on-join:
   pages: [rpg_hud, inventory_skin]
 
 placeholders:
-  default-mode: interval
-  default-interval-ticks: 20
-  async-namespaces: []
-  per-player-budget-ms: 2
+  enabled: true
+  player-budget-ms: 2
   global-budget-ms: 10
 
 security:
@@ -237,6 +235,8 @@ pages:
   watch: true               # 页面文件变化后自动重载（400ms 合并）并推送更新
 placeholders:
   enabled: true             # 安装了 PlaceholderAPI 时展开页面文本里的 %占位符%
+  player-budget-ms: 2       # 每个玩家每 tick 的同步刷新软预算
+  global-budget-ms: 10      # 全服每 tick 的同步刷新软预算
 state:
   persist: true             # 会话状态按玩家持久化（异步写、原子替换）
 actions:
@@ -420,24 +420,28 @@ Boss 血条的 `surfaceKey` 是 16 进制 token，不是 Paper 的 `NamespacedKe
 
 ### 8.1 占位符刷新
 
-服务端按页面 `placeholders` 配置调度：
+刷新策略写在页面 YAML 里（页面级默认 + 元素级覆盖），服务端配置只保留开关和预算：
 
 ```yaml
+# 页面
 placeholders:
-  default-mode: interval
-  default-interval-ticks: 20
-  async-namespaces: []
-  per-player-budget-ms: 2
-  global-budget-ms: 10
+  mode: interval          # static | interval | tick | manual | event
+  interval_ticks: 20
+  async: true             # 编译与展开在工作线程，diff/下发回主线程
+# 元素
+refresh: { mode: interval, ticks: 10 }
 ```
 
-- 每 tick 收集到期元素，按玩家去重原始字符串，批量调用 `PlaceholderAPI.setPlaceholders`。
-- 默认在主线程同步解析；每玩家 2 ms、全局 10 ms 预算，超出推迟到下一 tick。
-- 只对变化的属性发送 `ELEMENT_UPDATE`，不重发整份文档。
-- `refresh` 动作/API 立即触发一次解析。
-- `async: true` 且命名空间在 `async-namespaces` 中时，解析放到工作线程，结果下一 tick 应用到主线程。
-  PlaceholderAPI 扩展不保证线程安全，未列出的命名空间一律同步。
-- 解析结果做文本清洗与长度截断。
+- 调度器每 tick 检查一次；到期就重编译整页、展开占位符，再用 `ELEMENT_UPDATE` 只发变化属性。
+- 当前只对 `custom_screen` 与 `hud` 启用周期性/事件刷新；其他面板会记录警告并退回
+  “打开/`set_state` 时解析”。
+- 同步刷新受 `player-budget-ms`（默认 2）与 `global-budget-ms`（默认 10）软预算约束，超出的页面
+  顺延到下一次到期。
+- `async: true` 时编译与 PlaceholderAPI 展开在工作线程，结果回主线程 diff/下发；每页最多一个在途
+  任务，期间 `set_state` 改了状态则丢弃旧快照。异步页面要求用到的 PlaceholderAPI 扩展线程安全；
+  `async-namespaces` 白名单尚未实现。
+- 内置 `refresh` 动作立即重编译并下发当前页，供 `manual` 页面使用。
+- `%token%` 与 `${placeholder:token}` 两种写法等价，见 `03-ui-dsl.md` §7.1。
 - 客户端不解析占位符。
 
 ## 9. 动作执行与引擎接缝

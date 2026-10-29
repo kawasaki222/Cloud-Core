@@ -1,0 +1,62 @@
+# 周期解析 PlaceholderAPI：页面级 async 让编译和展开在工作线程完成，
+# 回到主线程只做 diff 与下发。元素级 refresh 覆盖页面间隔。
+# /cloudcore page papi_refresh <玩家>
+schema: 1
+id: papi_refresh
+surface: custom_screen
+title: "PAPI Refresh"
+size: [280, 132]
+placeholders:
+  mode: interval
+  interval_ticks: 20
+  async: true
+elements:
+  - type: panel
+    id: root
+    x: 0
+    y: 0
+    width: fill
+    height: fill
+    style:
+      background: "#CC202830"
+  - type: label
+    id: heading
+    x: 12
+    y: 10
+    text: "PAPI 周期刷新（async）"
+    color: "#FFFFFFFF"
+  - type: label
+    id: name
+    x: 12
+    y: 30
+    text: "玩家：%player_name%"
+    color: "#FF9AD0FF"
+  - type: label
+    id: health
+    x: 12
+    y: 46
+    text: "生命：%player_health%"
+    color: "#FFFFD479"
+    refresh: { mode: interval, ticks: 10 }
+  - type: label
+    id: level
+    x: 12
+    y: 62
+    text: "等级：${placeholder:player_level}"
+    color: "#FF9AD0FF"
+  - type: label
+    id: hint
+    x: 12
+    y: 78
+    text: "元素 refresh 也是 interval；点按钮立即刷新"
+    color: "#FF8FD0A0"
+  - type: button
+    id: refresh
+    x: 12
+    y: 100
+    width: 96
+    height: 18
+    text: "立即刷新"
+    on:
+      click:
+        - action: refresh
