@@ -1,6 +1,6 @@
 # 待办 / 交接
 
-最后更新：2026-10-27 12:20。
+最后更新：2026-10-28 23:55。
 
 ## 当前状态
 
@@ -17,9 +17,10 @@
 - 页面：YAML 单文件/`includes`/`repeat`（含嵌套）/模板；动作编译成 actionId 并只留在服务端；
   `set_state` 重编译后推送更高 revision（等值写入不推送）。
 - 客户端：六类面板 + RenderList（文字/富文本/图片/九宫格/背景贴图/裁剪/滚动/悬停/物品图标/GIF/URL 贴图/
-  滑块/复选框/输入框状态/进度条四方向/图标按钮/键盘焦点）；NanoVG 后端与 FBO 合成（opt-in）；
+  滑块/复选框/输入框状态/进度条四方向含圆角分段/图标按钮/键盘焦点/pressed 态/输入框 padding）；
+  NanoVG 后端与 FBO 合成（opt-in）；多层 Boss 血条；客户端本地面板（`match` 接管容器/血条）；
   客户端日志与诊断码。
-- 构建：`./gradlew build` 通过，221 个测试 / 45 个类，0 失败。
+- 构建：`./gradlew build` 通过，250 个测试 / 50 个测试类，0 失败。
 
 ## 已有内容
 
@@ -111,12 +112,19 @@ docs/
 - [x] BossBar 面板：自定义条 + 进度/颜色 + 哨兵标题剥离（真机截图验证）
 - [x] Boss 血条样式：`boss_bar.bar` 的宽高/边框/背景（贴图+九宫格）/填充（贴图裁剪或颜色）/
       `tint_from_event`（真机验证）
-- [ ] Boss 剩余：标题字体/阴影/对齐、多条堆叠与间距
+- [x] Boss 标题字体/阴影/对齐与层数计数：`bar.text` 的 `font`/`shadow`/`align`/
+      `show_layer_count`（`BossBarSurfaceAdapter`）
+- [x] 多层血条：同一根条逐层绘制，哨兵携带每层剩余强度
+      `\0CCB:<token>:<p1>,<p2>,...\0<名称>`；`bar.layers` 逐层样式，外层打空露出内层；
+      `demo_layers` 用于 `/cloudcore page` 预览（真机截图验证）
+- [x] 客户端本地面板：`LocalPageRegistry` 按 `match` 正则接管容器/Boss 血条，
+      服务端不下发也能用，`F9` 重载；服务端下发优先（`docs/05-client.md` 第 19 节）
+- [ ] Boss 剩余：多条血条堆叠与间距（`spacing`/`max_bars`）
 - [x] Container 面板：NEXT_CONTAINER 绑定的箱子换背景，原版槽位保留（真机截图验证）
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
 - [x] 客户端快捷键：`F9` 重载本地资源、`F10` 诊断包（真机验证：贴图热替换、zip 内容、聊天提示）
 - [ ] 客户端命令：`/cloudcore-client reloadassets|dump` 已注册但未在聊天执行验证；
-      `log <level>` 与 F3 调试叠加层未实现
+      `log <level>` 已实现（运行时改 `cloudcore` logger 级别，不动 root），F3 调试叠加层未实现
 - [x] M2 渲染：NanoVG 后端、裁剪/滚动偏移（原生 + NanoVG 真机验证）
 - [x] 滚轮滚动：光标下 `scroll` 元素的本地偏移与钳制（真机验证 + 单元测试）
 - [x] `panel`/`button` 的背景贴图与九宫格；标签富文本按段着色
@@ -124,30 +132,35 @@ docs/
 - [x] `text_field`：原版 EditBox 控件 + `change`/`submit` 事件与 `${value}` 替换（真机验证）
 - [x] `text_field` 外观状态：背景贴图/九宫格、normal/invalid/focused 边框、文字颜色、
       `filter`（含 `regex:`）、`sensitive` 掩码（真机验证 + 单测）
-- [ ] `text_field` 剩余：`padding` 补偿、光标/选区颜色、清除按钮
+- [x] `text_field` 的 `padding` 补偿：`[左,上,右,下]` 或单值，按内边距缩小 `EditBox`，
+      所以文字不再贴左上角；焦点框按控件身份匹配，内缩后仍对齐元素框（单测 `InsetsTest`）
+- [ ] `text_field` 剩余：`cursor_color` / `selection_color`、清除按钮
 - [x] `checkbox`：`checked` 绘制 + `change{checked}` → `set_state` 往返（真机验证）
 - [x] `icon_button` 与 `button.icon`：贴图引用或 `{item, count}`，物品图标按按钮缩放（真机验证 + 单测）
 - [x] `progress`：四种方向、贴图背景/填充按进度裁剪、状态驱动（真机验证 + 单测）
-- [ ] `progress` 剩余：九宫格背景、圆角、分段（segments）
+- [x] `progress` 九宫格背景、`radius` 圆角、`segments`/`segment_gap` 分段（单测覆盖）
 - [x] `disabled` 态：变暗、禁用悬停样式、不触发事件、跳过键盘焦点、输入框不可编辑（真机验证 + 单测）
 - [x] `right_click`：优先 `right_click`，无则回退 `click`（真机验证）
-- [ ] `button`/`icon_button` 剩余：`pressed` 态
+- [x] `button`/`icon_button` 的 `pressed` 态：`style.pressed` 优先于 `style.hover`，
+      按下时文字/图标下移 1px，松开或拖离即恢复（单测覆盖）
 - [x] PlaceholderAPI（软依赖）：发送/刷新时展开 `text`/`placeholder`/富文本/标题里的 `%token%`
       （真机验证 + `DocumentTextTest`），`placeholders.enabled` 开关
 - [ ] 占位符剩余：`interval`/`tick`/`event` 周期刷新、预算与异步白名单、`${placeholder:...}` 形式
 - [x] `slider`：`value` 填充 + 点击比例 `change{amount}` → `set_state` 往返（真机验证）
+- [x] `slider` 拖动、`min`/`max`/`step`、`live` 连续上报；越界值在 API 层被钳制（单测 `SlidersTest`）
 - [x] 附属插件 API：`CloudCoreApi.open/registerActionHandler/unregister/isModded` 经
       `ServicesManager`（第二个插件真机验证，含 SCHEDULED / UNKNOWN_PAGE / 权限拒绝）
 - [x] 内置动作 `permission:` 参数；缺权限拒绝整次点击并记日志
 - [x] `PageBuilder` 代码构造页面 + `api.open(player, CompiledPage)`（第二个插件真机验证）
 - [x] `PlaceholderResolver`：`%ns_params%` 自定义解析器（先于 PlaceholderAPI，真机验证）
 - [x] `PageProvider`：`open(player, id)` 现场构建页面（真机验证）
-- [ ] 附属 API 剩余：`SurfaceProvider`、`setState`/`getState`、事件监听、testkit
+- [x] 附属 API `setState`/`getState`（`CloudCoreApi`）
+- [ ] 附属 API 剩余：`registerSurfaceProvider`（`SurfaceProvider` 接口在 `server-core`，
+      未暴露到 `cloudcore-api`）、事件监听、testkit
 - [x] `scroll` 事件回传：滚轮后上报绝对偏移，`scroll_y` 由状态驱动（真机验证 + 单测 `UiElementsTest`）
 - [x] `hover_enter` / `hover_leave`：跨边界各一次，仅对声明了事件的元素（真机验证）
 - [x] `set_state` 等值保护：写入相同值不重编译推送（避免悬停/滚动到边界时抖动）
 - [x] 修复属性模板一律字符串化：整串 `${...}` 保留解析类型（`value` 以数字下发），未解析下发空串
-- [ ] `slider` 剩余：拖动、`min`/`max`/`step`、`live` 连续上报
 - [x] `row`/`column`/`grid` 自动布局（gap/columns/cell，真机验证 + 单测）
 - [x] 修复 `PageLoader` 忽略调用方状态的问题（玩家状态覆盖文档默认值）
 - [x] 九宫格 `nine_slice`：9 块拆分，角固定/边单向/中心双向（真机验证）
@@ -181,19 +194,26 @@ docs/
 
 ## 下一步动作（按顺序）
 
+0. **小件收尾（建议先做，成本低）**：
+   - `text_field` 的 `cursor_color` / `selection_color` 与清除按钮（当前完全没有代码）。
+   - 附属 API 的 `registerSurfaceProvider`（把 `server-core` 的 `SurfaceProvider` 暴露到
+     `cloudcore-api`）+ 事件监听 + testkit。
+   - 给 HUD 面板的“数值不变不重建”补回归测试（`HudSurfaceAdapter` 的基线比较目前只有真机验证）。
 1. **协议增量**：`ELEMENT_UPDATE`（只发改动的元素/属性，替换当前“每次状态变化重发整份文档”），
    需要服务端 diff、客户端可变的元素表与 revision 顺序测试；`Limits`、黄金向量与
    `docs/02-protocol.md` 同步。
-2. **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto`，服务端允许列表、
+2. **占位符周期刷新**：`interval`/`tick`/`event` 三种模式、解析预算与异步白名单、
+   `${placeholder:...}` 形式（当前只有发送时解析一次）。
+3. **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto`，服务端允许列表、
    哈希缓存；配合远端 GIF 真机验证。
-3. **持久化后端**：在 `PlayerStateStore` 后面实现 SQLite（默认）与 MySQL（可选），
+4. **持久化后端**：在 `PlayerStateStore` 后面实现 SQLite（默认）与 MySQL（可选），
    含连接池、迁移脚本与容量上限；文件实现对单服仍可用。
-4. **NanoVG 默认化**：设备分辨率 FBO（清晰文字）、U31 状态隔离、失败整帧回退、Linux/macOS 验证。
-5. **玩家背包 v2**：配方书四档（`skinned`/`custom`）、玩家模型与状态效果；`allow_player_inventory`
+5. **NanoVG 默认化**：设备分辨率 FBO（清晰文字）、U31 状态隔离、失败整帧回退、Linux/macOS 验证。
+6. **玩家背包 v2**：配方书四档（`skinned`/`custom`）、玩家模型与状态效果；`allow_player_inventory`
    与 `InventoryDragEvent` 的真机验证顺带补上。
-6. **渲染与交互剩余**：文本 shaping、滑块拖动与 `min`/`max`/`step`、按钮 `pressed`/`disabled`、
+7. **渲染与交互剩余**：文本 shaping、多条 Boss 血条堆叠与间距、
    滚动容器内元素的焦点/输入框定位（当前按未滚动位置计算）。
-7. 之后按 `08-roadmap.md` 的 M4–M10 推进（动作引擎 v2、占位符周期刷新、加固与发布）。
+8. 之后按 `08-roadmap.md` 的 M4–M10 推进（动作引擎 v2、加固与发布）。
 
 ## 环境搭建
 
