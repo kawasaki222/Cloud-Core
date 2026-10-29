@@ -61,7 +61,26 @@ public final class ClientHotkeys {
                                             ? "Cloud Core: 诊断包生成失败，见客户端日志"
                                             : "Cloud Core: 已生成 " + out.getFileName()));
                                     return 1;
-                                }))));
+                                }))
+                        // Level is a plain argument rather than one literal per level: a wrong
+                        // name gets a helpful reply listing the valid ones instead of
+                        // Brigadier's bare "unknown command".
+                        .then(ClientCommandManager.literal("log")
+                                .then(ClientCommandManager.argument("level",
+                                                com.mojang.brigadier.arguments.StringArgumentType
+                                                        .word())
+                                        .executes(context -> {
+                                            String requested = com.mojang.brigadier.arguments
+                                                    .StringArgumentType.getString(context, "level");
+                                            var applied = ClientLogFile.setLevel(requested);
+                                            context.getSource().sendFeedback(Component.literal(
+                                                    applied == null
+                                                            ? "Cloud Core: 未知级别 " + requested
+                                                                    + "，可用 trace/debug/info/warn/error/off"
+                                                            : "Cloud Core: 日志级别已设为 "
+                                                                    + applied));
+                                            return 1;
+                                        })))));
     }
 
     private static void reloadAssets() {

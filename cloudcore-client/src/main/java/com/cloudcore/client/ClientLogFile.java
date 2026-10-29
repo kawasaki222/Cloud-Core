@@ -28,6 +28,57 @@ final class ClientLogFile {
     private ClientLogFile() {
     }
 
+    /**
+     * Changes the {@code cloudcore} logger level at runtime, which is what
+     * {@code /cloudcore-client log <level>} exposes.
+     *
+     * <p>Only this mod's logger is touched: raising the root level would flood the console with
+     * every other mod. The change lives in memory only, so a restart restores the default level.
+     *
+     * @return the level that is now in effect, or null when the name is not a valid level
+     */
+    static Level setLevel(String levelName) {
+        Level level = parseLevel(levelName);
+        if (level == null) {
+            return null;
+        }
+        try {
+            LoggerContext context = (LoggerContext) LogManager.getContext(false);
+            Configuration configuration = context.getConfiguration();
+            LoggerConfig loggerConfig = configuration.getLoggerConfig(CloudCoreClient.MOD_ID);
+            if (loggerConfig == null || !CloudCoreClient.MOD_ID.equals(loggerConfig.getName())) {
+                // No dedicated config yet (the appender never installed): create one rather
+                // than escalating to the root logger.
+                loggerConfig = new LoggerConfig(CloudCoreClient.MOD_ID, level, true);
+                configuration.addLogger(CloudCoreClient.MOD_ID, loggerConfig);
+            } else {
+                loggerConfig.setLevel(level);
+            }
+            context.updateLoggers();
+            LOGGER.info("Log level set to {}", level);
+            return level;
+        } catch (RuntimeException exception) {
+            LOGGER.warn("Could not change the log level", exception);
+            return null;
+        }
+    }
+
+    /** Accepts {@code trace}/{@code debug}/{@code info}/{@code warn}/{@code error}/{@code off}. */
+    static Level parseLevel(String levelName) {
+        if (levelName == null) {
+            return null;
+        }
+        return switch (levelName.trim().toLowerCase(java.util.Locale.ROOT)) {
+            case "trace" -> Level.TRACE;
+            case "debug" -> Level.DEBUG;
+            case "info" -> Level.INFO;
+            case "warn", "warning" -> Level.WARN;
+            case "error" -> Level.ERROR;
+            case "off" -> Level.OFF;
+            default -> null;
+        };
+    }
+
     static void install() {
         try {
             Files.createDirectories(Path.of("logs"));
