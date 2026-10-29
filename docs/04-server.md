@@ -392,8 +392,17 @@ transport.send(player, UiPackets.definition(session));
 - 哨兵必须在发送给原版客户端前保留；原版客户端会把它当作普通字符渲染。因此只对装了模组的玩家
   使用哨兵；原版玩家使用正常标题。
 - 进度、颜色、样式仍由原版 `BossEvent` 同步；Cloud 文档只负责外观。
-- 外框、填充、覆盖层贴图、九宫格、填充方向、文字字体/颜色、是否按事件颜色染色，定义在
-  `surface_options.boss_bar.bar`。
+- 外框、填充、覆盖层贴图、九宫格、填充缩进、文字颜色/阴影/对齐、是否按事件颜色染色，定义在
+  `surface_options.boss_bar.bar`。名称画在血条内部，哨兵会被剥掉。
+- **多层血条是同一根条，不是多根**：哨兵可带层号 `\u0000CCB:<token>:<层>/<总层数>\u0000<名称>`，
+  客户端拿同一条 `BossBar` 按当前层换颜色/贴图/标签。当前层在框内打空后，同一个框重新填满并换成
+  下一层的样式；总层数 >1 时血条内右侧显示 `2/3` 之类的计数。阶段切换时服务端只改哨兵层号与
+  `setProgress`，不要为每层另建 `BossBar`（那会变成屏幕上并排的多根条）。
+- 每层的外观写在 `surface_options.boss_bar.bar.layers`，只写与 `bar` 不同的键（`tint` / `fill` /
+  `name` / `text`），其余继承。`tint` 优先于 `BossEvent` 颜色。
+- 预览：页面 `surface_options.boss_bar.demo_layers` 列出每层名称/进度/颜色，`demo_name` 给 Boss 名；
+  `/cloudcore page <页面>` 会创建这条分层哨兵血条，并在 `demo_duration` 秒内把各层依次打空后移除。
+  生产页面不要带这一段。
 - 血条移除或玩家退出时发送 `UI_CLOSE`。
 
 Boss 血条的 `surfaceKey` 是 16 进制 token，不是 Paper 的 `NamespacedKey`。

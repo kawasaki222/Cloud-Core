@@ -1,0 +1,63 @@
+# DNF 风格「多层」Boss 血条示例：一根条，逐层刷新。
+#
+# 用法：/cloudcore page boss_dnf
+#   → 下发这张皮肤，并创建 *一根* Paper BossBar，标题带哨兵
+#     "\u0000CCB:<token>:<层>/<总层数>\u0000<Boss名>"；客户端拿同一条血条，
+#      按当前层换颜色/贴图/标签。当前层在框内打空后，同一个框重新填满并换成下一层的样式。
+#
+# 正式服不需要 demo_layers：自己的 Boss 插件创建一条 BossBar，标题带同样的哨兵，
+# 阶段切换时只改哨兵里的层号即可复用这张皮肤。
+#
+# 贴图：local:ui/boss_frame.png（边框）、local:ui/boss_fill.png（中性填充，按层染色）
+schema: 1
+surface: boss_bar
+id: boss_dnf
+title: "深渊·卡赞"
+size: [320, 40]
+surface_options:
+  # 不要随进服下发：没有 BossBar 时皮肤没有可画的东西。
+  on_join: false
+  boss_bar:
+    demo_duration: 30
+    demo_name: "深渊·卡赞"
+    # 层的顺序 = 由外到内：第 1 层是护盾，打空后露出本体，最后是狂暴。
+    demo_layers:
+      - name: "护盾"
+        progress: 1.0
+        color: blue
+      - name: "本体"
+        progress: 1.0
+        color: red
+      - name: "狂暴"
+        progress: 1.0
+        color: purple
+    bar:
+      width: 300
+      height: 18
+      background: "local:ui/boss_frame.png"
+      # 部署贴图实测边框 7/6/6/6；取 5/4 让边框略窄，给填充留 10px 高度。
+      nine_slice: [5, 4, 5, 4]
+      fill: "local:ui/boss_fill.png"
+      # 填充缩进到边框以内，避免盖住铜边。
+      fill_inset: [5, 4, 5, 4]
+      # 中性填充贴图 + 按层染色：一张图对应所有层。
+      tint_from_event: true
+      tint_alpha: 0.62
+      show_name: true
+      text:
+        color: "#FFFFF1D6"
+        shadow: true
+        align: center
+        # 右上角显示 "2/3"，否则看起来只像是血条重新填满了。
+        show_layer_count: true
+      border: "#FF05070A"
+      # 只写与 bar 不同的部分；没写的键继承上面的 bar。
+      # tint 优先于 BossEvent 颜色，所以每层可以各自一种颜色。
+      layers:
+        - name: "护盾"
+          tint: "#FF4A8CFF"
+        - name: "本体"
+          tint: "#FFE04040"
+        - name: "狂暴"
+          tint: "#FFA060E0"
+elements: []

@@ -41,6 +41,9 @@ public abstract class BossHealthOverlayMixin {
                     target = "Lnet/minecraft/client/gui/components/LerpingBossEvent;"
                             + "getName()Lnet/minecraft/network/chat/Component;"))
     private Component cloudcore$stripBossTitle(LerpingBossEvent event) {
+        if (BossBarSurfaceAdapter.skins(event.getName())) {
+            return Component.empty();
+        }
         return BossBarSurfaceAdapter.stripSentinel(event.getName());
     }
 }

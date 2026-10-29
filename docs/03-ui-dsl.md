@@ -1079,7 +1079,9 @@ surface_options:
       fill: "tx:boss_fill"
       overlay: "tx:boss_overlay"
       nine_slice: [2, 2, 2, 2]
+      fill_inset: [2, 2, 2, 2]
       tint_from_event: true
+      tint_alpha: 0.62
       direction: left_to_right
       show_name: true
       text:
@@ -1090,8 +1092,26 @@ surface_options:
 elements: []
 ```
 
-`bar` 存在时，客户端绘制内置血条：填充按 `BossEvent#getProgress()` 裁剪，文字显示事件标题，
-颜色与样式来自事件。`elements` 只用于额外装饰；不要再用 `progress` 画第二根填充条。
+`bar` 存在时，客户端绘制内置血条：填充按 `BossEvent#getProgress()` 裁剪，事件标题画在血条内部
+（`show_name` / `text.color` / `text.shadow` / `text.align`，原版字体），血条按屏幕宽度自动居中，
+自定义宽度不会偏向右侧。
+
+- `fill_inset: [l, t, r, b]`：填充缩进到边框以内，避免盖住 `background` 的边框；纹理背景通常
+  取与 `nine_slice` 相同的值。
+- `fill` 为贴图且 `tint_from_event: true` 时，先画中性贴图，再叠一层 `tint_alpha`（默认 0.62）
+  的事件颜色：一张银灰填充图即可对应红/黄/蓝多条血条。
+- `overlay` 最后整条绘制（不裁剪），用于高光或透明中心的框；`nine_slice` 同时作用于背景与 overlay。
+- **多层血条 = 同一根条逐层刷新**，不是多根条并排：哨兵带层号
+  `\u0000CCB:<token>:<层>/<总层数>\u0000<名称>`，客户端拿这一条 `BossBar` 按当前层换样式。
+  当前层打空后同一个框重新填满、换成下一层，层数 >1 时血条内右侧显示 `2/3`。
+  每层外观写 `bar.layers`，只写与 `bar` 不同的键（`tint` / `fill` / `name` / `text`），
+  `tint` 优先于 `BossEvent` 颜色；文字块与 `bar.text` 合并而不是整体覆盖。
+  想要屏幕上并排多根条，那是服务端建多个 `BossBar` 的另一种做法，与本机制无关。
+
+`demo_layers` 只用于预览：服务端创建一条带层号哨兵的 `BossBar`，在 `demo_duration` 内把各层
+依次打空后移除；`demo_name` 指定 Boss 名称。生产页面应删掉这一段，由 Boss 插件在自己切阶段时
+改哨兵层号。完整可运行的例子见
+`cloudcore-bukkit/src/main/resources/pages/boss_dnf.yml`。
 
 ## 13. YAML 兼容别名
 

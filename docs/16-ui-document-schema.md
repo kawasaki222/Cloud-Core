@@ -241,7 +241,9 @@
     "fill": "inline:boss_fill",
     "overlay": "inline:boss_overlay",
     "nine_slice": [2, 2, 2, 2],
+    "fill_inset": [2, 2, 2, 2],
     "tint_from_event": true,
+    "tint_alpha": 0.62,
     "direction": "left_to_right",
     "show_name": true,
     "text": { "font": "body", "color": "#FFFFFFFF", "shadow": true, "align": "center" }

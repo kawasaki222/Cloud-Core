@@ -346,6 +346,10 @@ public abstract class MouseHandlerMixin {
 - NanoVG 层先合成，原版标题后绘制，避免文字被 FBO 覆盖。
 - 多个血条按 `surface_options.boss_bar.spacing` 堆叠，最多 `max_bars`。
 - 客户端的 `BossHealthOverlay#events` 是私有字段，不直接访问；通过渲染钩子参数获取事件。
+- 服务端没有下发文档时，按血条名称查客户端本地面板（`match` 正则），见第 19 节。
+- 多层血条是同一根条：哨兵带每层的剩余强度 `\0CCB:<token>:<p1>,<p2>,...\0<名称>`，
+  客户端由内向外逐层绘制，外层打空后露出内层；层数 >1 时条内右侧显示 `2/3` 计数。
+  服务端没有哨兵（本地面板）时，最外层跟随 `BossEvent` 进度，内层保持满值。
 
 ## 12. 布局引擎
 

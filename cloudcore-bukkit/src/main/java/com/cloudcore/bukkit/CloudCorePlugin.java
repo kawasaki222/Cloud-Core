@@ -96,7 +96,7 @@ public final class CloudCorePlugin extends JavaPlugin
     /** Demo pages copied into {@code plugins/CloudCore/pages/} when missing. */
     private static final java.util.List<String> DEMO_PAGES = java.util.List.of(
             "example", "shop", "progress_demo", "scroll_demo", "actions_demo", "papi_demo",
-            "rpg_hud", "inventory_skin", "slider_demo");
+            "rpg_hud", "inventory_skin", "slider_demo", "boss_dnf");
     private final com.cloudcore.bukkit.api.CloudCoreApi api = new Api();
 
     @Override
@@ -1649,8 +1649,181 @@ public final class CloudCorePlugin extends JavaPlugin
                         UiCodec.encodeDefinition(definition, Limits.S2C)));
             }
         }, 1L);
+        if (surface == SurfaceType.BOSS_BAR) {
+            createDemoBossBars(player, session, document);
+        }
         getLogger().info("Sent page '" + surfaceKey + "' to " + player.getName()
                 + " elements=" + document.elements().size() + " bytes=" + json.length());
+    }
+
+    /**
+     * Creates the single multi-layer sentinel boss bar described by a {@code boss_bar} page's
+     * {@code surface_options.boss_bar.demo_layers} list.
+     *
+     * <p>The stack is <em>one</em> Paper boss bar, not one per layer. Its title carries every
+     * layer's remaining strength at once:
+     * {@code \0CCB:<token>:<p1>,<p2>,...\0<name>} with each {@code p} a per-mille value.
+     * The client paints the layers over each other, so burning the outermost one down
+     * uncovers the layer that was already underneath instead of switching to a new bar.
+     *
+     * <p>Production plugins create their own bar with the same marker and write their layers'
+     * values into it; the demo below just drains the stack on a timer so the effect is
+     * visible without a boss behind it.
+     */
+    private void createDemoBossBars(Player player, Session session, UiDocument document) {
+        Object bossBar = document.surfaceOptions().get("boss_bar");
+        if (!(bossBar instanceof Map<?, ?> options)) {
+            return;
+        }
+        Object rawLayers = options.get("demo_layers");
+        if (!(rawLayers instanceof java.util.List<?> specs) || specs.isEmpty()) {
+            return;
+        }
+        java.util.List<DemoLayer> layers = new java.util.ArrayList<>();
+        for (Object entry : specs) {
+            if (!(entry instanceof Map<?, ?> spec)) {
+                continue;
+            }
+            String name = spec.get("name") instanceof String text && !text.isBlank()
+                    ? text : "Boss";
+            double progress = spec.get("progress") instanceof Number number
+                    ? Math.max(0.0, Math.min(1.0, number.doubleValue())) : 1.0;
+            layers.add(new DemoLayer(name, progress, parseBarColor(spec.get("color"))));
+        }
+        if (layers.isEmpty()) {
+            return;
+        }
+        removeSessionBossBars(session);
+
+        String bossName = options.get("demo_name") instanceof String text && !text.isBlank()
+                ? text : layers.get(0).name();
+        session.layerToken = Integer.toHexString(random.nextInt());
+        session.demoLayers = layers;
+        session.layerValues = new double[layers.size()];
+        for (int index = 0; index < layers.size(); index++) {
+            session.layerValues[index] = layers.get(index).progress();
+        }
+        session.layerTitle = null;
+
+        BossBar bar = Bukkit.createBossBar(
+                layerTitle(session, bossName), layers.get(0).color(), BarStyle.SOLID);
+        bar.addPlayer(player);
+        bar.setVisible(true);
+        bar.setProgress(outerValue(session));
+        session.layeredBar = bar;
+        session.layerBossName = bossName;
+        session.layerTitle = bar.getTitle();
+
+        int seconds = options.get("demo_duration") instanceof Number number
+                ? Math.max(1, number.intValue()) : 30;
+        // Each layer gets an equal slice of the run so the whole stack drains in
+        // demo_duration, whatever the layer count.
+        double secondsPerLayer = Math.max(0.5, (double) seconds / layers.size());
+        long period = 2L;
+        double stepPerTick = 1.0 / (secondsPerLayer * 20.0);
+        session.layerTask = getServer().getScheduler().runTaskTimer(this,
+                () -> advanceDemoLayer(session, stepPerTick * period), period, period);
+        getLogger().info("Created layered demo boss bar for " + player.getName()
+                + " layers=" + layers.size());
+    }
+
+    /** Remaining strength of the outermost layer that still has any. */
+    private static double outerValue(Session session) {
+        if (session.layerValues == null) {
+            return 0.0;
+        }
+        for (double value : session.layerValues) {
+            if (value > 0.0) {
+                return Math.min(1.0, value);
+            }
+        }
+        return 0.0;
+    }
+
+    /** Sentinel header carrying every layer's remaining strength, in per-mille. */
+    private static String layerTitle(Session session, String bossName) {
+        StringBuilder encoded = new StringBuilder();
+        for (int index = 0; index < session.layerValues.length; index++) {
+            if (index > 0) {
+                encoded.append(',');
+            }
+            encoded.append(Math.max(0, Math.min(1000,
+                    (int) Math.round(session.layerValues[index] * 1000))));
+        }
+        return "\u0000CCB:" + session.layerToken + ":" + encoded + "\u0000" + bossName;
+    }
+
+    /**
+     * Drains the outermost layer that still has strength. The bar stays up until every layer
+     * is empty, so the stack never flickers out between phases.
+     */
+    private void advanceDemoLayer(Session session, double amount) {
+        BossBar bar = session.layeredBar;
+        if (bar == null || session.layerValues == null) {
+            return;
+        }
+        for (int index = 0; index < session.layerValues.length; index++) {
+            if (session.layerValues[index] <= 0.0) {
+                continue;
+            }
+            session.layerValues[index] = Math.max(0.0, session.layerValues[index] - amount);
+            break;
+        }
+        if (outerValue(session) <= 0.0) {
+            bar.setProgress(0.0);
+            removeSessionBossBars(session);
+            return;
+        }
+        bar.setProgress(outerValue(session));
+        // Only push a new title when the per-mille encoding actually changed, so the stack
+        // does not cost a title packet every tick.
+        String title = layerTitle(session, session.layerBossName);
+        if (!title.equals(session.layerTitle)) {
+            session.layerTitle = title;
+            bar.setTitle(title);
+            int outermost = 0;
+            while (outermost < session.layerValues.length - 1
+                    && session.layerValues[outermost] <= 0.0) {
+                outermost++;
+            }
+            bar.setColor(session.demoLayers.get(outermost).color());
+        }
+    }
+
+    /** One entry of a page's {@code demo_layers} list. */
+    private record DemoLayer(String name, double progress, BarColor color) {
+    }
+
+    private static BarColor parseBarColor(Object value) {
+        if (value instanceof String text) {
+            try {
+                return BarColor.valueOf(text.trim().toUpperCase(java.util.Locale.ROOT));
+            } catch (IllegalArgumentException ignored) {
+                // Fall through to the default rather than failing the page.
+            }
+        }
+        return BarColor.RED;
+    }
+
+    private static void removeSessionBossBars(Session session) {
+        if (session.layerTask != null) {
+            session.layerTask.cancel();
+            session.layerTask = null;
+        }
+        if (session.layeredBar != null) {
+            session.layeredBar.removeAll();
+            session.layeredBar = null;
+        }
+        session.demoLayers = null;
+        session.layerBossName = null;
+        for (BossBar bar : session.bossBars) {
+            bar.removeAll();
+        }
+        session.bossBars.clear();
+        if (session.bossBar != null) {
+            session.bossBar.removeAll();
+            session.bossBar = null;
+        }
     }
 
     /**
@@ -2139,9 +2312,7 @@ public final class CloudCorePlugin extends JavaPlugin
         Session removed = sessions.remove(event.getPlayer().getUniqueId());
         if (removed != null) {
             removed.assembler.clear();
-            if (removed.bossBar != null) {
-                removed.bossBar.removeAll();
-            }
+            removeSessionBossBars(removed);
             if (removed.stateDirty && stateStore != null) {
                 // Save off-thread: the session is already detached, so a copy is enough.
                 java.util.UUID uuid = event.getPlayer().getUniqueId();
@@ -2403,6 +2574,18 @@ public final class CloudCorePlugin extends JavaPlugin
         private int pingNonce;
         private long pingSentNanos;
         private BossBar bossBar;
+        /** Sentinel bars created by a page's {@code demo_bars} list. */
+        private final java.util.List<BossBar> bossBars = new java.util.ArrayList<>();
+        /** The single bar a layered demo reuses for every layer. */
+        private BossBar layeredBar;
+        private String layerToken;
+        private String layerBossName;
+        private java.util.List<DemoLayer> demoLayers;
+        /** Per-mille remaining strength of each layer, outermost first. */
+        private double[] layerValues;
+        /** Last title pushed, so an unchanged encoding costs no packet. */
+        private String layerTitle;
+        private org.bukkit.scheduler.BukkitTask layerTask;
         private String lastUiId;
         /** Per-page state overrides, keyed by page name, then by state key. */
         private final Map<String, Map<String, Object>> pageState = new ConcurrentHashMap<>();
