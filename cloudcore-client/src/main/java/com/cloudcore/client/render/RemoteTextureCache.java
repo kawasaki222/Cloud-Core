@@ -92,11 +92,16 @@ public final class RemoteTextureCache {
     /** Adds an optional disk cache; {@code cacheDir == null} keeps downloads memory-only. */
     public static void configure(boolean allowRemoteImages, Consumer<String> requester,
             java.nio.file.Path cacheDir) {
+        configure(allowRemoteImages, requester, cacheDir, 128L * 1024L * 1024L);
+    }
+
+    /** @param maxCacheBytes byte budget for the optional disk cache */
+    public static void configure(boolean allowRemoteImages, Consumer<String> requester,
+            java.nio.file.Path cacheDir, long maxCacheBytes) {
         remoteImages = allowRemoteImages;
         proxyRequester = requester == null ? key -> {
         } : requester;
-        diskCache = cacheDir == null ? null : new TextureDiskCache(cacheDir,
-                128L * 1024L * 1024L);
+        diskCache = cacheDir == null ? null : new TextureDiskCache(cacheDir, maxCacheBytes);
     }
 
     /**

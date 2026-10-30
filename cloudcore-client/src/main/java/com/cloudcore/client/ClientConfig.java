@@ -17,14 +17,20 @@ import org.slf4j.LoggerFactory;
  * <p>Parsing is pure (a path in, values out) and unit-tested; the game calls {@link #load}
  * once at startup, before the render backend is chosen.
  */
-public record ClientConfig(String renderer, boolean debug, boolean remoteImages) {
+public record ClientConfig(String renderer, boolean debug, boolean remoteImages,
+        int imageCacheMiB) {
+    public ClientConfig(String renderer, boolean debug, boolean remoteImages) {
+        this(renderer, debug, remoteImages, 128);
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
     public static final String DEFAULT_RENDERER = "native";
     private static final String DEFAULT_JSON = """
             {
               "renderer": "native",
               "debug": false,
-              "remoteImages": true
+              "remoteImages": true,
+              "imageCacheMiB": 128
             }
             """;
 
@@ -78,7 +84,11 @@ public record ClientConfig(String renderer, boolean debug, boolean remoteImages)
             boolean remoteImages = !root.has("remoteImages")
                     || !root.get("remoteImages").isJsonPrimitive()
                     || root.get("remoteImages").getAsBoolean();
-            return new ClientConfig(renderer, debug, remoteImages);
+            int imageCacheMiB = 128;
+            if (root.has("imageCacheMiB") && root.get("imageCacheMiB").isJsonPrimitive()) {
+                imageCacheMiB = Math.max(1, Math.min(1024, root.get("imageCacheMiB").getAsInt()));
+            }
+            return new ClientConfig(renderer, debug, remoteImages, imageCacheMiB);
         } catch (RuntimeException exception) {
             LOGGER.warn("[CC-CFG-001] Malformed client config ({}); using defaults",
                     exception.getMessage());
@@ -87,7 +97,7 @@ public record ClientConfig(String renderer, boolean debug, boolean remoteImages)
     }
 
     public static ClientConfig defaults() {
-        return new ClientConfig(DEFAULT_RENDERER, false, true);
+        return new ClientConfig(DEFAULT_RENDERER, false, true, 128);
     }
 
     /**

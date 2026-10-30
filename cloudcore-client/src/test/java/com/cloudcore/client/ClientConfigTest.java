@@ -34,6 +34,14 @@ class ClientConfigTest {
         assertTrue(config.wantsNanoVg());
         assertTrue(config.debug());
         assertTrue(config.remoteImages());
+        assertEquals(128, config.imageCacheMiB());
+    }
+
+    @Test
+    void clampsImageCacheSize() {
+        assertEquals(1, ClientConfig.parse("{\"imageCacheMiB\": 0}").imageCacheMiB());
+        assertEquals(1024, ClientConfig.parse("{\"imageCacheMiB\": 9999}").imageCacheMiB());
+        assertEquals(64, ClientConfig.parse("{\"imageCacheMiB\": 64}").imageCacheMiB());
     }
 
     @Test
