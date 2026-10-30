@@ -59,6 +59,21 @@ class SqlPlayerStateStoreTest {
     }
 
     @Test
+    void initializeIsIdempotentAndRecordsTheSchemaVersion() throws Exception {
+        Path file = dir.resolve("schema.db");
+        SqlPlayerStateStore store = store("schema.db");
+        store.initialize();
+        store.initialize();
+        try (var connection = DriverManager.getConnection("jdbc:sqlite:" + file);
+                var statement = connection.createStatement();
+                var result = statement.executeQuery(
+                        "SELECT version FROM cloudcore_schema WHERE id = 1")) {
+            assertTrue(result.next());
+            assertEquals(SqlPlayerStateStore.SCHEMA_VERSION, result.getInt(1));
+        }
+    }
+
+    @Test
     void missingPlayerIsAnEmptyMap() throws Exception {
         SqlPlayerStateStore store = store("empty.db");
         store.initialize();

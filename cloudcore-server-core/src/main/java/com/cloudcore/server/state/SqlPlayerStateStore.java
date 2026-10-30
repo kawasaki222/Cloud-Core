@@ -32,6 +32,8 @@ public final class SqlPlayerStateStore implements PlayerStateStore {
     }
 
     private static final String TABLE = "cloudcore_player_state";
+    private static final String SCHEMA_TABLE = "cloudcore_schema";
+    public static final int SCHEMA_VERSION = 1;
 
     private final Dialect dialect;
     private final Connections connections;
@@ -48,14 +50,44 @@ public final class SqlPlayerStateStore implements PlayerStateStore {
                 + "player_id VARCHAR(36) NOT NULL PRIMARY KEY,"
                 + "payload " + type + " NOT NULL,"
                 + "updated_at BIGINT NOT NULL)";
+        String schemaSql = "CREATE TABLE IF NOT EXISTS " + SCHEMA_TABLE
+                + " (id INTEGER NOT NULL PRIMARY KEY, version INTEGER NOT NULL)";
         try (Connection connection = open();
                 Statement statement = connection.createStatement()) {
+            statement.execute(schemaSql);
             statement.execute(sql);
             if (dialect == Dialect.SQLITE) {
-                statement.execute("PRAGMA journal_mode=WAL");
+                try (var pragma = statement.executeQuery("PRAGMA journal_mode=WAL")) {
+                    pragma.next();
+                }
+            }
+            int version = -1;
+            try (var query = connection.prepareStatement(
+                    "SELECT version FROM " + SCHEMA_TABLE + " WHERE id = 1");
+                    var result = query.executeQuery()) {
+                if (result.next()) {
+                    version = result.getInt(1);
+                }
+            }
+            if (version > SCHEMA_VERSION) {
+                throw new IOException("state schema version " + version
+                        + " is newer than this build understands (" + SCHEMA_VERSION + ")");
+            }
+            if (version < 0) {
+                try (var insert = connection.prepareStatement(
+                        "INSERT INTO " + SCHEMA_TABLE + " (id, version) VALUES (1, ?)")) {
+                    insert.setInt(1, SCHEMA_VERSION);
+                    insert.executeUpdate();
+                }
+            } else if (version < SCHEMA_VERSION) {
+                try (var update = connection.prepareStatement(
+                        "UPDATE " + SCHEMA_TABLE + " SET version = ? WHERE id = 1")) {
+                    update.setInt(1, SCHEMA_VERSION);
+                    update.executeUpdate();
+                }
             }
         } catch (SQLException exception) {
-            throw new IOException("cannot create the page state table", exception);
+            throw new IOException("cannot create the page state tables", exception);
         }
     }
 

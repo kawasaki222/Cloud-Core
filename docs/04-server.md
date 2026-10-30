@@ -269,7 +269,8 @@ revision 的文档更新；会话状态保留（每个玩家按页面名保存�
 - 玩家加入时异步读取并合并到会话：页面里已有的值不会被覆盖；读取失败只写警告，页面按文档默认值打开。
 - `PlayerStateStore` 是接口：`file`（默认，`state/<uuid>.json`）、`sqlite`（驱动随插件打包，
   `state.sqlite.file`）、`mysql`（服务端需自带 JDBC 驱动，`state.mysql.*`）。SQL 后端把同一份
-  `{version,pages}` JSON 存在 `cloudcore_player_state` 表，便于和文件实现互相迁移。
+  `{version,pages}` JSON 存在 `cloudcore_player_state` 表，便于和文件实现互相迁移。SQL 后端还维护
+  `cloudcore_schema` 表（当前 `SCHEMA_VERSION = 1`），启动时拒绝比本构建更新的 schema，为后续迁移留出入口。
 
 ## 7. 面板提供器
 
