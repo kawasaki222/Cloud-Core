@@ -1,0 +1,12 @@
+{
+  "providers": [
+    {
+      "type": "ttf",
+      "file": "cloudcore:tooltip_body.ttf",
+      "size": 9,
+      "oversample": 2,
+      "shift": [0, 0],
+      "skip": ""
+    }
+  ]
+}

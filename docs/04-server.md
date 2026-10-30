@@ -239,6 +239,7 @@ placeholders:
   global-budget-ms: 10      # 全服每 tick 的同步刷新软预算
 state:
   persist: true             # 会话状态按玩家持久化（异步写、原子替换）
+  backend: file             # file | sqlite | mysql
 actions:
   commands:
     enabled: false          # command 动作总开关
@@ -266,7 +267,9 @@ revision 的文档更新；会话状态保留（每个玩家按页面名保存�
 - 写入在 worker 线程：`set_state` 只把会话标脏，后台任务每 5 秒（以及退出、插件禁用时）
   把脏会话原子写盘（先写 `.json.tmp` 再 `ATOMIC_MOVE`），主线程从不等磁盘。
 - 玩家加入时异步读取并合并到会话：页面里已有的值不会被覆盖；读取失败只写警告，页面按文档默认值打开。
-- `PlayerStateStore` 是接口，SQLite/MySQL 实现接在同一位置（计划中）；当前默认是文件实现。
+- `PlayerStateStore` 是接口：`file`（默认，`state/<uuid>.json`）、`sqlite`（驱动随插件打包，
+  `state.sqlite.file`）、`mysql`（服务端需自带 JDBC 驱动，`state.mysql.*`）。SQL 后端把同一份
+  `{version,pages}` JSON 存在 `cloudcore_player_state` 表，便于和文件实现互相迁移。
 
 ## 7. 面板提供器
 
@@ -406,6 +409,48 @@ transport.send(player, UiPackets.definition(session));
 - 血条移除或玩家退出时发送 `UI_CLOSE`。
 
 Boss 血条的 `surfaceKey` 是 16 进制 token，不是 Paper 的 `NamespacedKey`。
+
+### 7.6 自定义槽位页
+
+`plugins/CloudCore/slots.yml` 定义一组带规则的自定义槽位。它不是把原版玩家背包的槽位
+硬塞进去，而是打开一个独立的 9×N 容器页；这样服务端能精确控制每个槽位的放置规则、权限
+和持久化，也不会与其它改背包插件抢同一个 `InventoryMenu`。
+
+```yaml
+title: "Cloud Core 饰品"
+rows: 3
+slots:
+  necklace:
+    position: 10          # 0..rows*9-1
+    label: "项链"
+    accepts:
+      lore-contains: ["项链", "Necklace"]
+      materials: ["DIAMOND", "EMERALD"]   # 可选，按 Bukkit Material 名匹配
+    permission: "cloudcore.slot.necklace" # 可选
+  ring_left:
+    position: 12
+    label: "左戒"
+    accepts:
+      lore-contains: ["戒指", "Ring"]
+```
+
+打开方式：
+
+```text
+/cloudcore accessories [player]
+```
+
+规则：
+
+- `accepts` 整个省略时，任意物品都可以放入该槽。
+- `lore-contains` 匹配物品显示名或任意一行 lore，命中一个字符串即可。
+- `materials` 与 `lore-contains` 是 AND 关系；权限是额外约束。
+- 客户端不能绕过规则：点击、热键交换、副手交换和拖拽都会在 `LOWEST` 优先级检查。
+- 从玩家背包按住 Shift 点击到受保护槽位会直接取消，因为 Bukkit 不提供目标槽位；这是
+  有意的失败关闭（fail closed）。
+- 关闭页面时内容写入 `plugins/CloudCore/accessories/<uuid>.yml`；下次打开自动恢复。
+- 页面贴图默认使用内置 `builtin:slot` + `builtin:slot_glow` 图层，服务器不需要额外资源包；
+  想换皮时在 `slots.yml` 之外替换页面生成器或使用自定义客户端资源即可。
 
 ## 8. 状态、遍历与差异
 

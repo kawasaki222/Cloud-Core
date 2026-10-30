@@ -41,16 +41,25 @@ public sealed interface RenderCommand {
      * @param animation playback options for GIF sources; ignored for static textures
      */
     record Image(String texture, int x, int y, int width, int height, int[] nineSlice,
-            Animation animation) implements RenderCommand {
+            Animation animation, int tint) implements RenderCommand {
+
+        /** Opaque white keeps the source texture unchanged. */
+        public static final int DEFAULT_TINT = 0xFFFFFFFF;
 
         public Image(String texture, int x, int y, int width, int height) {
-            this(texture, x, y, width, height, null, Animation.DEFAULT);
+            this(texture, x, y, width, height, null, Animation.DEFAULT, DEFAULT_TINT);
         }
 
         public Image(String texture, int x, int y, int width, int height, int[] nineSlice) {
-            this(texture, x, y, width, height, nineSlice, Animation.DEFAULT);
+            this(texture, x, y, width, height, nineSlice, Animation.DEFAULT, DEFAULT_TINT);
         }
 
+        public Image(String texture, int x, int y, int width, int height, int[] nineSlice,
+                Animation animation) {
+            this(texture, x, y, width, height, nineSlice, animation, DEFAULT_TINT);
+        }
+
+        /** A tint is a multiplier: white preserves the texture, transparent fades it. */
         /** {@code animated: off} freezes the first frame; speed is a multiplier. */
         record Animation(boolean enabled, boolean loop, float speed) {
             public static final Animation DEFAULT = new Animation(true, true, 1.0f);

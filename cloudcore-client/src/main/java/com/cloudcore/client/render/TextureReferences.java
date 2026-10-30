@@ -91,10 +91,17 @@ public final class TextureReferences {
         if (cached != null) {
             return cached;
         }
-        byte[] bytes = RemoteTextureCache.bytes(key);
-        if (bytes == null) {
+        RemoteTextureCache.Payload payload = RemoteTextureCache.payload(key);
+        if (payload == null) {
             // Pending or failed: draw nothing this frame; the download logs its own failure.
             return null;
+        }
+        byte[] bytes = payload.bytes();
+        if (payload.format() == com.cloudcore.protocol.TexturePut.FORMAT_ANIMATED_SHEET) {
+            int frameHeight = Math.max(1, payload.height() / payload.frameCount());
+            return AnimatedTextures.frameFromSheet(key, bytes, payload.width(),
+                    frameHeight, payload.frameCount(), payload.frameDelaysMs(),
+                    System.currentTimeMillis(), animation);
         }
         if (AnimatedTextures.isGif(bytes)) {
             // Frames are chosen per draw; the render list keeps only the reference string.
@@ -158,6 +165,15 @@ public final class TextureReferences {
         if (REPORTED.add(message)) {
             LOGGER.warn("[{}] {}", code, message);
         }
+    }
+
+    /** Releases inline textures so a reconnect to another server cannot reuse old bytes. */
+    public static void resetInline() {
+        var manager = Minecraft.getInstance().getTextureManager();
+        for (Identifier identifier : INLINE_CACHE.values()) {
+            manager.release(identifier);
+        }
+        INLINE_CACHE.clear();
     }
 
     static void resetReported() {

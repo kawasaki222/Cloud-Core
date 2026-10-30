@@ -89,6 +89,12 @@ public final class CloudCoreClient implements ClientModInitializer {
         if (config.debug()) {
             LOGGER.info("Client config requests debug logging");
         }
+        com.cloudcore.client.render.RemoteTextureCache.configure(config.remoteImages(),
+                key -> net.minecraft.client.Minecraft.getInstance().execute(() -> sendFrame(
+                        new Frame(ProtocolVersion.MAJOR, 0, Opcode.TEXTURE_REQUEST,
+                                com.cloudcore.protocol.TextureRequestCodec.encode(
+                                        new com.cloudcore.protocol.TextureRequest(key),
+                                        Limits.C2S)))));
         surfaceRegistry = SurfaceRegistry.createDefault(this::sendPlayerClosed);
         PayloadTypeRegistry.playS2C().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
         PayloadTypeRegistry.playC2S().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
@@ -140,6 +146,9 @@ public final class CloudCoreClient implements ClientModInitializer {
         openRevisions.clear();
         openDocuments.clear();
         surfaceRegistry.reset(CloseReason.DISCONNECT);
+        com.cloudcore.client.render.RemoteTextureCache.reload();
+        com.cloudcore.client.render.TextureReferences.resetInline();
+        com.cloudcore.client.render.AnimatedTextures.reset();
         LOGGER.info("Cleared session state on {}", cause);
     }
 
@@ -176,6 +185,7 @@ public final class CloudCoreClient implements ClientModInitializer {
             case Opcode.UI_CLOSE -> handleUiClose(frame);
             case Opcode.DIAGNOSTIC -> handleDiagnostic(frame);
             case Opcode.TEXTURE_REF -> handleTextureRef(frame);
+            case Opcode.TEXTURE_PUT -> handleTexturePut(frame);
             case Opcode.EVENT_RESULT -> handleEventResult(frame);
             default -> LOGGER.info("Unhandled S2C opcode=0x{} bytes={}",
                     Integer.toHexString(frame.opcode()), frame.bodyLength());
@@ -386,6 +396,35 @@ public final class CloudCoreClient implements ClientModInitializer {
         com.cloudcore.client.render.RemoteTextureCache.request(ref);
         LOGGER.info("TEXTURE_REF key={} url={} maxBytes={}", ref.key(), ref.url(),
                 ref.maxBytes());
+    }
+
+    private void handleTexturePut(Frame frame) {
+        com.cloudcore.protocol.TexturePut put;
+        try {
+            put = com.cloudcore.protocol.TexturePutCodec.decode(frame.body(), Limits.S2C);
+        } catch (ProtocolException exception) {
+            LOGGER.warn("Dropped malformed TEXTURE_PUT: {}", exception.getMessage());
+            return;
+        }
+        byte[] data = put.data();
+        if (data.length < 8 || (data[0] & 0xFF) != 0x89 || data[1] != 'P'
+                || data[2] != 'N' || data[3] != 'G') {
+            LOGGER.warn("[CC-ASSET-019] TEXTURE_PUT {} is not a PNG", put.key());
+            return;
+        }
+        if (crc32(data) != put.crc32()) {
+            LOGGER.warn("[CC-ASSET-020] TEXTURE_PUT {} failed its CRC check", put.key());
+            return;
+        }
+        com.cloudcore.client.render.RemoteTextureCache.put(put);
+        LOGGER.info("TEXTURE_PUT key={} {}x{} format={}", put.key(), put.width(),
+                put.height(), put.format());
+    }
+
+    private static int crc32(byte[] data) {
+        java.util.zip.CRC32 crc = new java.util.zip.CRC32();
+        crc.update(data);
+        return (int) crc.getValue();
     }
 
     private void handleDiagnostic(Frame frame) {

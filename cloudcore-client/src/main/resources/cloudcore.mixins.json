@@ -8,7 +8,10 @@
     "GuiGraphicsMixin",
     "GuiMixin",
     "MinecraftMixin",
-    "MouseHandlerMixin"
+    "MouseHandlerMixin",
+    "FontManagerAccessor",
+    "MinecraftAccessor",
+    "AbstractContainerScreenAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

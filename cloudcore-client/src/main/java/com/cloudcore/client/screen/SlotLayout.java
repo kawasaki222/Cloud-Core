@@ -86,6 +86,13 @@ public final class SlotLayout {
         return declared;
     }
 
+    /** Hides every menu slot from {@code firstHidden} on; used by purpose-built containers. */
+    public static void hideFrom(List<Slot> slots, int firstHidden) {
+        for (int index = Math.max(0, firstHidden); index < slots.size(); index++) {
+            move(slots, index, HIDDEN, HIDDEN);
+        }
+    }
+
     public static Set<Integer> gridSlots(UiDocument document) {
         List<UiElement> grids = new ArrayList<>();
         collectGrids(document.elements(), grids);

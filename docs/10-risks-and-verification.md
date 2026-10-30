@@ -494,7 +494,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **NanoVG**：填充/图片/自定义字体/FBO 合成已在 Windows（opt-in，含配置开关）验证；
   未验证的是默认化（设备分辨率 FBO 的清晰文字）、U31 状态隔离与 Linux/macOS 的运行。
 - **文本整形（shaping）**：未实现，中文断行依赖原版字体度量。
-- **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto` 未实现；
+- **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto` 已实现（静态 PNG 与
+  GIF 精灵表；代理缓存目前只落盘静态图）；
   客户端直连只验证了成功路径，失败注入（超时、非 https、sha256 不匹配、超大图）只有单测/代码路径。
 - **远端 GIF**：本地 GIF 已验证；`url:` 指向 GIF 的真机播放未验证。
 - **`ELEMENT_UPDATE` 剩余**：自定义页面已真机验证；HUD 增量、`text_field` 回退、revision
@@ -502,7 +503,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **多玩家并发**：编译页已按玩家隔离并单机复测；两个客户端同时看同一张含 `repeat` 的页面未真机验证。
 - **容器**：`allow_player_inventory: true` 与 `InventoryDragEvent` 未真机验证。
 - **玩家背包 v2**：配方书（`skinned`/`custom`）、玩家模型与状态效果未实现。
-- **存储**：JSON 文件实现已验证；SQLite/MySQL、连接池、迁移未实现。
+- **存储**：JSON 文件与 SQLite 实现已通过单元测试；MySQL 走 JDBC、需服务端提供驱动；连接池、
+  schema 迁移版本表和跨后端导出仍未实现。
 - **占位符剩余**：一次性展开、页面/元素 `interval` 刷新、同步/异步、`refresh` 动作已真机验证；
   `interval` 预算打满、`tick`/`event` 模式、`${placeholder:...}` 的自定义命名空间与
   `async-namespaces` 白名单尚未验证/实现。

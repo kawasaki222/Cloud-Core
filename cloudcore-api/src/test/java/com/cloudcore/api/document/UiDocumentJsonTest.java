@@ -63,13 +63,17 @@ class UiDocumentJsonTest {
                   "surface": "container",
                   "title": "Chest",
                   "size": [176, 166],
-                  "container": { "rows": 6, "interaction": "passthrough" },
+                  "container": { "rows": 6, "interaction": "readonly",
+                                 "hide_player_inventory": true,
+                                 "allow_player_inventory": true },
                   "elements": []
                 }
                 """);
         assertNotNull(document.container());
         assertEquals(6, document.container().rows());
-        assertEquals("passthrough", document.container().interaction());
+        assertEquals("readonly", document.container().interaction());
+        assertTrue(document.container().hidePlayerInventory());
+        assertTrue(document.container().allowPlayerInventory());
     }
 
     @Test

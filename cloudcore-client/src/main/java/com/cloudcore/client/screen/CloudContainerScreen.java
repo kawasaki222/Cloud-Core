@@ -39,6 +39,25 @@ public final class CloudContainerScreen extends AbstractContainerScreen<Abstract
             topSize++;
         }
         SlotLayout.apply(document, menu.slots, topSize);
+        if (document.container() != null && document.container().hidePlayerInventory()) {
+            SlotLayout.hideFrom(menu.slots, topSize);
+        }
+    }
+
+    @Override
+    protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
+        // Cloud pages draw their own headings; hiding the vanilla "Inventory" label also
+        // keeps purpose-built pages from showing a label for slots they deliberately hide.
+    }
+
+    /**
+     * 1.21.11 no longer asks for the hovered slot tooltip from
+     * {@code AbstractContainerScreen#render}; the screen has to request it itself.
+     */
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
+        renderTooltip(graphics, mouseX, mouseY);
     }
 
     @Override

@@ -104,7 +104,8 @@ docs/
 - [x] 动作 `open_page`（关闭当前页并打开目标页）与 `sound`（音效/音量/音高）（真机验证）
 - [x] 键盘导航：`Tab`/方向键循环焦点、`Enter`/`Space` 触发 `click`、两色焦点框（真机验证）
 - [x] 会话状态持久化：`PlayerStateStore` 接口 + `state/<uuid>.json`、异步 flush、加入时加载（真机验证）
-- [ ] 持久化剩余：SQLite（默认）/MySQL 实现、连接池、迁移与容量上限
+- [x] 持久化后端：SQLite（驱动随插件打包）与 MySQL（服务端提供驱动）；JSON 文件仍为默认
+- [ ] 持久化剩余：连接池、schema 迁移版本表、跨后端导出/导入
 - [x] `EVENT_RESULT` 下发（OK/UNKNOWN_ELEMENT/REJECTED，固定枚举名）
 - [x] `command` 动作 + 配置闸门（默认拒绝，按首个词 allowlist；单测）
 - [ ] M3 剩余：依赖图增量编译/内容哈希去重、条件、表达式
@@ -173,10 +174,10 @@ docs/
 - [x] 修复 `PageLoader` 忽略调用方状态的问题（玩家状态覆盖文档默认值）
 - [x] 九宫格 `nine_slice`：9 块拆分，角固定/边单向/中心双向（真机验证）
 - [x] `url:` 贴图：编译成 `inline:` + `TEXTURE_REF` + 客户端直连下载（真机验证，https/大小/超时/sha256）
-- [ ] 代理模式：`TEXTURE_REQUEST`/`TEXTURE_PUT`
+- [x] 代理模式：`TEXTURE_REQUEST`/`TEXTURE_PUT`（proxy/auto、allowlist、静态盘缓存、GIF 精灵表）
 - [x] GIF 动画：本地与直连图片逐帧播放（3 帧测试图真机验证）
 - [x] 动画选项：`animated: off` 真机像素对比；`loop`/`speed` 解析层单测
-- [ ] 远端 GIF 真机验证
+- [x] 远端 GIF 真机验证（400×400/22 帧 PNG 精灵表；超 1 MiB 自动减帧/降采样）
 - [ ] M2 渲染剩余：文本 shaping
 - [x] HUD / Tooltip / BossBar / Container 面板最小闭环
 - [x] HUD 三层（background/foreground/overlay）与锚点/偏移（真机验证）
@@ -185,7 +186,8 @@ docs/
 - [x] 容器槽位布局：`inventory_grid` 的 origin/cell/columns 重排容器槽位（真机验证，含点击）
 - [x] 玩家背包槽位重排：主物品栏 9–35 与快捷栏 36–44（真机验证；护甲/合成槽保持原版）
 - [x] 容器点击策略 `passthrough` 真机验证
-- [ ] 容器点击策略补充：`allow_player_inventory` 与 `InventoryDragEvent` 真机验证
+- [x] 容器点击策略补充：`allow_player_inventory` 已接入文档/策略/服务端（单测覆盖）；`InventoryDragEvent` 真机验证仍待补
+- [x] 代理模式：远端 GIF 真机验证与动画盘缓存
 - [ ] 玩家背包配方书（v1 隐藏；v2 再补 `skinned`/`custom`）与玩家模型/状态效果选项
 - [x] 协议前向兼容：未知 `surfaceId` 保留原始值并回 `UI_READY(state=4)`
 - [x] 协议前向兼容：未知 `BindMode` / `RenderMode` 解码为 `UNKNOWN` 并回 `UI_READY(state=4)`
@@ -202,10 +204,8 @@ docs/
 
 ## 下一步动作（按顺序）
 
-1. **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto`，服务端允许列表、
-   哈希缓存；配合远端 GIF 真机验证。
-2. **持久化后端**：在 `PlayerStateStore` 后面实现 SQLite（默认）与 MySQL（可选），
-   含连接池、迁移脚本与容量上限；文件实现对单服仍可用。
+1. **贴图代理收尾**：代理下载的并发/队列上限压测；远端静态图失败占位文案。
+2. **持久化收尾**：连接池、schema 迁移版本表、SQLite→MySQL 导出/导入。
 3. **NanoVG 默认化**：设备分辨率 FBO（清晰文字）、U31 状态隔离、失败整帧回退、Linux/macOS 验证。
 4. **玩家背包 v2**：配方书四档（`skinned`/`custom`）、玩家模型与状态效果；`allow_player_inventory`
    与 `InventoryDragEvent` 的真机验证顺带补上。

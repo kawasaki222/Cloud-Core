@@ -139,7 +139,8 @@ public final class NativeBackend implements RenderBackend {
             graphics.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,
                     texture, piece.dstX(), piece.dstY(), piece.srcX(), piece.srcY(),
                     piece.dstWidth(), piece.dstHeight(),
-                    piece.srcWidth(), piece.srcHeight(), textureWidth, textureHeight);
+                    piece.srcWidth(), piece.srcHeight(), textureWidth, textureHeight,
+                    image.tint());
         }
     }
 

@@ -5,6 +5,7 @@ dependencies {
     implementation(project(":cloudcore-protocol"))
     implementation(project(":cloudcore-server-core"))
     compileOnly("io.papermc.paper:paper-api:${libs.versions.paper.api.get()}")
+    implementation(libs.sqlite.jdbc)
 }
 
 val apiMain = project(":cloudcore-api").extensions.getByType<SourceSetContainer>()["main"]
@@ -24,6 +25,18 @@ val snakeYamlJars = configurations.runtimeClasspath.get()
         .filter { it.name.startsWith("snakeyaml-") }
 tasks.jar {
     snakeYamlJars.forEach { artifact ->
+        from(zipTree(artifact)) {
+            exclude("META-INF/**")
+            exclude("module-info.class")
+        }
+    }
+}
+
+// The optional SQLite state backend ships its driver and native libraries in the plugin jar.
+val sqliteJars = configurations.runtimeClasspath.get()
+        .filter { it.name.startsWith("sqlite-jdbc-") }
+tasks.jar {
+    sqliteJars.forEach { artifact ->
         from(zipTree(artifact)) {
             exclude("META-INF/**")
             exclude("module-info.class")

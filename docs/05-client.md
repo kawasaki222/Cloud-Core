@@ -301,6 +301,10 @@ HudElementRegistry.addLast(
 
 - 外框、背景、滚动条由 NanoVG 绘制到前景层；文本内容由原版绘制在上层。
 - 面板内边距、边框、颜色、最大高度来自文档；文本行高由原版 `Font.lineHeight` 加 `line_gap` 决定。
+- `surface_options.tooltip.name/lore` 可分别设置 `x`、`y`、`line_gap`、`font`：第一行是物品名，其余行是 lore；`lore.y` 缺省时紧接物品名。
+- tooltip 的 `font` 必须是 Minecraft 字体 id（模组内置 `cloudcore:tooltip_body` 或资源包字体），通过 `FontManager` 的 `FontSet` 构造原版 `Font`；NanoVG TTF 字体不能直接用于原生文本。
+- `surface_options.tooltip.icon` 控制物品图标：`show`、`x`、`y`、`size`（缺省 16，范围 8–64）；图标在滚动裁剪之外固定绘制，物品取自 `AbstractContainerScreen.hoveredSlot`，没有槽位时不显示。
+- `surface_options.tooltip.attachments` 支持围绕 tooltip 的附加面板（`left`/`right`/`top`/`bottom`），每个面板可独立配置 `match`、尺寸、偏移、对齐、`background`（颜色或贴图）、`nine_slice`、边框、标题、行文本和字体；面板跟随 tooltip 并限制在屏幕内。
 - 可见高度 = `min(内容高度, surface_options.tooltip.max_height, 屏幕可用高度)`。
 - 内容超过可见高度时进入滚动模式：
   - 固定提示框位置，避免滚动时跟着鼠标跳动；
@@ -467,7 +471,7 @@ interface RenderBackend {
   原生回退时在同一个 `DynamicTexture` 内按帧偏移 UV。
 - 动画在界面隐藏或 `animations: false` 时暂停；`loop: false` 播完停在最后一帧。
 - URL 贴图默认客户端直连：收到 `TEXTURE_REF` 后按 SHA-256 查本地缓存，未命中再异步下载。
-- 下载策略：仅 https；解析后拒绝私网、回环、链路本地和保留地址；禁止非标准端口；最多 2 次重定向；
+- 下载策略：仅 https；解析后拒绝私网、回环、链路本地和保留地址；禁止非标准端口；不跟随重定向；
   1 MiB、512×512、3 秒超时；不发送 cookie 或认证头。
 - 按魔数识别格式；PNG 直接使用，JPEG/GIF 用 `ImageIO` 解码；GIF 逐帧合成后打包成精灵表。
 - 客户端缓存：磁盘 128 MiB（内容哈希命名）、解码后内存 32 MiB；加载时校验哈希，损坏则丢弃。

@@ -32,6 +32,7 @@ import com.cloudcore.protocol.UiCodec;
 import com.cloudcore.protocol.UiDefinition;
 import com.cloudcore.protocol.UiOpen;
 import com.cloudcore.protocol.UiReady;
+import com.cloudcore.bukkit.texture.TextureProxy;
 import com.cloudcore.server.surface.ContainerClickPolicy;
 import com.cloudcore.server.update.ElementDiffer;
 import java.nio.charset.StandardCharsets;
@@ -57,6 +58,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -101,6 +103,8 @@ public final class CloudCorePlugin extends JavaPlugin
                     error));
     private final Placeholders placeholders = new Placeholders(this, placeholderResolvers);
     private com.cloudcore.server.state.PlayerStateStore stateStore;
+    private com.cloudcore.bukkit.slot.AccessorySlots accessorySlots;
+    private com.cloudcore.bukkit.texture.TextureProxy textureProxy;
     private static final Set<String> BUILT_IN_ACTIONS = Set.of(
             "message", "close_ui", "close", "set_state", "if", "delay", "command",
             "open_page", "sound", "refresh");
@@ -111,7 +115,8 @@ public final class CloudCorePlugin extends JavaPlugin
     /** Demo pages copied into {@code plugins/CloudCore/pages/} when missing. */
     private static final java.util.List<String> DEMO_PAGES = java.util.List.of(
             "example", "shop", "progress_demo", "scroll_demo", "actions_demo", "papi_demo",
-            "papi_refresh", "rpg_hud", "inventory_skin", "slider_demo", "boss_dnf");
+            "papi_refresh", "tooltip_rpg", "rpg_hud", "inventory_skin", "slider_demo",
+            "boss_dnf");
     private final com.cloudcore.bukkit.api.CloudCoreApi api = new Api();
 
     @Override
@@ -127,10 +132,12 @@ public final class CloudCorePlugin extends JavaPlugin
             getLogger().warning("Command 'cloudcore' is missing from plugin.yml");
         }
         saveDefaultConfig();
+        accessorySlots = new com.cloudcore.bukkit.slot.AccessorySlots(this);
         playerRefreshBudget = Math.max(1L,
                 getConfig().getLong("placeholders.player-budget-ms", 2L)) * 1_000_000L;
         globalRefreshBudget = Math.max(1L,
                 getConfig().getLong("placeholders.global-budget-ms", 10L)) * 1_000_000L;
+        textureProxy = createTextureProxy();
         preparePagesDirectory();
         startPageWatcher();
         startStatePersistence();
@@ -193,6 +200,10 @@ public final class CloudCorePlugin extends JavaPlugin
         if (stateStore != null) {
             flushDirtyState();
         }
+        if (textureProxy != null) {
+            textureProxy.close();
+            textureProxy = null;
+        }
         getServer().getServicesManager().unregisterAll(this);
         actionHandlers.clear();
         placeholderResolvers.clear();
@@ -243,6 +254,7 @@ public final class CloudCorePlugin extends JavaPlugin
             case Opcode.UI_READY -> handleUiReady(player, frame);
             case Opcode.UI_CLOSED -> handleUiClosed(player, frame);
             case Opcode.EVENT -> handleEvent(player, session, frame);
+            case Opcode.TEXTURE_REQUEST -> handleTextureRequest(player, session, frame);
             default -> getLogger().info("Unhandled C2S opcode=0x"
                     + Integer.toHexString(frame.opcode()) + " bytes=" + frame.bodyLength()
                     + " player=" + player.getUniqueId());
@@ -1015,6 +1027,66 @@ public final class CloudCorePlugin extends JavaPlugin
             reloadPages(sender);
             return true;
         }
+        if (args.length >= 2 && args[0].equalsIgnoreCase("equipment")) {
+            Player target = args.length >= 3
+                    ? getServer().getPlayerExact(args[2])
+                    : sender instanceof Player self ? self : null;
+            if (target == null) {
+                sender.sendMessage(Component.text(
+                        "Usage: /cloudcore equipment <asset> [player]"));
+                return true;
+            }
+            com.cloudcore.bukkit.item.EquipmentAssets.applyToHand(target, args[1], this);
+            sender.sendMessage(Component.text("Cloud Core equipment asset '" + args[1]
+                    + "' applied to " + target.getName() + "'s held item"));
+            return true;
+        }
+        if (args.length >= 2 && args[0].equalsIgnoreCase("equipment-stand")) {
+            Player target = args.length >= 3
+                    ? getServer().getPlayerExact(args[2])
+                    : sender instanceof Player self ? self : null;
+            if (target == null) {
+                sender.sendMessage(Component.text(
+                        "Usage: /cloudcore equipment-stand <asset> [player]"));
+                return true;
+            }
+            org.bukkit.inventory.ItemStack chest = new org.bukkit.inventory.ItemStack(
+                    org.bukkit.Material.NETHERITE_CHESTPLATE);
+            if (!com.cloudcore.bukkit.item.EquipmentAssets.apply(chest, args[1])) {
+                sender.sendMessage(Component.text("Cannot apply equipment asset: " + args[1]));
+                return true;
+            }
+            org.bukkit.Location where = target.getLocation().clone()
+                    .add(target.getLocation().getDirection().setY(0).normalize().multiply(2.0))
+                    .add(0, 0.2, 0);
+            org.bukkit.entity.ArmorStand stand = target.getWorld().spawn(where,
+                    org.bukkit.entity.ArmorStand.class, entity -> {
+                        entity.setArms(true);
+                        entity.setBasePlate(false);
+                        entity.setGravity(false);
+                        entity.setInvulnerable(true);
+                        entity.getEquipment().setChestplate(chest);
+                    });
+            stand.setRotation(target.getLocation().getYaw() + 180.0f, 0.0f);
+            sender.sendMessage(Component.text("Cloud Core equipment stand '" + args[1]
+                    + "' spawned for " + target.getName()));
+            return true;
+        }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("accessories")) {
+            Player target = args.length >= 2
+                    ? getServer().getPlayerExact(args[1])
+                    : sender instanceof Player self ? self : null;
+            if (target == null) {
+                sender.sendMessage(Component.text("Usage: /cloudcore accessories [player]"));
+                return true;
+            }
+            accessorySlots.open(target);
+            if (!target.equals(sender)) {
+                sender.sendMessage(Component.text("Cloud Core accessories opened for "
+                        + target.getName()));
+            }
+            return true;
+        }
         if (args.length >= 2 && args[0].equalsIgnoreCase("page")) {
             Player target = args.length >= 3
                     ? getServer().getPlayerExact(args[2])
@@ -1316,7 +1388,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 }
                 Set<Integer> declared = declaredSlotsOf(player, definition);
                 CloudInventoryHolder holder = new CloudInventoryHolder(
-                        player.getUniqueId(), uiId, interaction, declared);
+                        player.getUniqueId(), uiId, interaction, declared, Map.of(),
+                        allowPlayerInventoryOf(definition));
                 Inventory inventory = Bukkit.createInventory(holder, 27,
                         Component.text("Cloud Core Container"));
                 holder.attach(inventory);
@@ -1328,6 +1401,15 @@ public final class CloudCorePlugin extends JavaPlugin
             }, 1L);
         }, 1L);
         getLogger().info("Sent container UI_OPEN/UI_DEFINITION to " + player.getName());
+    }
+
+    private boolean allowPlayerInventoryOf(UiDefinition definition) {
+        try {
+            var container = UiDocumentJson.parse(definition.data()).container();
+            return container != null && container.allowPlayerInventory();
+        } catch (PageLoadException exception) {
+            return false;
+        }
     }
 
     private Set<Integer> declaredSlotsOf(Player player, UiDefinition definition) {
@@ -1668,8 +1750,27 @@ public final class CloudCorePlugin extends JavaPlugin
         }
         int rawSlot = event.getRawSlot();
         boolean top = rawSlot >= 0 && rawSlot < event.getView().getTopInventory().getSize();
+        Player player = event.getWhoClicked() instanceof Player p ? p : null;
+
+        // Custom slot pages put a rule on individual inventory indices. Rules only gate
+        // placing an item into the slot; taking an item out is always allowed by MANAGED.
+        if (!top && event.getClick().isShiftClick() && !holder.guards().isEmpty()) {
+            // Bukkit does not expose the destination slot of a shift move, so a guarded page
+            // fails closed instead of guessing and possibly bypassing the item rule.
+            event.setCancelled(true);
+            logDeniedSlot(holder, rawSlot, player, "shift-from-player");
+            return;
+        }
+        if (top && holder.guarded(rawSlot)) {
+            ItemStack incoming = incomingItem(event, player);
+            if (incoming != null && !holder.canPlace(player, rawSlot, incoming)) {
+                event.setCancelled(true);
+                logDeniedSlot(holder, rawSlot, player, "rule");
+                return;
+            }
+        }
         if (ContainerClickPolicy.allow(holder.interaction(), top, rawSlot,
-                holder.declaredSlots(), false)) {
+                holder.declaredSlots(), holder.allowPlayerInventory())) {
             return;
         }
         event.setCancelled(true);
@@ -1687,10 +1788,22 @@ public final class CloudCorePlugin extends JavaPlugin
             return;
         }
         int topSize = event.getView().getTopInventory().getSize();
+        Player player = event.getWhoClicked() instanceof Player p ? p : null;
+        ItemStack dragged = event.getOldCursor();
+        if (dragged != null && !dragged.getType().isAir()) {
+            for (int rawSlot : event.getRawSlots()) {
+                if (rawSlot >= 0 && rawSlot < topSize && holder.guarded(rawSlot)
+                        && !holder.canPlace(player, rawSlot, dragged)) {
+                    event.setCancelled(true);
+                    logDeniedSlot(holder, rawSlot, player, "drag");
+                    return;
+                }
+            }
+        }
         for (int rawSlot : event.getRawSlots()) {
             boolean top = rawSlot >= 0 && rawSlot < topSize;
             if (!ContainerClickPolicy.allow(holder.interaction(), top, rawSlot,
-                    holder.declaredSlots(), false)) {
+                    holder.declaredSlots(), holder.allowPlayerInventory())) {
                 event.setCancelled(true);
                 getLogger().info("CANCELLED drag ui=" + holder.uiId()
                         + " interaction=" + holder.interaction()
@@ -1698,6 +1811,39 @@ public final class CloudCorePlugin extends JavaPlugin
                         + " player=" + event.getWhoClicked().getName());
                 return;
             }
+        }
+    }
+
+    /** The stack a click would put into a guarded slot, or null for a removal. */
+    private static ItemStack incomingItem(InventoryClickEvent event, Player player) {
+        if (event.getClick().isKeyboardClick() && player != null) {
+            if (event.getClick() == org.bukkit.event.inventory.ClickType.SWAP_OFFHAND) {
+                return player.getInventory().getItemInOffHand();
+            }
+            int hotbar = event.getHotbarButton();
+            if (hotbar >= 0 && hotbar < 9) {
+                return player.getInventory().getItem(hotbar);
+            }
+        }
+        ItemStack cursor = event.getCursor();
+        return cursor == null || cursor.getType().isAir() ? null : cursor;
+    }
+
+    private void logDeniedSlot(CloudInventoryHolder holder, int slot, Player player, String why) {
+        getLogger().info("DENIED slot ui=" + holder.uiId() + " slot=" + slot
+                + " reason=" + why + " player="
+                + (player == null ? "<unknown>" : player.getName()));
+    }
+
+    /** Flush custom-slot contents before Bukkit drops the inventory. */
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onCloudInventoryClose(InventoryCloseEvent event) {
+        CloudInventoryHolder holder = holderOf(event.getInventory());
+        if (holder == null || accessorySlots == null || !accessorySlots.owns(holder)) {
+            return;
+        }
+        if (event.getPlayer() instanceof Player player) {
+            accessorySlots.save(player, event.getInventory());
         }
     }
 
@@ -2122,9 +2268,92 @@ public final class CloudCorePlugin extends JavaPlugin
         return "foreground";
     }
 
-    /** Tells the client which URL images this page uses; the client downloads them itself. */
+    private TextureProxy createTextureProxy() {
+        String mode = getConfig().getString("textures.url.mode", "client");
+        java.util.List<String> allowlist = getConfig().getStringList(
+                "textures.url.allowlist");
+        long maxBytes = getConfig().getLong("textures.url.max-bytes", 8L * 1024L * 1024L);
+        int timeoutSeconds = Math.max(1,
+                getConfig().getInt("textures.url.timeout-seconds", 10));
+        int ttlSeconds = Math.max(0,
+                getConfig().getInt("textures.url.ttl-seconds", 3600));
+        TextureProxy.Mode parsed = TextureProxy.Mode.parse(mode);
+        if (parsed != TextureProxy.Mode.CLIENT && allowlist.isEmpty()) {
+            getLogger().warning("textures.url.mode=" + parsed
+                    + " but textures.url.allowlist is empty; proxy requests will be rejected");
+        }
+        return new TextureProxy(new TextureProxy.Settings(parsed, allowlist, maxBytes,
+                java.time.Duration.ofSeconds(timeoutSeconds), ttlSeconds,
+                getDataFolder().toPath().resolve("texture-cache")), getLogger());
+    }
+
+    /**
+     * A client could ask for any key; only URLs that belong to a page compiled for that
+     * player are eligible. The hash key makes collisions irrelevant in practice.
+     */
+    private String remoteTextureUrl(Player player, String key) {
+        Map<String, com.cloudcore.api.page.PageLoader.CompiledPage> pages =
+                compiledPages.get(player.getUniqueId());
+        if (pages == null) {
+            return null;
+        }
+        for (com.cloudcore.api.page.PageLoader.CompiledPage page : pages.values()) {
+            for (com.cloudcore.api.page.PageLoader.RemoteTexture texture : page.textures()) {
+                if (texture.key().equals(key)) {
+                    return texture.url();
+                }
+            }
+        }
+        return null;
+    }
+
+    private void handleTextureRequest(Player player, Session session, Frame frame) {
+        if (session.hello == null || textureProxy == null || !textureProxy.acceptsRequests()) {
+            return;
+        }
+        com.cloudcore.protocol.TextureRequest request;
+        try {
+            request = com.cloudcore.protocol.TextureRequestCodec.decode(frame.body(),
+                    Limits.C2S);
+        } catch (ProtocolException exception) {
+            getLogger().warning("Malformed TEXTURE_REQUEST from " + player.getName() + ": "
+                    + exception.getMessage());
+            return;
+        }
+        String url = remoteTextureUrl(player, request.key());
+        if (url == null) {
+            getLogger().warning("TEXTURE_REQUEST for unknown key " + request.key() + " from "
+                    + player.getName());
+            return;
+        }
+        textureProxy.request(player.getUniqueId(), request.key(), url,
+                put -> sendTexturePut(player, put));
+    }
+
+    private void sendTexturePut(Player player, com.cloudcore.protocol.TexturePut put) {
+        if (!isEnabled() || player == null || !player.isOnline()) {
+            return;
+        }
+        getServer().getScheduler().runTask(this, () -> {
+            if (!isEnabled() || !player.isOnline()) {
+                return;
+            }
+            sendFrame(player, new Frame(ProtocolVersion.MAJOR, 0, Opcode.TEXTURE_PUT,
+                    com.cloudcore.protocol.TexturePutCodec.encode(put, Limits.S2C)));
+        });
+    }
+
+    /** Tells the client which URL images this page uses, or proxies their bytes. */
     private void sendTextureRefs(Player player,
             com.cloudcore.api.page.PageLoader.CompiledPage compiled) {
+        if (textureProxy == null) {
+            return;
+        }
+        if (textureProxy.proxyOnOpen()) {
+            textureProxy.provideForPage(player.getUniqueId(), compiled.textures(),
+                    put -> sendTexturePut(player, put));
+            return;
+        }
         for (com.cloudcore.api.page.PageLoader.RemoteTexture texture : compiled.textures()) {
             if (!texture.url().startsWith("https://")) {
                 getLogger().warning("Page " + compiled.document().id()
@@ -2481,12 +2710,65 @@ public final class CloudCorePlugin extends JavaPlugin
             getLogger().info("Page state persistence disabled (state.persist: false)");
             return;
         }
-        stateStore = new com.cloudcore.server.state.FilePlayerStateStore(
-                getDataFolder().toPath().resolve("state"));
+        String backend = getConfig().getString("state.backend", "file").trim()
+                .toLowerCase(java.util.Locale.ROOT);
+        stateStore = createStateStore(backend);
+        if (stateStore == null) {
+            getLogger().warning("Page state persistence could not start; state stays in memory");
+            return;
+        }
         getServer().getScheduler().runTaskTimerAsynchronously(this, this::flushDirtyState,
                 100L, 100L);
-        getLogger().info("Page state persistence enabled under " + getDataFolder()
-                .toPath().resolve("state"));
+        getLogger().info("Page state persistence enabled (" + backend + ")");
+    }
+
+    /**
+     * Chooses the state backend. A broken SQL configuration falls back to the file store
+     * instead of dropping player state for the whole session.
+     */
+    private com.cloudcore.server.state.PlayerStateStore createStateStore(String backend) {
+        java.nio.file.Path stateRoot = getDataFolder().toPath().resolve("state");
+        try {
+            if (backend.equals("sqlite")) {
+                Class.forName("org.sqlite.JDBC");
+                String configured = getConfig().getString("state.sqlite.file", "state.db");
+                String file = configured == null || configured.isBlank()
+                        ? "state.db" : configured.trim();
+                java.nio.file.Path database = getDataFolder().toPath().resolve(file);
+                if (database.getParent() != null) {
+                    java.nio.file.Files.createDirectories(database.getParent());
+                }
+                String url = "jdbc:sqlite:" + database.toAbsolutePath();
+                com.cloudcore.server.state.SqlPlayerStateStore store =
+                        new com.cloudcore.server.state.SqlPlayerStateStore(
+                                com.cloudcore.server.state.SqlPlayerStateStore.Dialect.SQLITE,
+                                () -> java.sql.DriverManager.getConnection(url));
+                store.initialize();
+                return store;
+            }
+            if (backend.equals("mysql")) {
+                String driver = getConfig().getString("state.mysql.driver",
+                        "com.mysql.cj.jdbc.Driver");
+                Class.forName(driver);
+                String url = getConfig().getString("state.mysql.url", "");
+                String username = getConfig().getString("state.mysql.username", "");
+                String password = getConfig().getString("state.mysql.password", "");
+                if (url == null || url.isBlank()) {
+                    throw new IllegalArgumentException("state.mysql.url is empty");
+                }
+                com.cloudcore.server.state.SqlPlayerStateStore store =
+                        new com.cloudcore.server.state.SqlPlayerStateStore(
+                                com.cloudcore.server.state.SqlPlayerStateStore.Dialect.MYSQL,
+                                () -> java.sql.DriverManager.getConnection(url, username,
+                                        password));
+                store.initialize();
+                return store;
+            }
+        } catch (Exception exception) {
+            getLogger().log(Level.WARNING, "State backend '" + backend
+                    + "' failed to start; falling back to files", exception);
+        }
+        return new com.cloudcore.server.state.FilePlayerStateStore(stateRoot);
     }
 
     /** @return true when the state was written; a failure leaves the session dirty */

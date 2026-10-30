@@ -349,6 +349,7 @@ public final class CloudScreen extends Screen {
         if (width != cachedWidth || height != cachedHeight
                 || cachedTextureGeneration != com.cloudcore.client.render.RemoteTextureCache
                         .generation()
+                || com.cloudcore.client.render.AnimatedTextures.hasActiveAnimation()
                 || !Objects.equals(hit, hoveredId) || !Objects.equals(held, cachedPressedId)) {
             hoveredId = hit;
             cachedPressedId = held;

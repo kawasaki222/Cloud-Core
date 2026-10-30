@@ -1,0 +1,14 @@
+{
+  "layers": {
+    "humanoid": [
+      {
+        "texture": "cloudcore:valkyrie"
+      }
+    ],
+    "humanoid_leggings": [
+      {
+        "texture": "cloudcore:valkyrie"
+      }
+    ]
+  }
+}

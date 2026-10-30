@@ -341,13 +341,8 @@ public final class DocumentRenderListBuilder {
                 childHeight = h;
             }
             case "image" -> {
-                Object texture = attribute(element, "texture");
-                if (texture instanceof String reference && isSupportedTexture(reference)) {
-                    addImage(commands, reference, x, y,
-                            width > 0 ? width : 64, height > 0 ? height : 64,
-                            intArray(attribute(element, "nine_slice")),
-                            animation(element));
-                }
+                addImageLayers(commands, element, x, y,
+                        width > 0 ? width : 64, height > 0 ? height : 64);
             }
             case "item_icon" -> {
                 Object descriptor = attribute(element, "item");
@@ -601,6 +596,46 @@ public final class DocumentRenderListBuilder {
         return "resource:" + spec.id();
     }
 
+    /**
+     * Expands an image's base texture and its {@code layers} list into ordered draw commands.
+     * Layers are back-to-front: the base first, then each declared layer in array order. A
+     * layer inherits the base geometry unless it declares its own {@code x/y/width/height};
+     * its {@code tint} is a multiplicative ARGB colour, so {@code #80FFFFFF} fades it and
+     * {@code #FFFFC040} warms it. This is intentionally independent from any UI animation:
+     * every layer may carry its own {@code animated/loop/speed} options.
+     */
+    private static void addImageLayers(List<RenderCommand> commands, UiElement element,
+            int x, int y, int width, int height) {
+        Object base = attribute(element, "texture");
+        if (base instanceof String reference && isSupportedTexture(reference)) {
+            addImage(commands, reference, x, y, width, height,
+                    intArray(attribute(element, "nine_slice")), animation(element),
+                    Colors.parse(attribute(element, "tint"), RenderCommand.Image.DEFAULT_TINT));
+        }
+        Object layers = attribute(element, "layers");
+        if (!(layers instanceof List<?> list)) {
+            return;
+        }
+        for (Object entry : list) {
+            if (!(entry instanceof Map<?, ?> layer)) {
+                continue;
+            }
+            Object texture = layer.get("texture");
+            if (!(texture instanceof String reference) || !isSupportedTexture(reference)) {
+                continue;
+            }
+            int layerX = x + (int) Math.round(number(layer.get("x"), 0.0));
+            int layerY = y + (int) Math.round(number(layer.get("y"), 0.0));
+            int layerWidth = layer.containsKey("width")
+                    ? (int) Math.round(number(layer.get("width"), width)) : width;
+            int layerHeight = layer.containsKey("height")
+                    ? (int) Math.round(number(layer.get("height"), height)) : height;
+            addImage(commands, reference, layerX, layerY, layerWidth, layerHeight,
+                    intArray(layer.get("nine_slice")), animation(layer),
+                    Colors.parse(layer.get("tint"), RenderCommand.Image.DEFAULT_TINT));
+        }
+    }
+
     private static void addImage(List<RenderCommand> commands, String texture, int x, int y,
             int width, int height) {
         addImage(commands, texture, x, y, width, height, null);
@@ -615,9 +650,16 @@ public final class DocumentRenderListBuilder {
     private static void addImage(List<RenderCommand> commands, String texture, int x, int y,
             int width, int height, int[] nineSlice,
             RenderCommand.Image.Animation animation) {
+        addImage(commands, texture, x, y, width, height, nineSlice, animation,
+                RenderCommand.Image.DEFAULT_TINT);
+    }
+
+    private static void addImage(List<RenderCommand> commands, String texture, int x, int y,
+            int width, int height, int[] nineSlice,
+            RenderCommand.Image.Animation animation, int tint) {
         if (width > 0 && height > 0 && commands.size() < MAX_COMMANDS) {
             commands.add(new RenderCommand.Image(texture, x, y, width, height, nineSlice,
-                    animation));
+                    animation, tint));
         }
     }
 
@@ -627,6 +669,15 @@ public final class DocumentRenderListBuilder {
         boolean enabled = !(animated instanceof String text && text.equalsIgnoreCase("off"));
         boolean loop = !Boolean.FALSE.equals(attribute(element, "loop"));
         float speed = (float) number(attribute(element, "speed"), 1.0);
+        return new RenderCommand.Image.Animation(enabled, loop, speed);
+    }
+
+    /** Same animation options for a layer map; absent keys keep the normal defaults. */
+    private static RenderCommand.Image.Animation animation(Map<?, ?> layer) {
+        Object animated = layer.get("animated");
+        boolean enabled = !(animated instanceof String text && text.equalsIgnoreCase("off"));
+        boolean loop = !Boolean.FALSE.equals(layer.get("loop"));
+        float speed = (float) number(layer.get("speed"), 1.0);
         return new RenderCommand.Image.Animation(enabled, loop, speed);
     }
 

@@ -73,23 +73,27 @@ surface_options:
     show_effects: true
     show_player_model: true
   tooltip:
-    max_height: 160
-    scroll_step: 12
-    smooth_scroll: true
-    line_gap: 2
-    max_lines: 256
-    follow_cursor: true
+    max_height: 300           # auto/always 的裁剪高度；never 只受屏幕高度限制
+    padding: 14               # 文本与外框的距离
+    name:                     # 物品名相对内容原点的位置与字体
+      x: 36
+      y: 10
+      font: "cloudcore:tooltip_body"
+    lore:                     # 其余行；y 缺省时紧接物品名
+      x: 14
+      y: 30
+      line_gap: 0
+      font: "cloudcore:tooltip_body"
+    icon:                     # 物品图标，可省略或 icon: false
+      show: true
+      x: 10
+      y: 8
+      size: 20
     scrollbar:
-      mode: auto              # auto | always | never
-      width: 6
-      gap: 2
-      track: "tx:scroll_track"
-      thumb: "tx:scroll_thumb"
-      thumb_hover: "tx:scroll_thumb_hover"
-      min_thumb: 12
-      nine_slice: [2, 2, 2, 2]
-      color: "#FFFFFFFF"
-      draggable: true
+      mode: auto              # auto | always | never，默认 never
+      width: 4
+      track_color: "#70101828"
+      thumb_color: "#FFFFD479"
   boss_bar:
     position: top_center
     spacing: 19
@@ -301,6 +305,36 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
   loop: true
   speed: 1.0
 ```
+
+#### 图层叠加
+
+`image` 可以只给一个基准贴图，再用 `layers` 从后往前叠加任意数量的透明层。每层有自己的
+`texture`、`tint`、偏移和动画参数；没有写 `x/y/width/height` 时继承基准层的几何。
+
+```yaml
+- type: image
+  id: slot_socket
+  x: 20
+  y: 40
+  width: 18
+  height: 18
+  texture: "builtin:slot"
+  layers:
+    - texture: "builtin:slot_glow"
+      tint: "#40FFD060"       # AARRGGBB；白色不改变原图，透明色负责淡出
+    - texture: "local:公共/图标/锁定.png"
+      x: 4                   # 相对基准层左上角
+      y: 4
+      width: 10
+      height: 10
+      tint: "#FF808080"
+```
+
+- `tint` 是乘法着色：`#FFFFFFFF` 原样绘制，`#80FFFFFF` 半透明，`#FFFFC040` 偏暖。
+- 渲染顺序是基准层、`layers[0]`、`layers[1]`……，后面的层覆盖前面的层。
+- 每层单独支持 `nine_slice`、`animated`、`loop`、`speed`；GIF 层可以独立播放。
+- 基准层也可以带 `tint`，适合给同一套白模贴图做不同品质色。
+- 图层总数受页面命令预算限制；超出预算的层会被忽略，不会破坏其余页面。
 
 贴图引用：
 
@@ -1042,21 +1076,27 @@ theme: dark
 size: [0, 0]
 surface_options:
   tooltip:
-    max_height: 160
-    scroll_step: 12
-    smooth_scroll: true
-    line_gap: 2
-    max_lines: 256
+    max_height: 300
+    padding: 14
+    name:
+      x: 36
+      y: 10
+      font: "cloudcore:tooltip_body"
+    lore:
+      x: 14
+      y: 30
+      line_gap: 0
+      font: "cloudcore:tooltip_body"
+    icon:
+      show: true
+      x: 10
+      y: 8
+      size: 20
     scrollbar:
       mode: auto
-      width: 6
-      gap: 2
-      track: "tx:scroll_track"
-      thumb: "tx:scroll_thumb"
-      thumb_hover: "tx:scroll_thumb_hover"
-      min_thumb: 12
-      nine_slice: [2, 2, 2, 2]
-      draggable: true
+      width: 4
+      track_color: "#70101828"
+      thumb_color: "#FFFFD479"
 elements:
   - type: panel
     id: frame
@@ -1068,7 +1108,67 @@ elements:
       padding: [4, 4, 4, 4]
 ```
 
-Tooltip 的文本行由客户端从物品生成，文档只负责外框、字体、颜色、最大高度和滚动行为。
+Tooltip 的文本行由客户端从物品生成，文档负责外框、最大高度、滚动以及物品名/lore 的位置与字体。`name`/`lore` 的 `x`/`y` 相对内边距后的内容原点，`lore.y` 缺省时紧接物品名；`font` 必须是 Minecraft 字体 id（如 `cloudcore:tooltip_body`），或在 `fonts` 中声明 `source: native` 的条目。NanoVG TTF 字体不能用于原生 tooltip 文本。`icon` 可写布尔值或对象：`show: false` 隐藏；`x`/`y` 为图标相对内容原点的位置，`size` 缺省 16；图标取自当前悬停的容器槽位，非容器界面没有槽位时不显示。`scrollbar.mode: never` 时不裁剪短内容，内容高于屏幕时仍会强制滚动；`auto` 只在超过 `max_height` 时出现滚动条；`always` 始终显示。
+
+### 11.1 Tooltip 附属栏（attachments）
+
+`surface_options.tooltip.attachments` 是围绕 tooltip 的附加面板列表，每个面板可独立设置位置、尺寸、背景、边框和文字。面板跟随实际 tooltip 位置移动，并被限制在屏幕内；主 tooltip 最后绘制，重叠时盖住附属栏。
+
+```yaml
+surface_options:
+  tooltip:
+    attachments:
+      - side: left                 # left | right | top | bottom
+        match: "霜之哀伤·战甲"     # 物品显示名包含该文本时才显示；省略则所有 tooltip 都显示
+        gap: 6                     # 与 tooltip 边缘的距离
+        offset_x: 0                # 在 side/gap 基础上的额外偏移
+        offset_y: 0
+        align: center              # 沿 tooltip 边缘对齐：start | center | end
+        width: 170                 # 省略则按文字自动计算
+        height: 0                  # 0/省略则按标题和行数自动计算
+        padding: 14
+        background: "local:textures/rpg_tooltip_bg.png"  # 也可以是 #AARRGGBB 颜色
+        nine_slice: [18, 18, 18, 18]
+        border_color: "#80FFD479"  # 同时用作标题下分隔线颜色
+        border_width: 0            # 0 表示不画边框
+        title: "套装 · 霜之哀伤"
+        title_color: "#FFFFD479"
+        color: "#FFCCCCCC"
+        line_gap: 1
+        font: "cloudcore:tooltip_body"
+        lines:
+          - "1/5  霜之哀伤"
+          - "2 件：攻击力 +20"
+          - "4 件：暴击率 +8%"
+          - "5 件：冰霜伤害 +30"
+          - "霜之哀伤，饥渴难耐。"
+```
+
+字段说明：
+
+| 字段 | 默认 | 说明 |
+|---|---|---|
+| `side` | `right` | `left` / `right` / `top` / `bottom` |
+| `match` | 空 | 当前悬停物品显示名包含该文本时才显示；空表示始终显示 |
+| `gap` | `4` | 与主 tooltip 边缘的间距 |
+| `offset_x` / `offset_y` | `0` | 额外偏移，可用于微调或让多个附属栏错开 |
+| `align` | `center` | 沿主 tooltip 边缘的 `start` / `center` / `end` |
+| `width` / `height` | 自动 | 显式像素值；`height: 0` 或省略时按内容自动计算 |
+| `padding` | `8` | 背景内边距 |
+| `background` | 深色底 | `#AARRGGBB` 颜色，或 `local:` / `pack:` / `tx:` 贴图引用 |
+| `nine_slice` | 无 | 贴图九宫格边距 `[左, 上, 右, 下]` |
+| `border_color` / `border_width` | `0` / `1` | 边框颜色与线宽；`border_color` 也用作标题下分隔线 |
+| `separator` | 有标题时 `true` | 是否在标题下画分隔线 |
+| `title` / `title_color` | 空 / 行颜色 | 标题文本与颜色 |
+| `color` | `#FFFFFFFF` | 所有 `lines` 的默认颜色 |
+| `lines` | 空 | 字符串，或 `{ text: "...", color: "#..." }` 单独指定颜色 |
+| `line_gap` | `0` | 行间距 |
+| `font` | tooltip 默认字体 | 原生字体 id，或 `fonts` 中 `source: native` 的字体 |
+
+- 可以配置多个条目，例如左侧放套装件数、右侧放套装效果；不同 `match` 可针对不同套装。
+- `width`/`height` 写死且小于文字时，文字会被裁剪；不确定时省略让面板自动撑开。
+- 背景贴图失败时退回默认深色底，不会阻止 tooltip 显示。
+
 
 ## 12. 完整示例：Boss 血条
 

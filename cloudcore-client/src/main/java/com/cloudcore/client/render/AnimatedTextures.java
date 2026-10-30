@@ -39,6 +39,7 @@ public final class AnimatedTextures {
         private final List<Identifier> frames;
         private final int[] delays;
         private final int totalMs;
+        private volatile long lastAccessMs;
 
         private Animation(List<Identifier> frames, int[] delays) {
             this.frames = frames;
@@ -51,6 +52,7 @@ public final class AnimatedTextures {
         }
 
         private Identifier frameAt(long nowMs, RenderCommand.Image.Animation options) {
+            lastAccessMs = nowMs;
             if (!options.enabled()) {
                 return frames.get(0);
             }
@@ -72,6 +74,66 @@ public final class AnimatedTextures {
     public static boolean isGif(byte[] bytes) {
         return bytes != null && bytes.length >= 6
                 && bytes[0] == 'G' && bytes[1] == 'I' && bytes[2] == 'F';
+    }
+
+    /**
+     * Uses a server-built vertical sprite sheet. The sheet is split on the render thread into
+     * one texture per frame, so the normal native renderer can draw it.
+     *
+     * @return the frame to draw now, or {@code null} when the sheet is invalid
+     */
+    public static Identifier frameFromSheet(String key, byte[] bytes, int frameWidth,
+            int frameHeight, int frameCount, int[] delays, long nowMs,
+            RenderCommand.Image.Animation options) {
+        Animation animation = CACHE.get(key);
+        if (animation == null) {
+            animation = decodeSheet(key, bytes, frameWidth, frameHeight, frameCount, delays);
+            if (animation == null) {
+                return null;
+            }
+            CACHE.put(key, animation);
+        }
+        return animation.frameAt(nowMs, options == null
+                ? RenderCommand.Image.Animation.DEFAULT : options);
+    }
+
+    private static Animation decodeSheet(String key, byte[] bytes, int frameWidth,
+            int frameHeight, int frameCount, int[] delays) {
+        try {
+            BufferedImage sheet = ImageIO.read(new ByteArrayInputStream(bytes));
+            if (sheet == null) {
+                LOGGER.warn("[CC-ASSET-016] cannot decode proxy sheet {}", key);
+                return null;
+            }
+            if (frameWidth <= 0 || frameHeight <= 0 || frameCount <= 0
+                    || frameCount > MAX_FRAMES || frameWidth > MAX_DIMENSION
+                    || frameHeight > MAX_DIMENSION
+                    || sheet.getWidth() != frameWidth
+                    || sheet.getHeight() != frameHeight * frameCount) {
+                LOGGER.warn("[CC-ASSET-017] invalid proxy sheet {} ({}x{}, frames={})",
+                        key, sheet.getWidth(), sheet.getHeight(), frameCount);
+                return null;
+            }
+            int[] effectiveDelays = new int[frameCount];
+            for (int index = 0; index < frameCount; index++) {
+                effectiveDelays[index] = delays != null && index < delays.length
+                        ? Math.max(MIN_DELAY_MS, delays[index])
+                        : MIN_DELAY_MS;
+            }
+            List<Identifier> frames = new ArrayList<>(frameCount);
+            for (int index = 0; index < frameCount; index++) {
+                BufferedImage frame = sheet.getSubimage(0, index * frameHeight,
+                        frameWidth, frameHeight);
+                frames.add(register(key + "/sheet", index, frame));
+            }
+            LOGGER.info("Decoded proxy sheet {} frames={} total={}ms", key, frameCount,
+                    java.util.Arrays.stream(effectiveDelays).sum());
+            return new Animation(frames, effectiveDelays);
+        } catch (Exception exception) {
+            LOGGER.warn("[CC-ASSET-018] cannot decode proxy sheet {}: {}", key,
+                    exception.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -98,6 +160,20 @@ public final class AnimatedTextures {
     /** Bumped after each decode so a render list holding an old frame can be rebuilt. */
     public static int generation() {
         return CACHE.size();
+    }
+
+    /**
+     * True while an animated texture was resolved recently. Screens render lists and HUD
+     * layers use this to rebuild on the animation clock, not only when the document changes.
+     */
+    public static boolean hasActiveAnimation() {
+        long now = System.currentTimeMillis();
+        for (Animation animation : CACHE.values()) {
+            if (now - animation.lastAccessMs < 500L) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Releases every frame texture and forgets the decodes so an edited GIF is re-read. */

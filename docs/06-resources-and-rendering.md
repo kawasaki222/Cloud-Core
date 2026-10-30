@@ -3,7 +3,8 @@
 > **当前实现状态**：渲染栈是设计目标；实际默认后端仍是原生 `NativeBackend`，
 > NanoVG 后端通过客户端运行属性 `-PcloudcoreNanoVg`（`cloudcore.nanovg`）启用。
 > 默认化（设备分辨率 FBO 的清晰文字、U31 状态隔离、整帧回退）列在 `TODO_HANDOFF.md`。
-> URL 贴图目前只有客户端直连；服务端代理（`TEXTURE_REQUEST`/`TEXTURE_PUT`）尚未实现。
+> URL 贴图默认客户端直连；服务端代理（`TEXTURE_REQUEST`/`TEXTURE_PUT`）已在 `proxy`/`auto`
+> 模式实现，按 `textures.url.allowlist` 限制来源。
 
 ## 0. 渲染栈
 

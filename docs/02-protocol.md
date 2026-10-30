@@ -42,7 +42,7 @@ cloudcore:main
 | Tooltip 行数 | — | 256 |
 | 动画贴图帧数 | — | 64 |
 | 动画贴图解码后总大小 | — | 16 MiB |
-| URL 贴图（客户端直连或服务端代理） | — | 1 MiB，512×512，3 秒超时，2 次重定向 |
+| URL 贴图（客户端直连或服务端代理） | — | 1 MiB，512×512，3 秒超时，不跟随重定向 |
 | 客户端图片缓存 | — | 磁盘 128 MiB，解码后内存 32 MiB |
 | 占位符解析预算 | — | 每玩家 2 ms/tick，全局 10 ms/tick |
 | `DIAGNOSTIC.detail` | — | 4 KiB，10 条/秒，10 秒去重 |
@@ -365,7 +365,9 @@ u16    ttlSeconds   # 0 表示按内容哈希永久缓存
 - 当前实现（客户端直连）：`PageLoader` 把 `url:` 改写成 `inline:<sha1 前 16 位>`，插件在 `UI_OPEN` 后
   发 `TEXTURE_REF`；客户端 `RemoteTextureCache` 后台下载（https、≤ maxBytes、10 秒超时、
   sha256 非空时校验），渲染线程注册 `DynamicTexture` 并在下载完成后重建渲染列表。
-  `TEXTURE_REQUEST`/`TEXTURE_PUT` 代理路径尚未实现。
+  `TEXTURE_REQUEST`/`TEXTURE_PUT` 代理路径已实现：`textures.url.mode=proxy` 时打开页面直接
+  `TEXTURE_PUT`；`auto` 时先发 `TEXTURE_REF`，客户端直连失败或 `remoteImages=false` 才请求代理。
+  代理只允许配置中的 https 前缀，服务端解码为 PNG；GIF 转成垂直精灵表。
 - `ttlSeconds` 只影响 URL 缓存；内容哈希命中的缓存不因 TTL 失效。
 
 ### 5.2 客户端 → 服务端

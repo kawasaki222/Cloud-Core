@@ -188,7 +188,8 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
         // its baseline; HudLayerCache also owns the "unchanged values reuse the render list"
         // rule and is unit-tested there.
         UiDocument live = HudValues.apply(layer.cache.baselineFor(document));
-        if (layer.cache.update(document, live, width, height)) {
+        if (com.cloudcore.client.render.AnimatedTextures.hasActiveAnimation()
+                || layer.cache.update(document, live, width, height)) {
             String anchor = anchorOf(document);
             int originX = originX(document, anchor, width);
             int originY = originY(document, anchor, height);

@@ -17,13 +17,14 @@ import org.slf4j.LoggerFactory;
  * <p>Parsing is pure (a path in, values out) and unit-tested; the game calls {@link #load}
  * once at startup, before the render backend is chosen.
  */
-public record ClientConfig(String renderer, boolean debug) {
+public record ClientConfig(String renderer, boolean debug, boolean remoteImages) {
     private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
     public static final String DEFAULT_RENDERER = "native";
     private static final String DEFAULT_JSON = """
             {
               "renderer": "native",
-              "debug": false
+              "debug": false,
+              "remoteImages": true
             }
             """;
 
@@ -74,7 +75,10 @@ public record ClientConfig(String renderer, boolean debug) {
             }
             boolean debug = root.has("debug") && root.get("debug").isJsonPrimitive()
                     && root.get("debug").getAsBoolean();
-            return new ClientConfig(renderer, debug);
+            boolean remoteImages = !root.has("remoteImages")
+                    || !root.get("remoteImages").isJsonPrimitive()
+                    || root.get("remoteImages").getAsBoolean();
+            return new ClientConfig(renderer, debug, remoteImages);
         } catch (RuntimeException exception) {
             LOGGER.warn("[CC-CFG-001] Malformed client config ({}); using defaults",
                     exception.getMessage());
@@ -83,7 +87,7 @@ public record ClientConfig(String renderer, boolean debug) {
     }
 
     public static ClientConfig defaults() {
-        return new ClientConfig(DEFAULT_RENDERER, false);
+        return new ClientConfig(DEFAULT_RENDERER, false, true);
     }
 
     /**

@@ -56,6 +56,16 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
         backend.close();
     }
 
+    /**
+     * 1.21.11 no longer asks for the hovered slot tooltip from
+     * {@code AbstractContainerScreen#render}; the screen has to request it itself.
+     */
+    @Override
+    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        super.render(graphics, mouseX, mouseY, partialTick);
+        renderTooltip(graphics, mouseX, mouseY);
+    }
+
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         graphics.fill(leftPos, topPos, leftPos + imageWidth, topPos + imageHeight, PANEL_FILL);

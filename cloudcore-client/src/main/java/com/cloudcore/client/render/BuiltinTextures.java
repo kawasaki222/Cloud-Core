@@ -18,11 +18,17 @@ public final class BuiltinTextures {
     public static final String ERROR = "builtin:error";
     /** A generated cross, used by the text field clear button when no art is supplied. */
     public static final String CLEAR = "builtin:clear";
+    /** Default 18x18 socket for custom slot pages that do not ship their own art. */
+    public static final String SLOT = "builtin:slot";
+    /** A translucent inner glow layered over {@link #SLOT}. */
+    public static final String SLOT_GLOW = "builtin:slot_glow";
 
     private static final Map<String, Identifier> CACHE = new HashMap<>();
     private static final Identifier WHITE_ID = Identifier.fromNamespaceAndPath("cloudcore", "builtin/white");
     private static final Identifier ERROR_ID = Identifier.fromNamespaceAndPath("cloudcore", "builtin/error");
     private static final Identifier CLEAR_ID = Identifier.fromNamespaceAndPath("cloudcore", "builtin/clear");
+    private static final Identifier SLOT_ID = Identifier.fromNamespaceAndPath("cloudcore", "builtin/slot");
+    private static final Identifier SLOT_GLOW_ID = Identifier.fromNamespaceAndPath("cloudcore", "builtin/slot_glow");
 
     private BuiltinTextures() {
     }
@@ -53,11 +59,47 @@ public final class BuiltinTextures {
                 });
     }
 
+    /** An 18x18 socket: dark centre, light bevel and a transparent 1px outer margin. */
+    public static Identifier slot() {
+        return register(SLOT, SLOT_ID, () -> "cloudcore-builtin:slot", 18, (pixels, size) -> {
+            for (int y = 0; y < size; y++) {
+                for (int x = 0; x < size; x++) {
+                    int argb = 0x00000000;
+                    if (x == 0 || y == 0 || x == size - 1 || y == size - 1) {
+                        argb = 0x00000000;
+                    } else if (x == 1 || y == 1) {
+                        argb = 0xFFFFFFFF;
+                    } else if (x == size - 2 || y == size - 2) {
+                        argb = 0xFF3A3A3A;
+                    } else {
+                        argb = 0xFF202020;
+                    }
+                    pixels.setPixel(x, y, argb);
+                }
+            }
+        });
+    }
+
+    /** The same socket with only a soft inner rim, meant to be tinted by a layer. */
+    public static Identifier slotGlow() {
+        return register(SLOT_GLOW, SLOT_GLOW_ID, () -> "cloudcore-builtin:slot_glow", 18,
+                (pixels, size) -> {
+                    for (int y = 0; y < size; y++) {
+                        for (int x = 0; x < size; x++) {
+                            boolean rim = x == 2 || y == 2 || x == size - 3 || y == size - 3;
+                            pixels.setPixel(x, y, rim ? 0xFFFFFFFF : 0x00000000);
+                        }
+                    }
+                });
+    }
+
     public static Identifier resolve(String name) {
         return switch (name) {
             case "white" -> white();
             case "error" -> error();
             case "clear" -> clear();
+            case "slot" -> slot();
+            case "slot_glow" -> slotGlow();
             default -> null;
         };
     }

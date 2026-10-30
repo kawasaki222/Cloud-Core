@@ -27,10 +27,34 @@ placeholders:
   player-budget-ms: 2
   global-budget-ms: 10
 
+textures:
+  url:
+    # client: 客户端直连图床（默认，不占服务端带宽）
+    # proxy:  服务端按 allowlist 下载、解码后用 TEXTURE_PUT 下发
+    # auto:   先发 TEXTURE_REF；客户端直连失败或 remoteImages=false 时再请求服务端代理
+    mode: client
+    # 仅 https；条目是 URL 前缀，建议以 / 结尾，例如 "https://cdn.example.com/ui/"
+    allowlist: []
+    max-bytes: 8388608
+    timeout-seconds: 10
+    # 0 表示按内容哈希永久缓存；否则缓存文件超过该秒数后重新拉取
+    ttl-seconds: 3600
+
 state:
-  # 会话状态按玩家持久化到 plugins/CloudCore/state/<uuid>.json（异步写、原子替换），
-  # 玩家重进后页面沿用上次的值。关闭后状态只存在于本次在线期间。
+  # 会话状态按玩家持久化，玩家重进后页面沿用上次的值。
+  # 关闭后状态只存在于本次在线期间。
   persist: true
+  # file   = plugins/CloudCore/state/<uuid>.json（默认，零依赖）
+  # sqlite = 单文件数据库，驱动已随插件打包
+  # mysql  = 需要服务端自己提供 JDBC 驱动（例如把 Connector/J 放进 plugins/）
+  backend: file
+  sqlite:
+    file: state.db
+  mysql:
+    driver: com.mysql.cj.jdbc.Driver
+    url: ""
+    username: ""
+    password: ""
 
 actions:
   commands:

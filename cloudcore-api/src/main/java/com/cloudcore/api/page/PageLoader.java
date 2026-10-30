@@ -789,7 +789,9 @@ public final class PageLoader {
             return null;
         }
         return new ContainerSpec((int) number(map.get("rows"), 0),
-                map.get("interaction") == null ? "managed" : String.valueOf(map.get("interaction")));
+                map.get("interaction") == null ? "managed" : String.valueOf(map.get("interaction")),
+                Boolean.TRUE.equals(map.get("hide_player_inventory")),
+                Boolean.TRUE.equals(map.get("allow_player_inventory")));
     }
 
     private static Map<String, FontSpec> parseFonts(Map<String, Object> raw)

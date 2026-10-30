@@ -33,6 +33,13 @@ class ClientConfigTest {
         assertEquals("nanovg", config.renderer());
         assertTrue(config.wantsNanoVg());
         assertTrue(config.debug());
+        assertTrue(config.remoteImages());
+    }
+
+    @Test
+    void remoteImagesCanBeDisabled() {
+        ClientConfig config = ClientConfig.parse("{\"remoteImages\": false}");
+        assertFalse(config.remoteImages());
     }
 
     @Test
@@ -60,7 +67,7 @@ class ClientConfigTest {
 
     @Test
     void launchPropertyWinsOverTheFile() {
-        ClientConfig config = new ClientConfig("nanovg", false);
+        ClientConfig config = new ClientConfig("nanovg", false, true);
         String previous = System.getProperty("cloudcore.nanovg");
         try {
             System.setProperty("cloudcore.nanovg", "false");
@@ -78,7 +85,7 @@ class ClientConfigTest {
 
     @Test
     void nanovgFileSetsTheProperty() {
-        ClientConfig config = new ClientConfig("nanovg", false);
+        ClientConfig config = new ClientConfig("nanovg", false, true);
         String previous = System.getProperty("cloudcore.nanovg");
         try {
             System.clearProperty("cloudcore.nanovg");

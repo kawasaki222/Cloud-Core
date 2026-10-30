@@ -1,0 +1,67 @@
+# RPG 物品提示皮肤。scroll 可选 never / auto / always：
+# never  = 默认，不裁剪，只有超过屏幕高度才强制滚动
+# auto   = 超过 max_height 才出现滚动条
+# always = 始终显示滚动条
+# 贴图放在客户端 resourcepacks/CloudCore/textures/rpg_tooltip_bg.png。
+schema: 1
+id: tooltip_rpg
+surface: tooltip
+title: "RPG Tooltip"
+theme: dark
+size: [200, 120]
+surface_options:
+  tooltip:
+    max_height: 300        # scrollbar.mode: auto 时的裁剪高度
+    padding: 14            # 文本与金边的距离
+    name:
+      x: 36
+      y: 10
+      font: "cloudcore:tooltip_body"
+    lore:
+      x: 14
+      y: 30
+      line_gap: 0
+      font: "cloudcore:tooltip_body"
+    icon:
+      show: true
+      x: 10
+      y: 8
+      size: 20
+    # 附属栏：贴着 tooltip 左侧的套装信息。side 可为 left/right/top/bottom；
+    # match 限定只对名称包含该文本的物品显示，省略则所有 tooltip 都显示。
+    attachments:
+      - side: left
+        match: "霜之哀伤·战甲"
+        gap: 6
+        width: 170
+        padding: 14
+        background: "local:textures/rpg_tooltip_bg.png"
+        nine_slice: [18, 18, 18, 18]
+        border_color: "#80FFD479"
+        border_width: 0
+        title: "套装 · 霜之哀伤"
+        title_color: "#FFFFD479"
+        color: "#FFCCCCCC"
+        line_gap: 1
+        font: "cloudcore:tooltip_body"
+        lines:
+          - "1/5  霜之哀伤"
+          - "2 件：攻击力 +20"
+          - "4 件：暴击率 +8%"
+          - "5 件：冰霜伤害 +30"
+          - "霜之哀伤，饥渴难耐。"
+    scrollbar:
+      mode: auto           # auto：短内容不滚动；always：始终显示；never：不裁剪
+      width: 4
+      track_color: "#70101828"
+      thumb_color: "#FFFFD479"
+elements:
+  - type: panel
+    id: frame
+    x: 0
+    y: 0
+    width: "100%"
+    height: "100%"
+    style:
+      background: "local:textures/rpg_tooltip_bg.png"
+      nine_slice: [24, 24, 24, 24]

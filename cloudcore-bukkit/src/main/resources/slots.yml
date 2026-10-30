@@ -1,0 +1,26 @@
+# Cloud Core custom slot page.
+# Positions are inventory indices: row 0 is 0..8, row 1 is 9..17, and so on.
+title: "Cloud Core 饰品"
+rows: 3
+slots:
+  necklace:
+    position: 10
+    label: "项链"
+    accepts:
+      lore-contains: ["项链", "Necklace"]
+    permission: "cloudcore.slot.necklace"
+  ring_left:
+    position: 12
+    label: "左戒"
+    accepts:
+      lore-contains: ["戒指", "Ring"]
+  ring_right:
+    position: 14
+    label: "右戒"
+    accepts:
+      lore-contains: ["戒指", "Ring"]
+  charm:
+    position: 16
+    label: "护符"
+    accepts:
+      lore-contains: ["护符", "Charm"]

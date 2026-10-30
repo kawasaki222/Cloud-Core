@@ -58,6 +58,10 @@ public final class UiDocumentJson {
             JsonObject container = new JsonObject();
             container.addProperty("rows", document.container().rows());
             container.addProperty("interaction", document.container().interaction());
+            container.addProperty("hide_player_inventory",
+                    document.container().hidePlayerInventory());
+            container.addProperty("allow_player_inventory",
+                    document.container().allowPlayerInventory());
             root.add("container", container);
         }
         if (!document.surfaceOptions().isEmpty()) {
@@ -228,7 +232,9 @@ public final class UiDocumentJson {
             throws PageLoadException {
         return new ContainerSpec(
                 requireInt(object, "rows", path),
-                optionalString(object, "interaction", path, "managed"));
+                optionalString(object, "interaction", path, "managed"),
+                optionalBoolean(object, "hide_player_inventory", false, path),
+                optionalBoolean(object, "allow_player_inventory", false, path));
     }
 
     private static Map<String, FontSpec> parseFonts(JsonElement element) throws PageLoadException {
