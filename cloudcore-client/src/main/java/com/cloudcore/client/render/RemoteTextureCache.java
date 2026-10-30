@@ -43,6 +43,7 @@ public final class RemoteTextureCache {
         return thread;
     });
     private static volatile HttpClient httpClient;
+    private static volatile TextureDiskCache diskCache;
     private static volatile boolean remoteImages = true;
     private static volatile Consumer<String> proxyRequester = key -> {
     };
@@ -85,9 +86,17 @@ public final class RemoteTextureCache {
 
     /** Applies the player's privacy setting and the callback that sends TEXTURE_REQUEST. */
     public static void configure(boolean allowRemoteImages, Consumer<String> requester) {
+        configure(allowRemoteImages, requester, null);
+    }
+
+    /** Adds an optional disk cache; {@code cacheDir == null} keeps downloads memory-only. */
+    public static void configure(boolean allowRemoteImages, Consumer<String> requester,
+            java.nio.file.Path cacheDir) {
         remoteImages = allowRemoteImages;
         proxyRequester = requester == null ? key -> {
         } : requester;
+        diskCache = cacheDir == null ? null : new TextureDiskCache(cacheDir,
+                128L * 1024L * 1024L);
     }
 
     /**
@@ -118,6 +127,17 @@ public final class RemoteTextureCache {
         CACHE.put(put.key(), new Payload(put.key(), put.data(), put.format(), put.width(),
                 put.height(), put.frameCount(), put.loop(), put.frameDelaysMs()));
         PROXY_REQUESTED.remove(put.key());
+        TextureDiskCache disk = diskCache;
+        if (disk != null) {
+            EXECUTOR.submit(() -> {
+                try {
+                    disk.write(put.key(), put.data());
+                } catch (java.io.IOException exception) {
+                    LOGGER.warn("[CC-ASSET-021] cannot cache texture {}: {}", put.key(),
+                            exception.getMessage());
+                }
+            });
+        }
         GENERATION.incrementAndGet();
         LOGGER.info("Received proxy texture {} ({} bytes, {}x{}, frames={})", put.key(),
                 put.data().length, put.width(), put.height(), put.frameCount());
@@ -146,6 +166,15 @@ public final class RemoteTextureCache {
 
     private static void download(TextureRef ref, Entry entry, long maxBytes) {
         try {
+            TextureDiskCache disk = diskCache;
+            byte[] cached = disk == null ? null : disk.read(ref.key());
+            if (cached != null && cached.length > 0) {
+                CACHE.put(ref.key(), new Payload(ref.key(), cached, 0, 0, 0, 0, 0,
+                        new int[0]));
+                GENERATION.incrementAndGet();
+                LOGGER.info("Loaded texture {} from disk cache", ref.key());
+                return;
+            }
             if (!isSafeRemoteUrl(ref.url())) {
                 fail(ref, entry, "unsafe remote URL");
                 return;
@@ -179,6 +208,14 @@ public final class RemoteTextureCache {
             }
             CACHE.put(ref.key(), new Payload(ref.key(), body, 0, 0, 0, 0, 0,
                     new int[0]));
+            if (disk != null) {
+                try {
+                    disk.write(ref.key(), body);
+                } catch (java.io.IOException exception) {
+                    LOGGER.warn("[CC-ASSET-021] cannot cache texture {}: {}", ref.key(),
+                            exception.getMessage());
+                }
+            }
             GENERATION.incrementAndGet();
             LOGGER.info("Downloaded texture {} ({} bytes) from {}", ref.key(), body.length,
                     ref.url());
@@ -226,6 +263,10 @@ public final class RemoteTextureCache {
         remoteImages = true;
         proxyRequester = key -> {
         };
+        TextureDiskCache disk = diskCache;
+        if (disk != null) {
+            disk.clear();
+        }
     }
 
     /**

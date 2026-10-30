@@ -94,7 +94,9 @@ public final class CloudCoreClient implements ClientModInitializer {
                         new Frame(ProtocolVersion.MAJOR, 0, Opcode.TEXTURE_REQUEST,
                                 com.cloudcore.protocol.TextureRequestCodec.encode(
                                         new com.cloudcore.protocol.TextureRequest(key),
-                                        Limits.C2S)))));
+                                        Limits.C2S)))),
+                net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir()
+                        .resolve("config/cloudcore-textures"));
         surfaceRegistry = SurfaceRegistry.createDefault(this::sendPlayerClosed);
         PayloadTypeRegistry.playS2C().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
         PayloadTypeRegistry.playC2S().register(CloudFramePayload.TYPE, CloudFramePayload.CODEC);
