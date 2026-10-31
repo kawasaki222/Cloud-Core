@@ -979,7 +979,7 @@ elements:
 ```yaml
 on:
   click:
-    - action: player_command
+    - action: message
       value: "shop buy ${state.selected}"
     - action: set_state
       key: balance
