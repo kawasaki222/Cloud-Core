@@ -2235,21 +2235,27 @@ public final class CloudCorePlugin extends JavaPlugin
      * prints counts only — no player names, uiIds or page text.
      */
     private void reportStats(CommandSender sender) {
-        int ephemeral = 0;
-        int persistent = 0;
+        int noDocument = 0;
+        int withDocument = 0;
+        int documents = 0;
         java.util.Map<SurfaceType, Integer> bySurface = new java.util.EnumMap<>(SurfaceType.class);
         for (Session session : sessions.values()) {
-            if (session.lastUiId == null) {
-                ephemeral++;
+            // Count the documents a session actually holds: lastUiId only names the most recent
+            // one, while a player normally has a HUD, a skin and a tooltip open at once.
+            int open = session.sentDocuments.size();
+            documents += open;
+            if (open == 0) {
+                noDocument++;
             } else {
-                persistent++;
+                withDocument++;
             }
             for (UiDocument document : session.sentDocuments.values()) {
                 bySurface.merge(document.surface(), 1, Integer::sum);
             }
         }
         sender.sendMessage(Component.text("sessions active=" + sessions.size()
-                + " no-document=" + ephemeral + " with-document=" + persistent));
+                + " no-document=" + noDocument + " with-document=" + withDocument
+                + " documents=" + documents));
         StringBuilder surfaces = new StringBuilder("surfaces");
         for (java.util.Map.Entry<SurfaceType, Integer> entry : bySurface.entrySet()) {
             surfaces.append(' ').append(entry.getKey().name().toLowerCase(java.util.Locale.ROOT))
@@ -2831,8 +2837,10 @@ public final class CloudCorePlugin extends JavaPlugin
                 sender.sendMessage(Component.text("  " + issue.severity() + " " + issue.code()
                         + " " + issue.path() + ": " + issue.message()));
             }
+            // A page without a theme: has no tokens to check (ConcurrentHashMap rejects null).
+            String themeId = compiled.document().theme();
             com.cloudcore.api.document.ThemeTokens theme =
-                    themes.get(compiled.document().theme());
+                    themeId == null ? null : themes.get(themeId);
             if (theme != null) {
                 for (String missing : theme.missingReferences(compiled.document())) {
                     warnings++;

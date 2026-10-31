@@ -542,6 +542,20 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   传给服务端，`/cloudcore page`、API `open`、`open_page`、进服下发与刷新都会检查；
   `ActionCooldown` 提供按玩家/页面/键隔离的冷却，页面用 `cooldown_ticks` 或 `cooldown` 动作声明。
   `PageLoaderTest`（2 例）与 `ActionCooldownTest`（4 例）覆盖；尚未真机截图验证逐键行为。
+- **本轮新功能真机验证（2026-11-01，Windows x64，Paper + 开发客户端）**：
+  - `image.fit`：同一张盾牌贴图 80×80，`contain` 居中留边、`cover` 撑满并裁切、默认拉伸变形，
+    三者对比截图确认。
+  - `label.wrap` + `max_lines`：中文按字符折成 3 行、英文按空格折行未切断单词，均未溢出元素框。
+  - `overlay` 的 `modal`/`dim`：遮罩把页面其余内容整体压暗；点击被遮住的按钮**没有**产生 `EVENT`，
+    点击模态框内的按钮产生 `EVENT ui=verify_ui element=dialog.dialog_ok`。
+  - 主题令牌校验：把 `tx:color.panel` 改成 `color.panel_missing` 后 `/cloudcore validate` 输出
+    `WARNING CC-THEME-001 unknown theme token 'color.panel_missing' at elements.root`。
+  - `/cloudcore stats` 与 `/cloudcore surfaces`：输出会话数、逐面板计数与每个面板的页面/修订号。
+  - F3 叠加层：`net s2c=/c2s=/dropped=` 与 `render backend=native` 正常显示。
+  - 期间发现并修复：没有 `theme:` 的页面让 `/cloudcore validate` 抛 NPE
+    （`themes.get(null)`）；`stats` 的 `with-document` 只数了 `lastUiId`。
+  - 未在本次验证：滚动条拖动、`tooltip_scroll` 回传、`fit`/`wrap` 的像素级比对
+    （只做了肉眼确认），以及 NanoVG 后端下的同样场景。
 - **互操作与性能**：与 REI/EMI、其他 Tooltip/物品栏模组的共存矩阵未测；NanoVG FBO 的帧率与
   显存占用没有测量数据（只有功能正确性）。
 - **原生崩溃（未定位，帧不在本项目代码）**：开发客户端偶发
