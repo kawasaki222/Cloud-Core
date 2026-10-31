@@ -99,6 +99,8 @@ surface_options:
     attachments: []           # 附属栏，见 11.1
     scroll_step: 12           # 每格滚轮的像素
     smooth_scroll: true       # 平滑插值到目标偏移
+    follow_cursor: true       # false 时滚动的提示框固定在首次出现的位置
+    sync_scroll: false        # true 时把滚动偏移回传服务端（需元素声明 tooltip_scroll）
     scrollbar:
       mode: auto              # auto | always | never，默认 never
       width: 4

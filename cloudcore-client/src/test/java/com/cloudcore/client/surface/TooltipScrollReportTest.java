@@ -50,6 +50,15 @@ class TooltipScrollReportTest {
     }
 
     @Test
+    void followCursorDefaultsToOnAndCanBeTurnedOff() {
+        assertTrue(TooltipSurfaceAdapter.followCursor(document(Map.of(), Map.of())));
+        assertTrue(TooltipSurfaceAdapter.followCursor(
+                document(Map.of("follow_cursor", true), Map.of())));
+        assertFalse(TooltipSurfaceAdapter.followCursor(
+                document(Map.of("follow_cursor", false), Map.of())));
+    }
+
+    @Test
     void anUnchangedOffsetIsNeverReported() {
         assertFalse(TooltipSurfaceAdapter.shouldReport(10, 10, 5_000L, 0L));
     }

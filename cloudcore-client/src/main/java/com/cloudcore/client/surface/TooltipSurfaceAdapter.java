@@ -60,6 +60,10 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
     private static volatile String scrollUiId;
     /** Action id of the element that declared {@code tooltip_scroll}, or 0 when none. */
     private static volatile int scrollActionId;
+    /** Where a scrolling tooltip was first drawn when {@code follow_cursor: false}. */
+    private static volatile int pinnedLeft = Integer.MIN_VALUE;
+    private static volatile int pinnedTop;
+
     /** Last offset reported to the server, so a tiny movement does not spam the network. */
     private static volatile int lastReportedOffset = Integer.MIN_VALUE;
     private static volatile long lastReportMs;
@@ -111,6 +115,7 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
     private static void resetScroll() {
         scrollOffset = 0.0f;
         scrollTarget = 0.0f;
+        pinnedLeft = Integer.MIN_VALUE;
         lastSmoothMs = 0L;
         lastContentHeight = 0;
         lastViewportHeight = 0;
@@ -131,6 +136,7 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
         if (signature != lastSignature) {
             scrollOffset = 0.0f;
             scrollTarget = 0.0f;
+            pinnedLeft = Integer.MIN_VALUE;
             lastSignature = signature;
         }
 
@@ -180,6 +186,19 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
                 x, y, width, height);
         int left = position.x();
         int top = position.y();
+        if (!followCursor(document) && scrollable) {
+            // follow_cursor: false pins the box once it starts scrolling, so the text does not
+            // chase the mouse. The anchor is the first scrolled position; it resets with the
+            // content signature, like the offset.
+            if (pinnedLeft == Integer.MIN_VALUE) {
+                pinnedLeft = left;
+                pinnedTop = top;
+            }
+            left = pinnedLeft;
+            top = pinnedTop;
+        } else {
+            pinnedLeft = Integer.MIN_VALUE;
+        }
 
         for (Attachment attachment : attachments) {
             drawAttachment(graphics, attachment, left, top, width, height, minecraft);
@@ -444,6 +463,12 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
                 Math.max(1L, elapsedMs) / 16.0);
         float next = from + (to - from) * t;
         return Math.abs(to - next) < SMOOTH_SNAP_PX ? to : next;
+    }
+
+    /** {@code follow_cursor}: default on; false pins a scrolling box under the mouse. */
+    static boolean followCursor(UiDocument document) {
+        Object value = option(document, "follow_cursor");
+        return !(value instanceof Boolean enabled) || enabled;
     }
 
     /** {@code smooth_scroll}: default on, since a stepped jump reads as a glitch on long text. */

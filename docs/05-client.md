@@ -346,6 +346,7 @@ public abstract class MouseHandlerMixin {
   `track`/`thumb`/`thumb_hover` 贴图（带 `nine_slice`）、`track_color`/`thumb_color` 兜底配色。
 - `draggable: true`（默认）时拖动滑块与滚轮共享同一个偏移；拖动在 `MouseHandler` 的
   `onMove`/`onButton` 混入里处理，只消费落在滚动条上的左键。
+- `follow_cursor: false`：滚动模式下的提示框固定在首次出现的位置，不随光标移动。
 - `sync_scroll: true` 且某元素声明 `tooltip_scroll` 时，滚轮与拖动以 100 ms 节流回传绝对偏移
   （`EVENT` 的 `elementId` 固定为 `tooltip`，载荷 `scroll`）；未开启时只改本地偏移。
 
