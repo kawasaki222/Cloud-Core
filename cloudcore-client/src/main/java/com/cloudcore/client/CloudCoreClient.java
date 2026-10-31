@@ -118,6 +118,10 @@ public final class CloudCoreClient implements ClientModInitializer {
                 (graphics, tickCounter) -> com.cloudcore.client.surface.HudSurfaceAdapter
                         .render(graphics,
                                 com.cloudcore.client.surface.HudSurfaceAdapter.LAYER_OVERLAY));
+        net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry.addLast(
+                net.minecraft.resources.Identifier.fromNamespaceAndPath(MOD_ID, "debug_overlay"),
+                (graphics, tickCounter) ->
+                        com.cloudcore.client.screen.CloudDebugOverlay.render(graphics));
 
         ClientPlayNetworking.registerGlobalReceiver(CloudFramePayload.TYPE,
                 (payload, context) -> handlePayload(payload));
@@ -134,6 +138,28 @@ public final class CloudCoreClient implements ClientModInitializer {
 
         LOGGER.info("Cloud Core client initialized (protocol {}.{})",
                 ProtocolVersion.MAJOR, ProtocolVersion.MINOR);
+    }
+
+    /** One line per open document; the F3 overlay renders these on the right. */
+    public static java.util.List<String> debugLines() {
+        CloudCoreClient client = instance;
+        if (client == null) {
+            return java.util.List.of();
+        }
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        lines.add("CloudCore " + (handshakeComplete ? "ready" : "handshaking")
+                + " docs=" + client.openDocuments.size());
+        int shown = 0;
+        for (Map.Entry<String, UiDocument> entry : client.openDocuments.entrySet()) {
+            if (shown++ >= 8) {
+                lines.add("...");
+                break;
+            }
+            int revision = client.openRevisions.getOrDefault(entry.getKey(), -1);
+            lines.add(entry.getKey() + " " + entry.getValue().surface()
+                    + " rev=" + revision);
+        }
+        return lines;
     }
 
     /**

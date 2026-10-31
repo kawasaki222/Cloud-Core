@@ -131,8 +131,9 @@ docs/
 - [x] Container 面板：NEXT_CONTAINER 绑定的箱子换背景，原版槽位保留（真机截图验证）
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
 - [x] 客户端快捷键：`F9` 重载本地资源、`F10` 诊断包（真机验证：贴图热替换、zip 内容、聊天提示）
+- [x] F3 调试叠加层：右侧中部显示活动文档的 uiId/surface/revision 与文档数（真机截图验证）
 - [ ] 客户端命令：`/cloudcore-client reloadassets|dump` 已注册但未在聊天执行验证；
-      `log <level>` 已实现（运行时改 `cloudcore` logger 级别，不动 root），F3 调试叠加层未实现
+      `log <level>` 已实现（运行时改 `cloudcore` logger 级别，不动 root）
 - [x] M2 渲染：NanoVG 后端、裁剪/滚动偏移（原生 + NanoVG 真机验证）
 - [x] 滚轮滚动：光标下 `scroll` 元素的本地偏移与钳制（真机验证 + 单元测试）
 - [x] `panel`/`button` 的背景贴图与九宫格；标签富文本按段着色
