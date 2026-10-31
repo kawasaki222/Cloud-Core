@@ -501,7 +501,12 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **`ELEMENT_UPDATE` 剩余**：自定义页面已真机验证；HUD 增量、`text_field` 回退、revision
   gap 后等待完整文档的恢复路径只有单测/代码覆盖。占位符周期刷新尚未接上该通道。
 - **多玩家并发**：编译页已按玩家隔离并单机复测；两个客户端同时看同一张含 `repeat` 的页面未真机验证。
-- **容器**：`allow_player_inventory: true` 与 `InventoryDragEvent` 未真机验证。
+- **容器拖拽与 `allow_player_inventory` 已核实（2026-10-31）**：`/cloudcore demo-readonly-allow`
+  打开的 readonly 容器里，从下层玩家背包槽位拖到另一槽位成功（物品从 slot 1 移到 slot 2）；
+  同一容器里点上层槽位仍被取消（`CANCELLED click ... top=true slot=0`）。改用
+  `/cloudcore demo-readonly`（`allow_player_inventory: false`）后，同样的下层拖拽被取消
+  （`CANCELLED click ... top=false slot=28`）。`ContainerClickPolicyTest` 覆盖策略分支，
+  `UiDocumentJsonTest` 覆盖两个新字段的解析。
 - **玩家背包 v2**：配方书（`skinned`/`custom`）、玩家模型与状态效果未实现。
 - **存储**：JSON 文件与 SQLite 实现已通过单元测试；MySQL 走 JDBC、需服务端提供驱动；连接池、
   schema 迁移版本表和跨后端导出仍未实现。

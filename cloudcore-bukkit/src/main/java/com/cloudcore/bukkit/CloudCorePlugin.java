@@ -1019,7 +1019,8 @@ public final class CloudCorePlugin extends JavaPlugin
             "accessories", "validate", "reload", "state-export", "state-import",
             "equipment", "equipment-stand", "page", "ping", "probe", "boss", "close",
             "diagnostic", "demo-hud", "demo-hud-rpg", "demo-hud-bg", "demo-tooltip",
-            "demo-container", "demo-readonly", "demo-passthrough", "demo-inventory");
+            "demo-container", "demo-readonly", "demo-readonly-allow", "demo-passthrough",
+            "demo-inventory");
 
     @Override
     public java.util.List<String> onTabComplete(CommandSender sender, Command command,
@@ -1193,6 +1194,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 sendDemoContainer(target);
             } else if (args[0].equalsIgnoreCase("demo-readonly")) {
                 openDemoChest(target, ContainerClickPolicy.Interaction.READONLY);
+            } else if (args[0].equalsIgnoreCase("demo-readonly-allow")) {
+                openDemoChest(target, ContainerClickPolicy.Interaction.READONLY, true);
             } else if (args[0].equalsIgnoreCase("demo-passthrough")) {
                 openDemoChest(target, ContainerClickPolicy.Interaction.PASSTHROUGH);
             } else if (args[0].equalsIgnoreCase("demo-inventory")) {
@@ -1339,6 +1342,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("demo-hud-bg")
                 || action.equalsIgnoreCase("demo-container")
                 || action.equalsIgnoreCase("demo-readonly")
+                || action.equalsIgnoreCase("demo-readonly-allow")
                 || action.equalsIgnoreCase("demo-passthrough")
                 || action.equalsIgnoreCase("demo-inventory")
                 || action.equalsIgnoreCase("demo-assets")
@@ -1399,6 +1403,11 @@ public final class CloudCorePlugin extends JavaPlugin
      * {@code readonly} cancels every click.
      */
     private void openDemoChest(Player player, ContainerClickPolicy.Interaction interaction) {
+        openDemoChest(player, interaction, false);
+    }
+
+    private void openDemoChest(Player player, ContainerClickPolicy.Interaction interaction,
+            boolean allowPlayerInventory) {
         String uiId = "cloudcore_demo_container";
         int token = random.nextInt();
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
@@ -1414,7 +1423,8 @@ public final class CloudCorePlugin extends JavaPlugin
                   "surface": "container",
                   "title": { "runs": [ { "text": "Cloud Core Container" } ] },
                   "size": [176, 166],
-                  "container": { "rows": 3, "interaction": "%s" },
+                  "container": { "rows": 3, "interaction": "%s",
+                                 "allow_player_inventory": %s },
                   "elements": [
                     { "id": "container_bg", "type": "panel", "x": 0, "y": 0,
                       "width": "fill", "height": "fill",
@@ -1435,7 +1445,8 @@ public final class CloudCorePlugin extends JavaPlugin
                       "columns": 9 }
                   ]
                 }
-                """.formatted(interaction.name().toLowerCase(java.util.Locale.ROOT));
+                """.formatted(interaction.name().toLowerCase(java.util.Locale.ROOT),
+                        allowPlayerInventory);
         UiDefinition definition = new UiDefinition(uiId, 1, 0,
                 json.getBytes(StandardCharsets.UTF_8));
         getServer().getScheduler().runTaskLater(this, () -> {

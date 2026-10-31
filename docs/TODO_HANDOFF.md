@@ -186,7 +186,8 @@ docs/
 - [x] 容器槽位布局：`inventory_grid` 的 origin/cell/columns 重排容器槽位（真机验证，含点击）
 - [x] 玩家背包槽位重排：主物品栏 9–35 与快捷栏 36–44（真机验证；护甲/合成槽保持原版）
 - [x] 容器点击策略 `passthrough` 真机验证
-- [x] 容器点击策略补充：`allow_player_inventory` 已接入文档/策略/服务端（单测覆盖）；`InventoryDragEvent` 真机验证仍待补
+- [x] 容器点击策略补充：`allow_player_inventory` 接入文档/策略/服务端，`InventoryDragEvent` 与
+      readonly / readonly-allow 两种情况真机验证（`demo-readonly-allow` / `demo-readonly`）
 - [x] 代理模式：远端 GIF 真机验证与动画盘缓存
 - [ ] 玩家背包配方书（v1 隐藏；v2 再补 `skinned`/`custom`）与玩家模型/状态效果选项
 - [x] 协议前向兼容：未知 `surfaceId` 保留原始值并回 `UI_READY(state=4)`
