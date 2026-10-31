@@ -190,7 +190,8 @@ docs/
       readonly / readonly-allow 两种情况真机验证（`demo-readonly-allow` / `demo-readonly`）
 - [x] 代理模式：远端 GIF 真机验证与动画盘缓存
 - [x] 玩家背包实时玩家模型预览（`show_player_model` + `player_model_x/y/scale`，真机验证）
-- [ ] 玩家背包剩余：配方书 `hide`/`vanilla`/`skinned`/`custom`、状态效果图标
+- [x] 玩家背包状态效果图标（`show_effects`，真机验证：再生效果 + 倒计时）
+- [ ] 玩家背包剩余：配方书 `hide`/`vanilla`/`skinned`/`custom`
 - [x] 协议前向兼容：未知 `surfaceId` 保留原始值并回 `UI_READY(state=4)`
 - [x] 协议前向兼容：未知 `BindMode` / `RenderMode` 解码为 `UNKNOWN` 并回 `UI_READY(state=4)`
 - [x] M0 NanoVG 初始化 + FBO 绘制 + readback（Windows x64，`cloudcore.nanovg.spike`）

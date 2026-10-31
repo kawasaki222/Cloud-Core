@@ -27,12 +27,14 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
 
     private final UiDocument document;
     private final DocumentRenderer backend = new DocumentRenderer();
+    private final net.minecraft.client.gui.screens.inventory.EffectsInInventory effects;
 
     public CloudInventoryScreen(Player player, UiDocument document) {
         super(player.inventoryMenu, player.getInventory(), Component.empty());
         this.document = document;
         this.imageWidth = Math.max(1, document.width());
         this.imageHeight = Math.max(1, document.height());
+        this.effects = new net.minecraft.client.gui.screens.inventory.EffectsInInventory(this);
     }
 
     @Override
@@ -112,6 +114,9 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         super.render(graphics, mouseX, mouseY, partialTick);
+        if (option("show_effects", false) && effects.canSeeEffects()) {
+            effects.render(graphics, mouseX, mouseY);
+        }
         renderTooltip(graphics, mouseX, mouseY);
     }
 

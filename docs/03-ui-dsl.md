@@ -70,7 +70,7 @@ surface_options:
     layer: foreground        # background | foreground | overlay
   player_inventory:
     recipe_book: skinned     # hide | vanilla | skinned | custom
-    show_effects: false      # v2 待实现
+    show_effects: true       # 复用原版效果图标
     show_player_model: true  # 实时玩家预览；可配 player_model_x/y/scale
   tooltip:
     max_height: 300           # auto/always 的裁剪高度；never 只受屏幕高度限制
