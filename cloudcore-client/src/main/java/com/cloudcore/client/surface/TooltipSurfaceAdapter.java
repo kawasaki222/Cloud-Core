@@ -45,12 +45,19 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
     private static final java.util.concurrent.atomic.AtomicBoolean FIRST_RENDER =
             new java.util.concurrent.atomic.AtomicBoolean();
     private static final int PADDING = 3;
-    private static final int SCROLL_STEP = 12;
+    /** Fallback step when the document does not set {@code scroll_step}. */
+    private static final int DEFAULT_SCROLL_STEP = 12;
+    /** {@code smooth_scroll} glides toward the target instead of jumping per wheel notch. */
+    private static final float SMOOTH_FACTOR = 0.35f;
+    private static final float SMOOTH_SNAP_PX = 0.5f;
     /** A scroll event applies only while a tooltip was drawn within this window. */
     private static final long SCROLL_WINDOW_MS = 150;
     private static final int DEFAULT_MAX_HEIGHT = 160;
 
     private static volatile float scrollOffset;
+    /** Where a smooth scroll is heading; equals {@link #scrollOffset} when settled. */
+    private static volatile float scrollTarget;
+    private static volatile long lastSmoothMs;
     private static volatile int lastContentHeight;
     private static volatile int lastViewportHeight;
     private static volatile int lastSignature;
@@ -89,6 +96,8 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
 
     private static void resetScroll() {
         scrollOffset = 0.0f;
+        scrollTarget = 0.0f;
+        lastSmoothMs = 0L;
         lastContentHeight = 0;
         lastViewportHeight = 0;
         lastSignature = 0;
@@ -107,6 +116,7 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
         int signature = signature(lines, font);
         if (signature != lastSignature) {
             scrollOffset = 0.0f;
+            scrollTarget = 0.0f;
             lastSignature = signature;
         }
 
@@ -171,7 +181,7 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
         int innerLeft = left + padding;
         int innerTop = top + padding;
         if (scrollable) {
-            scrollOffset = clamp(scrollOffset, 0.0f, contentHeight - viewport);
+            advanceSmoothScroll(document, Math.max(0, contentHeight - viewport));
             graphics.enableScissor(innerLeft, innerTop, innerLeft + contentWidth,
                     innerTop + viewport);
         }
@@ -216,12 +226,71 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
                 || System.currentTimeMillis() - lastRenderMs > SCROLL_WINDOW_MS) {
             return false;
         }
+        UiDocument document = DOCUMENT.get();
         int maxOffset = Math.max(0, lastContentHeight - lastViewportHeight);
         if (maxOffset <= 0) {
             return false;
         }
-        scrollOffset = clamp(scrollOffset - (float) (yOffset * SCROLL_STEP), 0.0f, maxOffset);
+        int step = document == null ? DEFAULT_SCROLL_STEP : scrollStep(document);
+        boolean smooth = document != null && smoothScroll(document);
+        float target = nextTarget(smooth ? scrollTarget : scrollOffset, yOffset, step,
+                maxOffset);
+        if (target == scrollOffset) {
+            // Already at the boundary: let the wheel through instead of eating the event.
+            return false;
+        }
+        scrollTarget = target;
+        if (!smooth) {
+            scrollOffset = target;
+        }
         return true;
+    }
+
+    /**
+     * Where a wheel notch takes the offset. A smooth scroll accumulates on the target, so a
+     * fast spin still ends at the same place as stepped scrolling would.
+     */
+    static float nextTarget(float base, double yOffset, int step, int maxOffset) {
+        return clamp(base - (float) (yOffset * step), 0.0f, maxOffset);
+    }
+
+    /**
+     * Moves the drawn offset toward the target. Called once per frame while a tooltip is
+     * visible; a no-op unless {@code smooth_scroll} is on and the two differ.
+     */
+    private static void advanceSmoothScroll(UiDocument document, int maxOffset) {
+        if (!smoothScroll(document) || scrollOffset == scrollTarget) {
+            lastSmoothMs = System.currentTimeMillis();
+            return;
+        }
+        long now = System.currentTimeMillis();
+        long elapsed = lastSmoothMs == 0L ? 16L : Math.max(1L, now - lastSmoothMs);
+        lastSmoothMs = now;
+        scrollOffset = clamp(smoothStep(scrollOffset, scrollTarget, elapsed), 0.0f, maxOffset);
+    }
+
+
+    /** {@code scroll_step}: pixels per wheel notch, clamped to a sane range. */
+    private static int scrollStep(UiDocument document) {
+        Object value = option(document, "scroll_step");
+        if (value instanceof Number number) {
+            return Math.max(1, Math.min(256, number.intValue()));
+        }
+        return DEFAULT_SCROLL_STEP;
+    }
+
+    /** One smoothing step from {@code from} toward {@code to}, frame-rate independent. */
+    static float smoothStep(float from, float to, long elapsedMs) {
+        float t = 1.0f - (float) Math.pow(1.0f - SMOOTH_FACTOR,
+                Math.max(1L, elapsedMs) / 16.0);
+        float next = from + (to - from) * t;
+        return Math.abs(to - next) < SMOOTH_SNAP_PX ? to : next;
+    }
+
+    /** {@code smooth_scroll}: default on, since a stepped jump reads as a glitch on long text. */
+    private static boolean smoothScroll(UiDocument document) {
+        Object value = option(document, "smooth_scroll");
+        return !(value instanceof Boolean enabled) || enabled;
     }
 
     private static void drawScrollbar(GuiGraphics graphics, UiDocument document, int x, int y,

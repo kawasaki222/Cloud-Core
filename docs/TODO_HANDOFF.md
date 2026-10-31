@@ -34,7 +34,7 @@ M8 占位符刷新的大部分也已落地。**
 - 协议：`ELEMENT_UPDATE`（元素/属性增量、revision 顺序、完整文档回退；自定义页真机验证）。
 - 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
   `cloudcore-api-testkit`。
-- 构建：`./gradlew build` 通过，353 个测试 / 68 个测试类，0 失败。
+- 构建：`./gradlew build` 通过，360 个测试 / 69 个测试类，0 失败。
 
 ## 已有内容
 
@@ -203,8 +203,9 @@ docs/
 - [x] Tooltip 附属栏 `attachments`：`left`/`right`/`top`/`bottom`、`match`、背景/九宫格/边框/标题/行文本
 - [x] Tooltip `name`/`lore` 独立 `x`/`y`/`font`/`line_gap`，`icon` 物品图标（取自悬停槽位）
 - [ ] M2 渲染剩余：文本 shaping（中文断行仍依赖原版字体度量）
-- [ ] Tooltip 剩余：`scroll_step`/`smooth_scroll`/`follow_cursor`/`sync_scroll` 未接线（步长固定 12）、
-      滚动条贴图与 `draggable` 拖动未实现、`tooltip_scroll` 事件未回传服务端
+- [x] Tooltip 滚轮：`scroll_step` 与 `smooth_scroll` 接线（`TooltipScrollTest`）
+- [ ] Tooltip 剩余：`follow_cursor`/`sync_scroll` 未接线、滚动条贴图与 `draggable` 拖动未实现、
+      `tooltip_scroll` 事件未回传服务端
 - [ ] `overlay` 元素只递归子元素，`modal`/`dim` 未实现
 - [x] `image.fit`：`stretch`/`contain`/`cover`（`RenderCommand.ImageProbe`，原生与 NanoVG 两个后端）
 - [x] `label` 的 `wrap`/`max_lines`：贪心折行（拉丁按词、CJK 按字符），带度量注入（`TextWrapTest`）

@@ -249,7 +249,7 @@
 
 当前客户端只读取 `mode`（或顶层 `scroll`/`scrollable`）、`width`、`track_color`、`thumb_color`；
 `gap`、贴图形式的 `track`/`thumb`/`thumb_hover`、`min_thumb`、`nine_slice`、`draggable`
-已定义但未接线。另有两个未接线的顶层字段 `scroll_step`（固定 12 px）、`smooth_scroll`。
+已定义但未接线。顶层 `scroll_step`（默认 12 px）与 `smooth_scroll`（默认开）已接线。
 `scroll` 顶层开关与 `backdrop_color`、`padding`、`name`/`lore`/`icon`、`attachments`
 均已接线（见 `03-ui-dsl.md` 第 11 节）。
 

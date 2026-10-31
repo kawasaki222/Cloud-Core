@@ -97,6 +97,8 @@ surface_options:
       y: 8
       size: 20
     attachments: []           # 附属栏，见 11.1
+    scroll_step: 12           # 每格滚轮的像素
+    smooth_scroll: true       # 平滑插值到目标偏移
     scrollbar:
       mode: auto              # auto | always | never，默认 never
       width: 4
