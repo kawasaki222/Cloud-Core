@@ -112,16 +112,16 @@ public final class RemoteTextureCache {
         if (CACHE.containsKey(ref.key())) {
             return;
         }
-        if (!remoteImages) {
-            requestProxy(ref.key());
-            return;
-        }
         Entry entry = DOWNLOADS.computeIfAbsent(ref.key(), key -> new Entry());
         synchronized (entry) {
             if (entry.started || entry.failed) {
                 return;
             }
             entry.started = true;
+        }
+        if (!remoteImages) {
+            EXECUTOR.submit(() -> offline(ref, entry));
+            return;
         }
         long maxBytes = ref.maxBytes() > 0 ? ref.maxBytes() : DEFAULT_MAX_BYTES;
         EXECUTOR.submit(() -> download(ref, entry, maxBytes));
@@ -167,6 +167,21 @@ public final class RemoteTextureCache {
     public static boolean failed(String key) {
         Entry entry = DOWNLOADS.get(key);
         return entry != null && entry.failed;
+    }
+
+    /** Privacy mode: use the local disk cache when possible, otherwise ask the server. */
+    private static void offline(TextureRef ref, Entry entry) {
+        TextureDiskCache disk = diskCache;
+        byte[] cached = disk == null ? null : disk.read(ref.key());
+        if (cached != null && cached.length > 0) {
+            CACHE.put(ref.key(), new Payload(ref.key(), cached, 0, 0, 0, 0, 0,
+                    new int[0]));
+            GENERATION.incrementAndGet();
+            LOGGER.info("Loaded texture {} from disk cache (remote images disabled)",
+                    ref.key());
+            return;
+        }
+        requestProxy(ref.key());
     }
 
     private static void download(TextureRef ref, Entry entry, long maxBytes) {
