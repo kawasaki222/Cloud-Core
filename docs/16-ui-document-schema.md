@@ -186,8 +186,8 @@
 ## 9. SurfaceOptions
 
 `surface_options` 里的贴图字段也可以使用 `tx:` 主题令牌，解析规则与 Style 相同。
-**当前 `tx:` 只在客户端颜色解析处识别，无法解析的令牌回退默认值；服务端不做令牌校验，
-`THEME_SET` 未接线。**
+**服务端从 `themes/<theme>.yml` 读入令牌表，`/cloudcore validate` 用 `ThemeTokens` 检查每个
+`tx:` 引用（未声明报 `CC-THEME-001`）；客户端颜色解析无法识别的令牌仍回退默认值，`THEME_SET` 未接线。**
 
 ### 9.1 HUD
 

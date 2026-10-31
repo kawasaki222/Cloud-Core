@@ -34,7 +34,7 @@ M8 占位符刷新的大部分也已落地。**
 - 协议：`ELEMENT_UPDATE`（元素/属性增量、revision 顺序、完整文档回退；自定义页真机验证）。
 - 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
   `cloudcore-api-testkit`。
-- 构建：`./gradlew build` 通过，388 个测试 / 74 个测试类，0 失败。
+- 构建：`./gradlew build` 通过，395 个测试 / 75 个测试类，0 失败。
 
 ## 已有内容
 
@@ -120,6 +120,8 @@ docs/
 - [x] `EVENT_RESULT` 下发（OK/UNKNOWN_ELEMENT/REJECTED，固定枚举名）
 - [x] `command` 动作 + 配置闸门（默认拒绝，按首个词 allowlist；单测）
 - [x] 依赖图增量编译：`PageDependencies` 按 `includes:` 链只重编译受影响页面（`PageDependenciesTest`）
+- [x] 主题令牌表：`themes/<id>.yml` 的 `tokens:` 由 `ThemeTokens` 读入，`/cloudcore validate`
+      检查 `tx:` 引用（`ThemeTokensTest`）
 - [ ] M3 剩余：内容哈希去重（内容未变的保存仍会重编译一次）
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
 - [x] `image` 的 `local:`/`pack:`/`builtin:` 贴图，以及 `item_icon`（原生物品、数量、缩放）（真机截图验证）

@@ -262,8 +262,10 @@ actions:
 
 ### 6.5 页面命令
 
-`/cloudcore validate`：遍历 `pages/`（`<目录>/page.yml` 与顶层 `*.yml`），逐页编译并报告
-`[OK]`/`[FAIL] 名字: 原因`，不改动在线玩家界面。
+`/cloudcore validate`：先读 `themes/<id>.yml` 的 `tokens:`，再遍历 `pages/`（`<目录>/page.yml`
+与顶层 `*.yml`），逐页编译并报告
+`[OK]`/`[FAIL] 名字: 原因`；页面里的 `tx:` 引用与主题令牌表比对，未声明的报
+`CC-THEME-001`。不改动在线玩家界面。
 `/cloudcore reload`：重新读取 `config.yml`，再重新编译所有页面，并给正在查看该页面的玩家推送更高
 revision 的文档更新；会话状态保留（每个玩家按页面名保存）。
 `/cloudcore state-export` / `state-import`：在当前 `file`/`sqlite`/`mysql` 后端之间导出、导入同一份

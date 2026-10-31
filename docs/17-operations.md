@@ -45,7 +45,7 @@ plugins/CloudCore/
   accessories/<uuid>.yml  # 自定义槽位页的内容，关闭时写入
   texture-cache/      # 代理模式的图片磁盘缓存（按最旧文件淘汰，上限 textures.url.cache-mb）
   slots.yml           # 自定义槽位定义（首次生成，可编辑）
-  themes/             # 计划中
+  themes/<id>.yml     # 主题令牌表（tokens:），供 /cloudcore validate 检查 tx: 引用
   fonts/              # 可选字体索引（NanoVG 后端）
 ```
 

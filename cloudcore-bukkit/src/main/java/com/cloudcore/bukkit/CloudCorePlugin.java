@@ -109,6 +109,9 @@ public final class CloudCorePlugin extends JavaPlugin
                     error));
     private final Placeholders placeholders = new Placeholders(this, placeholderResolvers);
     private com.cloudcore.server.state.PlayerStateStore stateStore;
+    /** Theme token tables by theme id, used only to validate {@code tx:} references. */
+    private final Map<String, com.cloudcore.api.document.ThemeTokens> themes =
+            new ConcurrentHashMap<>();
     private com.cloudcore.bukkit.slot.AccessorySlots accessorySlots;
     private com.cloudcore.bukkit.texture.TextureProxy textureProxy;
     private static final Set<String> BUILT_IN_ACTIONS = Set.of(
@@ -146,6 +149,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 getConfig().getLong("placeholders.global-budget-ms", 10L)) * 1_000_000L;
         placeholders.configureAsyncNamespaces(
                 getConfig().getStringList("placeholders.async-namespaces"));
+        loadThemes();
         textureProxy = createTextureProxy();
         preparePagesDirectory();
         startPageWatcher();
@@ -2755,6 +2759,42 @@ public final class CloudCorePlugin extends JavaPlugin
     }
 
     /** Compiles every page under the pages root and reports the first error per page. */
+    /**
+     * Loads {@code themes/<theme>.yml} for every theme a page declares. A page keeps its
+     * {@code tx:} references, so this table only exists to catch typos at validate time.
+     */
+    private void loadThemes() {
+        themes.clear();
+        java.nio.file.Path themesRoot = getDataFolder().toPath().resolve("themes");
+        if (!java.nio.file.Files.isDirectory(themesRoot)) {
+            return;
+        }
+        try (var files = java.nio.file.Files.list(themesRoot)) {
+            for (java.nio.file.Path file : files.toList()) {
+                String fileName = file.getFileName().toString();
+                if (!fileName.endsWith(".yml") && !fileName.endsWith(".yaml")) {
+                    continue;
+                }
+                String id = fileName.substring(0, fileName.lastIndexOf('.'));
+                try {
+                    Object loaded = new org.yaml.snakeyaml.Yaml().load(
+                            java.nio.file.Files.readString(file));
+                    Object tokens = loaded instanceof Map<?, ?> map ? map.get("tokens") : null;
+                    themes.put(id, com.cloudcore.api.document.ThemeTokens.from(
+                            tokens instanceof Map<?, ?> tokenMap ? tokenMap : Map.of()));
+                } catch (java.io.IOException | RuntimeException exception) {
+                    getLogger().warning("Cannot load theme '" + id + "': "
+                            + exception.getMessage());
+                }
+            }
+        } catch (java.io.IOException exception) {
+            getLogger().warning("Cannot list themes directory: " + exception.getMessage());
+        }
+        if (!themes.isEmpty()) {
+            getLogger().info("Loaded " + themes.size() + " theme(s) for token validation");
+        }
+    }
+
     private void validatePages(CommandSender sender) {
         java.util.List<String> names = listPageNames();
         if (names.isEmpty()) {
@@ -2786,6 +2826,14 @@ public final class CloudCorePlugin extends JavaPlugin
                 sender.sendMessage(Component.text("  " + issue.severity() + " " + issue.code()
                         + " " + issue.path() + ": " + issue.message()));
             }
+            com.cloudcore.api.document.ThemeTokens theme =
+                    themes.get(compiled.document().theme());
+            if (theme != null) {
+                for (String missing : theme.missingReferences(compiled.document())) {
+                    warnings++;
+                    sender.sendMessage(Component.text("  WARNING CC-THEME-001 " + missing));
+                }
+            }
         }
         sender.sendMessage(Component.text("Validated " + names.size() + " pages, " + ok + " ok, "
                 + warnings + " warning(s)"));
@@ -2804,6 +2852,7 @@ public final class CloudCorePlugin extends JavaPlugin
      */
     private void reloadPages(CommandSender sender, java.util.Set<String> only) {
         reloadConfig();
+        loadThemes();
         getLogger().info("Reloaded config.yml");
         java.util.List<String> names = listPageNames();
         if (only != null) {
