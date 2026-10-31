@@ -719,6 +719,38 @@ class PageLoaderTest {
     }
 
 
+    @Test
+    void permissionNodeIsKeptForTheServerToCheck() throws Exception {
+        Path page = write("vip.yml", """
+                schema: 1
+                id: vip
+                surface: custom_screen
+                title: "VIP"
+                size: [200, 100]
+                permission: "cloudcore.page.vip"
+                elements: []
+                """);
+
+        PageLoader.CompiledPage compiled = PageLoader.load(pages, page, Map.of());
+
+        assertEquals("cloudcore.page.vip", compiled.permission());
+    }
+
+    @Test
+    void blankPermissionMeansNoCheck() throws Exception {
+        Path page = write("open.yml", """
+                schema: 1
+                id: open
+                surface: custom_screen
+                title: "Open"
+                size: [200, 100]
+                permission: "  "
+                elements: []
+                """);
+
+        assertEquals(null, PageLoader.load(pages, page, Map.of()).permission());
+    }
+
     private Path write(String relative, String content) throws IOException {
         Path file = pages.resolve(relative);
         Files.createDirectories(file.getParent());

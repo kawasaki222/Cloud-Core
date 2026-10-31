@@ -144,9 +144,9 @@ debug: false                    # 单玩家报文头日志
 | `cloudcore.debug` | op | 调试输出 |
 | `cloudcore.slot.<名字>` | op | `slots.yml` 里槽位声明的 `permission` |
 
-页面级权限 `cloudcore.page.<页面 id>` 与页面 `permission:` 目前只解析进 `CompiledPage`，
-**尚未在打开/复查时强制检查**；已强制的是动作级 `permission:`（缺权限整次点击 `REJECTED`）。
-这是当前实现与设计基线的已知差距。
+页面级权限：页面写 `permission: <节点>` 时，`/cloudcore page`、API `open`、`open_page` 动作、
+进服自动下发与后台刷新都会检查该节点，缺权限时拒绝发送（刷新时还会关闭已打开的界面）并写服务端日志。
+不写 `permission:` 的页面只受命令权限（`cloudcore.admin`）约束。节点本身不会被下发到客户端。
 
 ## 4. 传输与握手
 

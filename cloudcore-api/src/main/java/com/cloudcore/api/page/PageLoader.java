@@ -50,12 +50,16 @@ public final class PageLoader {
     /**
      * The document plus what stays on the server: action bodies and the state snapshot the
      * page was expanded from (used to resolve {@code ${state.x}} when an action runs).
+     *
+     * <p>{@code permission} is the page's own {@code permission:} node, or {@code null}. The
+     * loader only parses it; the server decides when to check it.
      */
     public record CompiledPage(UiDocument document,
             Map<Integer, List<PageAction>> actions,
             Map<String, Object> state,
             List<RemoteTexture> textures,
-            RefreshPlan refresh) {
+            RefreshPlan refresh,
+            String permission) {
         public CompiledPage {
             Objects.requireNonNull(document, "document");
             Objects.requireNonNull(state, "state");
@@ -68,7 +72,13 @@ public final class PageLoader {
         /** Pages that do not opt into refreshs keep the static policy. */
         public CompiledPage(UiDocument document, Map<Integer, List<PageAction>> actions,
                 Map<String, Object> state, List<RemoteTexture> textures) {
-            this(document, actions, state, textures, RefreshPlan.NONE);
+            this(document, actions, state, textures, RefreshPlan.NONE, null);
+        }
+
+        /** A page without a {@code permission:} node. */
+        public CompiledPage(UiDocument document, Map<Integer, List<PageAction>> actions,
+                Map<String, Object> state, List<RemoteTexture> textures, RefreshPlan refresh) {
+            this(document, actions, state, textures, refresh, null);
         }
     }
 
@@ -233,7 +243,17 @@ public final class PageLoader {
         }
         return new CompiledPage(document, context.actions, mergedState,
                 new ArrayList<>(context.textures.values()),
-                pageRefresh(manifest.get("placeholders"), context));
+                pageRefresh(manifest.get("placeholders"), context),
+                optionalPermission(manifest.get("permission")));
+    }
+
+    /** A blank {@code permission:} means "no check"; anything else is kept verbatim. */
+    private static String optionalPermission(Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        String text = String.valueOf(raw).trim();
+        return text.isEmpty() ? null : text;
     }
 
     /**

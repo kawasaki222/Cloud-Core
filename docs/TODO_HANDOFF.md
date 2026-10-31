@@ -175,6 +175,8 @@ docs/
 - [x] `slider` 拖动、`min`/`max`/`step`、`live` 连续上报；越界值在 API 层被钳制（单测 `SlidersTest`）
 - [x] 附属插件 API：`CloudCoreApi.open/registerActionHandler/unregister/isModded` 经
       `ServicesManager`（第二个插件真机验证，含 SCHEDULED / UNKNOWN_PAGE / 权限拒绝）
+- [x] 页面级权限：页面 `permission:` 在 `/cloudcore page`、API `open`、`open_page` 动作、
+      进服下发与后台刷新处强制检查（`PageLoaderTest` 覆盖解析，`CompiledPage.permission()`）
 - [x] 内置动作 `permission:` 参数；缺权限拒绝整次点击并记日志
 - [x] `PageBuilder` 代码构造页面 + `api.open(player, CompiledPage)`（第二个插件真机验证）
 - [x] `PlaceholderResolver`：`%ns_params%` 自定义解析器（先于 PlaceholderAPI，真机验证）

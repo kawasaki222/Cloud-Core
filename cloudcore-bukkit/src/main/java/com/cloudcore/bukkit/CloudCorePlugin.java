@@ -379,6 +379,15 @@ public final class CloudCorePlugin extends JavaPlugin
                     return ActionOutcome.FAILED;
                 }
                 String name = resolveState(String.valueOf(target), state, payload);
+                // Pages with their own permission node are gated here too; otherwise open_page
+                // would be a way around them. Action permission: stays the click-level check.
+                String pagePermission = pagePermissionOf(name);
+                if (pagePermission != null && !player.hasPermission(pagePermission)) {
+                    getLogger().info("Denied action 'open_page' for " + player.getName()
+                            + " on page " + page.document().id() + ": page '" + name + "' needs "
+                            + pagePermission);
+                    return ActionOutcome.DENIED;
+                }
                 // Close the page that is being replaced so the client does not keep a stale id.
                 if (session.lastUiId != null && !session.lastUiId.equals(name)) {
                     sendClose(player);
@@ -561,6 +570,12 @@ public final class CloudCorePlugin extends JavaPlugin
         String uiId = previous.document().id();
         String name = session.pageNames.get(uiId);
         if (name == null) {
+            return;
+        }
+        // The page may have gained a permission: since it was opened; a refresh must not
+        // keep serving it to someone who lost access.
+        if (!ensurePagePermission(player, name)) {
+            sendClose(player);
             return;
         }
         java.nio.file.Path pageFile = resolvePageFile(name);
@@ -950,6 +965,11 @@ public final class CloudCorePlugin extends JavaPlugin
                     continue;
                 }
                 if (configured.isEmpty() && !isAmbientPage(trimmed)) {
+                    continue;
+                }
+                // sendPage re-checks the node and logs a denial; counting it here would
+                // claim a page that was never sent.
+                if (!ensurePagePermission(player, trimmed)) {
                     continue;
                 }
                 sendPage(player, trimmed);
@@ -2032,7 +2052,43 @@ public final class CloudCorePlugin extends JavaPlugin
      * compiled JSON to the client. Only custom screens are bound here; other surfaces keep
      * their dedicated flows (container/HUD/tooltip/boss).
      */
+    /**
+     * Returns false (and logs once) when {@code player} may not open {@code name}. A page opts
+     * in with {@code permission: <node>} in its YAML; without one, only the command permission
+     * (checked by the command itself) applies.
+     */
+    private boolean ensurePagePermission(Player player, String name) {
+        String node = pagePermissionOf(name);
+        if (node == null || player.hasPermission(node)) {
+            return true;
+        }
+        getLogger().info("Denied page '" + name + "' for " + player.getName()
+                + " (missing " + node + ")");
+        return false;
+    }
+
+    /** The page's {@code permission:} node, or null when it has none or cannot be read. */
+    private String pagePermissionOf(String name) {
+        if (pagesRoot == null) {
+            return null;
+        }
+        java.nio.file.Path pageFile = resolvePageFile(name);
+        if (pageFile == null) {
+            return null;
+        }
+        try {
+            // Permission is a static manifest field, so parsing without player state is fine.
+            return com.cloudcore.api.page.PageLoader.load(pagesRoot, pageFile, Map.of())
+                    .permission();
+        } catch (com.cloudcore.api.page.PageLoadException exception) {
+            return null;
+        }
+    }
+
     private void sendPage(Player player, String name) {
+        if (!ensurePagePermission(player, name)) {
+            return;
+        }
         if (pagesRoot == null) {
             getLogger().warning("Pages directory unavailable; cannot send page " + name);
             return;
@@ -3141,6 +3197,9 @@ public final class CloudCorePlugin extends JavaPlugin
                         + "; v1 opens custom screens only");
                 return com.cloudcore.bukkit.api.OpenResult.UNSUPPORTED_SURFACE;
             }
+            if (!mayOpen(player, pageId, compiled.permission())) {
+                return com.cloudcore.bukkit.api.OpenResult.FAILED;
+            }
             sendPage(player, pageId);
             return com.cloudcore.bukkit.api.OpenResult.OPENED;
         }
@@ -3174,12 +3233,25 @@ public final class CloudCorePlugin extends JavaPlugin
                         + "' requests surface " + surface + "; v1 opens custom screens only");
                 return com.cloudcore.bukkit.api.OpenResult.UNSUPPORTED_SURFACE;
             }
+            if (!mayOpen(player, page.document().id(), page.permission())) {
+                return com.cloudcore.bukkit.api.OpenResult.FAILED;
+            }
             Session session = sessions.computeIfAbsent(player.getUniqueId(),
                     ignored -> new Session());
             // The action table must be reachable from the event handler by uiId.
             putCompiledPage(player.getUniqueId(), page);
             sendCompiledPage(player, session, page.document().id(), page);
             return com.cloudcore.bukkit.api.OpenResult.OPENED;
+        }
+
+        /** Permission gate shared by both API open paths; the reason goes to the server log. */
+        private boolean mayOpen(Player player, String pageId, String permission) {
+            if (permission == null || permission.isBlank() || player.hasPermission(permission)) {
+                return true;
+            }
+            getLogger().info("API open: denied page '" + pageId + "' for " + player.getName()
+                    + " (missing " + permission + ")");
+            return false;
         }
 
         @Override
