@@ -951,10 +951,11 @@ elements:
   其他面板会记录警告并退回“只在打开/`set_state` 时解析”。
 - 默认**同步**：主线程执行，软预算 `placeholders.player-budget-ms`（默认 2）与
   `placeholders.global-budget-ms`（默认 10）；超预算的页面顺延，不阻塞服务器 tick。
-- `async: true`：页面编译和 PlaceholderAPI 展开在异步线程，结果回到主线程做 diff/下发；
-  同一页面同时最多一个在途任务。若期间 `set_state` 改了状态，快照版本不匹配，结果直接丢弃，
-  避免旧快照覆盖新状态。异步路径要求用到的 PlaceholderAPI 扩展线程安全；当前没有实现
-  `placeholders.async-namespaces` 白名单，页面作者自行保证。
+- `async: true`：页面编译在异步线程，PlaceholderAPI 展开也尽量在异步线程，结果回到主线程做
+  diff/下发；同一页面同时最多一个在途任务。若期间 `set_state` 改了状态，快照版本不匹配，
+  结果直接丢弃，避免旧快照覆盖新状态。
+- 异步展开只对 `placeholders.async-namespaces` 白名单里的命名空间生效；页面里出现白名单外的
+  令牌时，该次刷新的 PAPI 展开改在主线程执行（`Placeholders#canExpandAsync`）。
 - `event` 模式只标记“该页面需要刷新”，不按元素单独展开；刷新仍以整页为粒度。
 - 内置动作 `refresh` 立即重编译并下发当前页，适合 `manual` 页面上的按钮。
 - 客户端永远不解析占位符，只收到解析后的文本。

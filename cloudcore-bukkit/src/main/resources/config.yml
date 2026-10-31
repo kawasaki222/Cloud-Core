@@ -26,6 +26,10 @@ placeholders:
   # 周期刷新的软预算：超出后剩余页面顺延到下一个间隔，不阻塞服务器 tick。
   player-budget-ms: 2
   global-budget-ms: 10
+  # 异步刷新（页面写 placeholders.async: true）只允许这些命名空间在后台线程展开。
+  # 未列出的命名空间会改在主线程展开，避免不线程安全的扩展破坏服务器状态。
+  # 条目是 %token% 里下划线前的部分，例如 %player_name% 属于 player。
+  async-namespaces: []
 
 textures:
   url:

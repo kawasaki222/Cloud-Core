@@ -5,6 +5,9 @@ dependencies {
     implementation(project(":cloudcore-protocol"))
     implementation(project(":cloudcore-server-core"))
     compileOnly("io.papermc.paper:paper-api:${libs.versions.paper.api.get()}")
+    // Tests touch Bukkit types (JavaPlugin); the API is compile-only for the plugin jar but
+    // must be on the test compile and runtime classpath.
+    testImplementation("io.papermc.paper:paper-api:${libs.versions.paper.api.get()}")
     implementation(libs.sqlite.jdbc)
 }
 

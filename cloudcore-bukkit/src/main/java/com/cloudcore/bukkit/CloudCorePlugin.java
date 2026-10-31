@@ -144,6 +144,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 getConfig().getLong("placeholders.player-budget-ms", 2L)) * 1_000_000L;
         globalRefreshBudget = Math.max(1L,
                 getConfig().getLong("placeholders.global-budget-ms", 10L)) * 1_000_000L;
+        placeholders.configureAsyncNamespaces(
+                getConfig().getStringList("placeholders.async-namespaces"));
         textureProxy = createTextureProxy();
         preparePagesDirectory();
         startPageWatcher();
@@ -624,6 +626,48 @@ public final class CloudCorePlugin extends JavaPlugin
     }
 
     /** Applies addon resolvers and PlaceholderAPI to the visible text. */
+    /**
+     * Every piece of text a placeholder could live in: element text/placeholder attributes,
+     * rich runs and the title. Used to decide whether an async refresh may expand off-thread.
+     */
+    private static String pageText(UiDocument document) {
+        StringBuilder text = new StringBuilder(document.title().plainText());
+        collectText(document.elements(), text);
+        return text.toString();
+    }
+
+    private static void collectText(java.util.List<com.cloudcore.api.document.UiElement> elements,
+            StringBuilder out) {
+        for (com.cloudcore.api.document.UiElement element : elements) {
+            for (Object value : element.attributes().values()) {
+                if (value instanceof String string && string.indexOf('%') >= 0) {
+                    out.append(' ').append(string);
+                } else if (value instanceof Map<?, ?> map) {
+                    collectMapText(map, out);
+                } else if (value instanceof java.util.List<?> list) {
+                    for (Object entry : list) {
+                        if (entry instanceof String string && string.indexOf('%') >= 0) {
+                            out.append(' ').append(string);
+                        } else if (entry instanceof Map<?, ?> map) {
+                            collectMapText(map, out);
+                        }
+                    }
+                }
+            }
+            collectText(element.children(), out);
+        }
+    }
+
+    private static void collectMapText(Map<?, ?> map, StringBuilder out) {
+        for (Object value : map.values()) {
+            if (value instanceof String string && string.indexOf('%') >= 0) {
+                out.append(' ').append(string);
+            } else if (value instanceof Map<?, ?> nested) {
+                collectMapText(nested, out);
+            }
+        }
+    }
+
     private UiDocument expandPlaceholders(Player player, UiDocument document) {
         return placeholders.expand(player, document,
                 getConfig().getBoolean("placeholders.enabled", true));
@@ -735,8 +779,14 @@ public final class CloudCorePlugin extends JavaPlugin
         getServer().getScheduler().runTaskAsynchronously(this, () -> {
             com.cloudcore.api.page.PageLoader.CompiledPage compiled;
             UiDocument expanded;
+            boolean expandOffThread;
             try {
                 compiled = com.cloudcore.api.page.PageLoader.load(pagesRoot, pageFile, state);
+                // Only namespaces the admin whitelisted may expand off the main thread; a
+                // PAPI expansion that touches Bukkit off-thread would corrupt server state.
+                expandOffThread = placeholders.canExpandAsync(pageText(compiled.document()));
+                // Placeholders.expand only calls PlaceholderAPI for whitelisted namespaces,
+                // so this pass is safe on the worker even when the page mixes both.
                 expanded = expandPlaceholders(player, compiled.document());
             } catch (Throwable failure) {
                 getLogger().log(Level.WARNING, "Async refresh of '" + name + "' failed", failure);
@@ -745,8 +795,19 @@ public final class CloudCorePlugin extends JavaPlugin
             }
             com.cloudcore.api.page.PageLoader.CompiledPage ready = compiled;
             UiDocument document = expanded;
+            boolean expandOnMain = !expandOffThread;
             getServer().getScheduler().runTask(this, () -> {
                 refresh.inFlight = false;
+                if (expandOnMain && player.isOnline()
+                        && session.refreshes.get(uiId) == refresh
+                        && session.stateVersion.get() == version) {
+                    // The worker already expanded the whitelisted namespaces; a second pass
+                    // on the tick thread fills in the rest without touching the raw tokens.
+                    putCompiledPage(player.getUniqueId(), ready);
+                    deliverRefresh(player, session, name, ready,
+                            expandPlaceholders(player, document));
+                    return;
+                }
                 if (!player.isOnline()
                         || session.refreshes.get(uiId) != refresh
                         || session.stateVersion.get() != version) {

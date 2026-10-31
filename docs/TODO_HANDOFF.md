@@ -34,7 +34,7 @@ M8 占位符刷新的大部分也已落地。**
 - 协议：`ELEMENT_UPDATE`（元素/属性增量、revision 顺序、完整文档回退；自定义页真机验证）。
 - 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
   `cloudcore-api-testkit`。
-- 构建：`./gradlew build` 通过，366 个测试 / 70 个测试类，0 失败。
+- 构建：`./gradlew build` 通过，371 个测试 / 71 个测试类，0 失败。
 
 ## 已有内容
 
@@ -170,8 +170,9 @@ docs/
 - [x] 占位符周期刷新：`static`/`interval`/`tick`/`event`/`manual`，页面级默认 + 元素级覆盖、
       软预算（2 ms/玩家、10 ms 全局）、`async: true` 工作线程编译 + 回主线程 diff、
       `${placeholder:...}` 显式形式（`PlaceholderExpressions`）；真机验证同步/异步两种
-- [ ] 占位符剩余：`placeholders.async-namespaces` 白名单（当前异步路径要求页面作者自行保证线程安全）、
-      预算打满后的顺延行为只有代码路径
+- [x] `placeholders.async-namespaces` 白名单：异步刷新只展开白名单命名空间，其余回主线程
+      （`PlaceholderAsyncNamespaceTest`）
+- [ ] 占位符剩余：预算打满后的顺延行为只有代码路径
 - [x] `slider`：`value` 填充 + 点击比例 `change{amount}` → `set_state` 往返（真机验证）
 - [x] `slider` 拖动、`min`/`max`/`step`、`live` 连续上报；越界值在 API 层被钳制（单测 `SlidersTest`）
 - [x] 附属插件 API：`CloudCoreApi.open/registerActionHandler/unregister/isModded` 经

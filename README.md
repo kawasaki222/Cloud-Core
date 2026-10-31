@@ -9,7 +9,7 @@
 
 **M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集已完成并在真机联调。**
 
-- 构建：`./gradlew build` 通过（JDK 21，366 个测试 / 70 个测试类，0 失败）。
+- 构建：`./gradlew build` 通过（JDK 21，371 个测试 / 71 个测试类，0 失败）。
 - 协议：信封、DEFLATE、分片/重组、HELLO/HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED、
   `EVENT`/`EVENT_RESULT`、`ELEMENT_UPDATE`、`TEXTURE_REF`、`TEXTURE_REQUEST`/`TEXTURE_PUT`、
   `DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
@@ -108,7 +108,7 @@ Mojang 映射，因此 26.1 的迁移成本更低。详见
 其他能力：Tooltip 滚动条和 Boss 血条的贴图、九宫格、颜色全部由文档定义；`url:` 图片默认**客户端
 直连**（服务端只发引用，图片字节不占游戏连接），可切换服务端代理模式；GIF 直连时客户端解码、代理时
 服务端解码为垂直精灵表；PlaceholderAPI 变量支持 `static` / `interval` / `tick` / `event` / `manual` 刷新，
-默认主线程同步并受预算约束，`async: true` 走工作线程（`async-namespaces` 白名单尚未实现）。所有配置、
+默认主线程同步并受预算约束，`async: true` 走工作线程，PAPI 只在 `async-namespaces` 白名单内的命名空间后台展开。所有配置、
 协议、文档、资源、渲染和动作错误都写入客户端
 `logs/cloudcore-client.log`（已实现 10 MiB × 5 轮转，只收 `cloudcore` logger），带 `CC-*` 错误码和上下文，
 并可导出诊断包。绘制目标为

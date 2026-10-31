@@ -516,8 +516,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   schema 版本表（`cloudcore_schema`）与跨后端导出/导入（`/cloudcore state-export|state-import`）
   已实现；连接池仍未实现。
 - **占位符剩余**：一次性展开、页面/元素 `interval` 刷新、同步/异步、`refresh` 动作、
-  `${placeholder:...}` 显式形式已真机验证；`interval` 预算打满后的顺延、`tick`/`event` 模式的
-  真机行为、`async-namespaces` 白名单尚未验证/实现。
+  `${placeholder:...}` 显式形式已真机验证；`async-namespaces` 白名单已实现（单测），
+  `interval` 预算打满后的顺延与 `tick`/`event` 模式的真机行为尚未验证。
 - **控件/样式剩余**：文本 shaping、`overlay` 的
   `modal`/`dim`、Tooltip 的 `draggable`/滚动条贴图与 `tooltip_scroll` 回传。
   `image.fit`（`stretch`/`contain`/`cover`）与 `label.wrap`/`max_lines` 已实现并有单测

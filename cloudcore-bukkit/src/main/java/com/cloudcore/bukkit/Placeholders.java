@@ -27,6 +27,12 @@ final class Placeholders {
 
     private final JavaPlugin plugin;
     private final Map<String, PlaceholderResolver> resolvers;
+    /**
+     * Namespaces whose PlaceholderAPI expansions are known to be thread-safe. Async refreshes
+     * only call those; everything else is forced onto the main thread, because a PAPI
+     * expansion that touches the Bukkit API off-thread corrupts server state.
+     */
+    private final java.util.Set<String> asyncNamespaces = new java.util.HashSet<>();
     private Method setPlaceholders;
     private boolean probed;
     private boolean brokenReported;
@@ -35,6 +41,36 @@ final class Placeholders {
     Placeholders(JavaPlugin plugin, Map<String, PlaceholderResolver> resolvers) {
         this.plugin = plugin;
         this.resolvers = resolvers;
+    }
+
+    /** Lower-cases and stores {@code placeholders.async-namespaces} from the config. */
+    void configureAsyncNamespaces(java.util.List<String> namespaces) {
+        asyncNamespaces.clear();
+        for (String namespace : namespaces) {
+            if (namespace != null && !namespace.isBlank()) {
+                asyncNamespaces.add(namespace.trim().toLowerCase(java.util.Locale.ROOT));
+            }
+        }
+    }
+
+    /**
+     * @return true when every PlaceholderAPI token in {@code text} belongs to a namespace
+     *         listed in {@code placeholders.async-namespaces}, so expanding it off-thread is
+     *         safe. Text without tokens is always safe.
+     */
+    boolean canExpandAsync(String text) {
+        if (text == null || text.indexOf('%') < 0) {
+            return true;
+        }
+        java.util.regex.Matcher matcher = TOKEN.matcher(text);
+        while (matcher.find()) {
+            String namespace = matcher.group(1).split("_", 2)[0].toLowerCase(
+                    java.util.Locale.ROOT);
+            if (!asyncNamespaces.contains(namespace)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** @return true when PlaceholderAPI is present and usable */
@@ -62,10 +98,29 @@ final class Placeholders {
         if (resolvers.isEmpty() && !(papiEnabled && available())) {
             return document;
         }
-        return DocumentText.expand(document, text -> apply(player, text, papiEnabled));
+        return DocumentText.expand(document, text -> apply(player, text, papiEnabled, true));
     }
 
-    private String apply(Player player, String text, boolean papiEnabled) {
+    /**
+     * Like {@link #expand} but skips PlaceholderAPI entirely, so it is safe to call from a
+     * worker thread: addon resolvers are written by the addon and run on whatever thread
+     * calls them. Used by an async refresh when the page's tokens are not whitelisted.
+     */
+    UiDocument expandWithoutPapi(Player player, UiDocument document) {
+        if (resolvers.isEmpty()) {
+            return document;
+        }
+        return DocumentText.expand(document, text -> apply(player, text, false, false));
+    }
+
+    /**
+     * @param papiEnabled whether PlaceholderAPI tokens are expanded
+     * @param requireAsyncSafe when true, PlaceholderAPI is only called if the text's
+     *                         namespaces are whitelisted; a refresh uses this to decide
+     *                         whether it may stay on the worker thread
+     */
+    private String apply(Player player, String text, boolean papiEnabled,
+            boolean requireAsyncSafe) {
         if (text == null || text.isEmpty()) {
             return text;
         }
@@ -77,14 +132,21 @@ final class Placeholders {
         }
         if (hasExplicit) {
             return PlaceholderExpressions.expand(text,
-                    chunk -> applyPercent(player, chunk, papiEnabled));
+                    chunk -> applyPercent(player, chunk, papiEnabled, requireAsyncSafe));
         }
-        return applyPercent(player, text, papiEnabled);
+        return applyPercent(player, text, papiEnabled, requireAsyncSafe);
     }
 
-    private String applyPercent(Player player, String text, boolean papiEnabled) {
+    private String applyPercent(Player player, String text, boolean papiEnabled,
+            boolean requireAsyncSafe) {
         String resolved = applyCustom(player, text);
-        return papiEnabled && available() ? applyPapi(player, resolved) : resolved;
+        if (!papiEnabled || !available()) {
+            return resolved;
+        }
+        if (requireAsyncSafe && !canExpandAsync(resolved)) {
+            return resolved;
+        }
+        return applyPapi(player, resolved);
     }
 
     /** Replaces tokens whose namespace an addon registered; everything else is left alone. */

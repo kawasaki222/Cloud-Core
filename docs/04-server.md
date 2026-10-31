@@ -39,6 +39,7 @@ placeholders:
   enabled: true
   player-budget-ms: 2           # 每个玩家每次 tick 的软预算
   global-budget-ms: 10          # 全局软预算
+  async-namespaces: []          # 允许在异步刷新线程展开的 PAPI 命名空间
 
 textures:
   url:
@@ -519,9 +520,11 @@ refresh: { mode: interval, ticks: 10 }
   “打开/`set_state` 时解析”。
 - 同步刷新受 `player-budget-ms`（默认 2）与 `global-budget-ms`（默认 10）软预算约束，超出的页面
   顺延到下一次到期。
-- `async: true` 时编译与 PlaceholderAPI 展开在工作线程，结果回主线程 diff/下发；每页最多一个在途
-  任务，期间 `set_state` 改了状态则丢弃旧快照。异步页面要求用到的 PlaceholderAPI 扩展线程安全；
-  `async-namespaces` 白名单尚未实现。
+- `async: true` 时编译在工作线程，PlaceholderAPI 展开也尽量在工作线程；结果回主线程 diff/下发，
+  每页最多一个在途任务，期间 `set_state` 改了状态则丢弃旧快照。
+- `placeholders.async-namespaces` 列出允许在后台展开的命名空间（`%player_name%` 属于 `player`）。
+  页面里只要有一个不在白名单的令牌，该页的 PAPI 展开就改在主线程执行；白名单为空时异步页面的
+  PAPI 展开全部回主线程，只有附属解析器在工作线程运行。
 - 内置 `refresh` 动作立即重编译并下发当前页，供 `manual` 页面使用。
 - `%token%` 与 `${placeholder:token}` 两种写法等价，见 `03-ui-dsl.md` §7.1。
 - 客户端不解析占位符。
