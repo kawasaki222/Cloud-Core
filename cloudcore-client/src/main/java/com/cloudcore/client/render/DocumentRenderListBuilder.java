@@ -392,6 +392,16 @@ public final class DocumentRenderListBuilder {
                 childY = y - scrollY;
                 childX = x - (int) Math.round(number(attribute(element, "scroll_x"), 0.0));
             }
+            case "overlay" -> {
+                // modal:true dims everything behind the overlay and, in the screen, takes
+                // input until it closes; dim is the veil opacity (0..1).
+                if (Boolean.TRUE.equals(attribute(element, "modal"))) {
+                    addFill(commands, parentX, parentY, parentWidth, parentHeight,
+                            dimVeil(attribute(element, "dim")));
+                }
+                childWidth = width > 0 ? width : parentWidth;
+                childHeight = height > 0 ? height : parentHeight;
+            }
             case "inventory_grid", "spacer" -> {
                 // Slots are drawn by the owning screen; the grid only publishes its geometry.
             }
@@ -900,6 +910,21 @@ public final class DocumentRenderListBuilder {
 
     private static int color(Object value, int fallback) {
         return Colors.parse(value, fallback);
+    }
+
+    /**
+     * {@code dim}: an opacity 0..1 painted as black, or a full ARGB colour when the author
+     * wants a tinted veil. Default 0.5.
+     */
+    static int dimVeil(Object raw) {
+        if (raw instanceof Number number) {
+            double opacity = Math.max(0.0, Math.min(1.0, number.doubleValue()));
+            return ((int) Math.round(opacity * 255) << 24);
+        }
+        if (raw instanceof String text) {
+            return Colors.parse(text, 0x80000000);
+        }
+        return 0x80000000;
     }
 
     /** Halves the alpha of a colour for a disabled element; textures keep their look. */

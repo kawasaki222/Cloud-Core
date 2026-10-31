@@ -645,6 +645,10 @@ public final class CloudScreen extends Screen {
                 return true;
             }
         }
+        if (ElementHitTester.hasModal(document)) {
+            // A modal overlay swallows clicks: vanilla widgets behind it must not react.
+            return true;
+        }
         return super.mouseClicked(event, doubleClick);
     }
 

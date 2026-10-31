@@ -453,7 +453,7 @@ interface RenderBackend {
 
 - HUD/Boss 不参与输入；Tooltip 只参与滚轮（拖动未实现）。
 - 只有当前 screen 是输入所有者；容器打开时背包皮肤关闭。
-- `overlay` 元素的模态捕获（`modal`/`dim`）与 `drag_end` 事件尚未实现。
+- `overlay` 的 `modal: true` 会遮罩并接管输入（`ElementHitTester.hasModal`）；`drag_end` 事件仍未实现。
 - Escape 先清焦点，再关闭界面（若允许）。
 
 ### 14.1 自定义输入框外观

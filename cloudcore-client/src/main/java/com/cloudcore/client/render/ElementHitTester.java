@@ -31,6 +31,15 @@ public final class ElementHitTester {
         int originX = (screenWidth - documentWidth) / 2;
         int originY = (screenHeight - documentHeight) / 2;
         UiElement best = null;
+        // A modal overlay swallows input for everything behind it: elements drawn before it
+        // must not react while it is open. The last modal element wins, matching draw order.
+        UiElement modal = lastModal(document.elements());
+        if (modal != null) {
+            // Everything drawn before the modal is unreachable: only it and what it contains
+            // may answer, so a click outside the dialog does nothing.
+            return search(modal, originX, originY, documentWidth, documentHeight, mouseX,
+                    mouseY, localScroll, event);
+        }
         for (UiElement element : document.elements()) {
             UiElement hit = search(element, originX, originY, documentWidth, documentHeight,
                     mouseX, mouseY, localScroll, event);
@@ -39,6 +48,23 @@ public final class ElementHitTester {
             }
         }
         return best;
+    }
+
+    /** The last visible {@code overlay} element with {@code modal: true}, or null. */
+    private static UiElement lastModal(List<UiElement> elements) {
+        UiElement found = null;
+        for (UiElement element : elements) {
+            if (element.visible() && "overlay".equals(element.type())
+                    && Boolean.TRUE.equals(element.attributes().get("modal"))) {
+                found = element;
+            }
+        }
+        return found;
+    }
+
+    /** True when an open modal overlay should stop clicks from reaching vanilla widgets. */
+    public static boolean hasModal(UiDocument document) {
+        return document != null && lastModal(document.elements()) != null;
     }
 
     private static UiElement search(UiElement element, int parentX, int parentY,

@@ -99,7 +99,7 @@
 | `row` / `column` | `gap`、`align`、`justify`、`children` |
 | `grid` | `columns`、`cell`、`gap`、`children` |
 | `scroll` | `axis`、`scrollbar`、`children` |
-| `overlay` | `modal`、`dim`、`children`（当前只递归子元素，`modal`/`dim` 未实现） |
+| `overlay` | `modal`、`dim`、`children`（`modal` 遮罩并接管输入，`dim` 为 0..1 不透明度） |
 
 ### 5.2 内容元素
 
