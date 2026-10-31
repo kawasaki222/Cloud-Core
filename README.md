@@ -9,7 +9,7 @@
 
 **M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集已完成并在真机联调。**
 
-- 构建：`./gradlew build` 通过（JDK 21，397 个测试 / 75 个测试类，0 失败）。
+- 构建：`./gradlew build` 通过（JDK 21，400 个测试 / 76 个测试类，0 失败）。
 - 协议：信封、DEFLATE、分片/重组、HELLO/HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED、
   `EVENT`/`EVENT_RESULT`、`ELEMENT_UPDATE`、`TEXTURE_REF`、`TEXTURE_REQUEST`/`TEXTURE_PUT`、
   `DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
@@ -46,9 +46,9 @@
   NanoVG 后端（`-PcloudcoreNanoVg=true`，填充/图片/自定义字体 + 原生叠层）与 FBO 合成已通过；
   客户端日志 `logs/cloudcore-client.log` 带 `CC-*` 码。
 - 尚未验证/未实现：Linux/macOS 运行、NanoVG 默认化（当前默认仍是原生后端）、
-  配方书 `skinned`/`custom`（当前回退 `vanilla`）、文本 shaping、Tooltip 滚动条拖动与
-  `tooltip_scroll` 回传、`placeholders.async-namespaces` 白名单、SQL 后端连接池、
-  内容哈希去重、与 REI/EMI 等模组的互操作矩阵。
+  配方书 `skinned`/`custom`（当前回退 `vanilla`）、文本 shaping、内容哈希去重、
+  与 REI/EMI 等模组的互操作矩阵，以及本机无法验证的真机项（拖拽滚动条、`tooltip_scroll`
+  回传、模态遮罩观感、`fit`/`wrap` 的像素比对）。
   详见 `docs/TODO_HANDOFF.md` 与 `docs/10-risks-and-verification.md`。
 
 ## 示例页面

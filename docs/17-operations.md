@@ -124,7 +124,7 @@ plugins/CloudCore/
 | `placeholders.player-budget-ms` | 2 |
 | `placeholders.global-budget-ms` | 10 |
 | `state.persist` | `true` |
-| `state.backend` | `file`（零依赖）/ `sqlite`（单文件）/ `mysql`（生产、需自带驱动） |
+| `state.backend` | `file`（零依赖）/ `sqlite`（单文件）/ `mysql`（生产、需自带驱动）；SQL 后端复用最多 4 条空闲连接 |
 | `actions.commands.enabled` | `false`，确有必要才开并配 allowlist |
 | `inventory-probe` | `false`；只在排查容器时序时开 |
 | `debug` | `false`；排障时开单玩家报文头日志 |

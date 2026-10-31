@@ -221,6 +221,11 @@ public final class CloudCorePlugin extends JavaPlugin
         }
         if (stateStore != null) {
             flushDirtyState();
+            // Release the SQL pool so the driver (and its native library) can unload on
+            // /reload, and SQLite's file lock is dropped with the plugin.
+            if (stateStore instanceof com.cloudcore.server.state.SqlPlayerStateStore sql) {
+                sql.close();
+            }
         }
         if (textureProxy != null) {
             textureProxy.close();

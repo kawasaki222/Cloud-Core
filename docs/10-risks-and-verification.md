@@ -514,7 +514,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   仍缺配方书 `skinned`/`custom`（当前回退 `vanilla`）。
 - **存储**：JSON 文件与 SQLite 实现已通过单元测试；MySQL 走 JDBC、需服务端提供驱动；
   schema 版本表（`cloudcore_schema`）与跨后端导出/导入（`/cloudcore state-export|state-import`）
-  已实现；连接池仍未实现。
+  已实现；连接池（最多 4 条空闲连接）已实现并有单测。
 - **占位符剩余**：一次性展开、页面/元素 `interval` 刷新、同步/异步、`refresh` 动作、
   `${placeholder:...}` 显式形式已真机验证；`async-namespaces` 白名单已实现（单测），
   `interval` 预算打满后的顺延与 `tick`/`event` 模式的真机行为尚未验证。

@@ -53,9 +53,22 @@ class StateTransferTest {
                 () -> StateTransfer.importFile(target, export));
     }
 
+    private final java.util.List<SqlPlayerStateStore> opened = new java.util.ArrayList<>();
+
     private SqlPlayerStateStore sqlite(String name) {
         String url = "jdbc:sqlite:" + dir.resolve(name);
-        return new SqlPlayerStateStore(SqlPlayerStateStore.Dialect.SQLITE,
+        SqlPlayerStateStore store = new SqlPlayerStateStore(SqlPlayerStateStore.Dialect.SQLITE,
                 () -> DriverManager.getConnection(url));
+        opened.add(store);
+        return store;
+    }
+
+    /** Idle pooled connections keep the SQLite file locked, so the temp dir cannot be removed. */
+    @org.junit.jupiter.api.AfterEach
+    void closeStores() {
+        for (SqlPlayerStateStore store : opened) {
+            store.close();
+        }
+        opened.clear();
     }
 }

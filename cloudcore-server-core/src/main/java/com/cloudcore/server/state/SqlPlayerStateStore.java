@@ -91,14 +91,81 @@ public final class SqlPlayerStateStore implements PlayerStateStore {
         }
     }
 
+    /** Idle connections kept for reuse; a server writes from one worker, so this is generous. */
+    public static final int POOL_SIZE = 4;
+
+    private final java.util.ArrayDeque<Connection> idle = new java.util.ArrayDeque<>();
+
+    /**
+     * Borrows a pooled connection or opens one. The returned handle is a proxy whose
+     * {@code close()} puts the connection back instead of closing it, so every existing
+     * try-with-resources block keeps working unchanged.
+     */
     private Connection open() throws SQLException {
+        Connection pooled = idle.pollFirst();
+        if (pooled != null && !pooled.isClosed()) {
+            return lease(pooled);
+        }
+        if (pooled != null) {
+            // The driver closed it under us; drop it and open a fresh one.
+            closeQuietly(pooled);
+        }
         Connection connection = connections.open();
         if (dialect == Dialect.SQLITE) {
             try (Statement statement = connection.createStatement()) {
                 statement.execute("PRAGMA busy_timeout=5000");
             }
         }
-        return connection;
+        return lease(connection);
+    }
+
+    /** Wraps a real connection so {@code close()} returns it to the pool. */
+    private Connection lease(Connection real) {
+        return (Connection) java.lang.reflect.Proxy.newProxyInstance(
+                Connection.class.getClassLoader(), new Class<?>[]{Connection.class},
+                (proxy, method, args) -> {
+                    if ("close".equals(method.getName()) && method.getParameterCount() == 0) {
+                        returnToPool(real);
+                        return null;
+                    }
+                    if ("isClosed".equals(method.getName()) && method.getParameterCount() == 0) {
+                        return real.isClosed();
+                    }
+                    try {
+                        return method.invoke(real, args);
+                    } catch (java.lang.reflect.InvocationTargetException exception) {
+                        throw exception.getCause();
+                    }
+                });
+    }
+
+    private synchronized void returnToPool(Connection real) {
+        try {
+            if (real.isClosed()) {
+                return;
+            }
+        } catch (SQLException exception) {
+            closeQuietly(real);
+            return;
+        }
+        if (idle.size() >= POOL_SIZE || !idle.offerFirst(real)) {
+            closeQuietly(real);
+        }
+    }
+
+    private static void closeQuietly(Connection connection) {
+        try {
+            connection.close();
+        } catch (SQLException ignored) {
+            // Nothing left to do: the connection is already unusable.
+        }
+    }
+
+    /** Closes every idle connection; call on plugin disable so the driver can unload. */
+    public synchronized void close() {
+        while (!idle.isEmpty()) {
+            closeQuietly(idle.pollFirst());
+        }
     }
 
     @Override

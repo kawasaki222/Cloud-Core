@@ -22,10 +22,23 @@ class SqlPlayerStateStoreTest {
         Class.forName("org.sqlite.JDBC");
     }
 
+    /** Every store opened here is closed after the test so the temp dir can be deleted. */
+    private final java.util.List<SqlPlayerStateStore> opened = new java.util.ArrayList<>();
+
     private SqlPlayerStateStore store(String file) {
         String url = "jdbc:sqlite:" + dir.resolve(file);
-        return new SqlPlayerStateStore(SqlPlayerStateStore.Dialect.SQLITE,
+        SqlPlayerStateStore store = new SqlPlayerStateStore(SqlPlayerStateStore.Dialect.SQLITE,
                 () -> DriverManager.getConnection(url));
+        opened.add(store);
+        return store;
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void closeStores() {
+        for (SqlPlayerStateStore store : opened) {
+            store.close();
+        }
+        opened.clear();
     }
 
     @Test

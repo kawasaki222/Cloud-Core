@@ -34,7 +34,7 @@ M8 占位符刷新的大部分也已落地。**
 - 协议：`ELEMENT_UPDATE`（元素/属性增量、revision 顺序、完整文档回退；自定义页真机验证）。
 - 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
   `cloudcore-api-testkit`。
-- 构建：`./gradlew build` 通过，397 个测试 / 75 个测试类，0 失败。
+- 构建：`./gradlew build` 通过，400 个测试 / 76 个测试类，0 失败。
 
 ## 已有内容
 
@@ -116,7 +116,8 @@ docs/
 - [x] 持久化后端：SQLite（驱动随插件打包）与 MySQL（服务端提供驱动）；JSON 文件仍为默认
 - [x] 持久化：schema 版本表（`cloudcore_schema`，`SCHEMA_VERSION = 1`，拒绝更新版本）与
       跨后端导出/导入（`/cloudcore state-export|state-import`，`{version,players}` JSON）
-- [ ] 持久化剩余：连接池（当前每次操作开一条连接，单写线程串行）
+- [x] 持久化：SQL 连接池（最多 4 条空闲连接，`close()` 归还；插件禁用时释放）
+      （`SqlConnectionPoolTest`）
 - [x] `EVENT_RESULT` 下发（OK/UNKNOWN_ELEMENT/REJECTED，固定枚举名）
 - [x] `command` 动作 + 配置闸门（默认拒绝，按首个词 allowlist；单测）
 - [x] 依赖图增量编译：`PageDependencies` 按 `includes:` 链只重编译受影响页面（`PageDependenciesTest`）

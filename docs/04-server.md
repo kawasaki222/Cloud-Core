@@ -291,6 +291,8 @@ revision 的文档更新；会话状态保留（每个玩家按页面名保存�
   `state.sqlite.file`）、`mysql`（服务端需自带 JDBC 驱动，`state.mysql.*`）。SQL 后端把同一份
   `{version,pages}` JSON 存在 `cloudcore_player_state` 表，便于和文件实现互相迁移。SQL 后端还维护
   `cloudcore_schema` 表（当前 `SCHEMA_VERSION = 1`），启动时拒绝比本构建更新的 schema，为后续迁移留出入口。
+- SQL 后端复用连接：`SqlPlayerStateStore` 维持最多 4 条空闲连接，`close()` 归还而不是真正关闭；
+  插件禁用时关闭全部空闲连接，SQLite 的文件锁随之释放。
 
 ## 7. 面板提供器
 
