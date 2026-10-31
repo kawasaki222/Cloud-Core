@@ -189,7 +189,8 @@ docs/
 - [x] 容器点击策略补充：`allow_player_inventory` 接入文档/策略/服务端，`InventoryDragEvent` 与
       readonly / readonly-allow 两种情况真机验证（`demo-readonly-allow` / `demo-readonly`）
 - [x] 代理模式：远端 GIF 真机验证与动画盘缓存
-- [ ] 玩家背包配方书（v1 隐藏；v2 再补 `skinned`/`custom`）与玩家模型/状态效果选项
+- [x] 玩家背包实时玩家模型预览（`show_player_model` + `player_model_x/y/scale`，真机验证）
+- [ ] 玩家背包剩余：配方书 `hide`/`vanilla`/`skinned`/`custom`、状态效果图标
 - [x] 协议前向兼容：未知 `surfaceId` 保留原始值并回 `UI_READY(state=4)`
 - [x] 协议前向兼容：未知 `BindMode` / `RenderMode` 解码为 `UNKNOWN` 并回 `UI_READY(state=4)`
 - [x] M0 NanoVG 初始化 + FBO 绘制 + readback（Windows x64，`cloudcore.nanovg.spike`）

@@ -67,7 +67,10 @@
   - `skinned`（v2 目标默认）：保留原版列表/搜索/标签页/滚动，NanoVG 替换外框、按钮、标签、滚动条、
     字体；
   - `custom`（v2）：Cloud 画列表和分类，点击通过原版 `PlaceRecipe` 放置；REI/EMI 接管时让位。
-- **玩家模型与效果**：v1 不绘制（文档 `surface_options` 的 `show_player_model`/`show_effects`
+- **玩家模型**：`surface_options.player_inventory.show_player_model: true` 时用 1.21.11 的
+  `GuiGraphics.submitEntityRenderState` 绘制实时玩家预览，位置/大小可由 `player_model_x`、
+  `player_model_y`、`player_model_scale` 调整（默认 `50/78/30`，文档坐标）。效果图标仍未绘制。
+- **玩家效果**：v1 不绘制（文档 `surface_options` 的 `show_effects`
   尚未解析）；后续版本按选项决定。
 - **绘制**：自绘面板与槽框 + 文档元素（RenderList）；物品、数量、冷却、附魔光效仍由原版绘制，
   空槽图标由原版 `Slot#getNoItemIcon` 提供。

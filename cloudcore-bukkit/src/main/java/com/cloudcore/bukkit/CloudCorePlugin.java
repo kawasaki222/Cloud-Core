@@ -1365,6 +1365,9 @@ public final class CloudCorePlugin extends JavaPlugin
                   "surface": "player_inventory",
                   "title": { "runs": [ { "text": "Cloud Core Inventory" } ] },
                   "size": [176, 166],
+                  "surface_options": {
+                    "player_inventory": { "show_player_model": true }
+                  },
                   "elements": [
                     { "id": "inventory_bg", "type": "panel", "x": 0, "y": 0,
                       "width": "fill", "height": "fill",

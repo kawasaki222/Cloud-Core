@@ -48,6 +48,55 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
         // The document draws its own labels; the vanilla container title is hidden.
     }
 
+    /** Draws the player preview from the document when it opts in. */
+    private void renderPlayerPreview(GuiGraphics graphics) {
+        if (!option("show_player_model", false)) {
+            return;
+        }
+        var player = minecraft.player;
+        if (player == null) {
+            return;
+        }
+        int x = leftPos + Math.round(number(optionValue("player_model_x"), 50.0f));
+        int y = topPos + Math.round(number(optionValue("player_model_y"), 78.0f));
+        int scale = Math.max(8, Math.round(number(optionValue("player_model_scale"), 30.0f)));
+        EntityPortrait.render(graphics, player, x, y, scale, 0.0f);
+    }
+
+    /** Nested {@code surface_options.player_inventory.*} wins; flat keys stay supported. */
+    private boolean option(String key, boolean fallback) {
+        Object value = optionValue(key);
+        if (value instanceof Boolean flag) {
+            return flag;
+        }
+        if (value instanceof String text) {
+            return Boolean.parseBoolean(text);
+        }
+        return fallback;
+    }
+
+    private static float number(Object value, float fallback) {
+        if (value instanceof Number number) {
+            return number.floatValue();
+        }
+        if (value instanceof String text) {
+            try {
+                return Float.parseFloat(text.trim());
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
+    }
+
+    private Object optionValue(String key) {
+        Object nested = document.surfaceOptions().get("player_inventory");
+        if (nested instanceof java.util.Map<?, ?> map && map.containsKey(key)) {
+            return map.get(key);
+        }
+        return document.surfaceOptions().get(key);
+    }
+
     @Override
     public void removed() {
         super.removed();
@@ -86,6 +135,7 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
                 DocumentRenderListBuilder.build(document, imageWidth, imageHeight),
                 new FrameContext(graphics, imageWidth, imageHeight,
                         minecraft.getWindow().getGuiScale(), partialTick));
+        renderPlayerPreview(graphics);
         pose.popMatrix();
     }
 }
