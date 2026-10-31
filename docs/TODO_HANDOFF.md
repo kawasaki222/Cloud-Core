@@ -34,7 +34,7 @@ M8 占位符刷新的大部分也已落地。**
 - 协议：`ELEMENT_UPDATE`（元素/属性增量、revision 顺序、完整文档回退；自定义页真机验证）。
 - 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
   `cloudcore-api-testkit`。
-- 构建：`./gradlew build` 通过，378 个测试 / 72 个测试类，0 失败。
+- 构建：`./gradlew build` 通过，382 个测试 / 73 个测试类，0 失败。
 
 ## 已有内容
 
@@ -209,7 +209,8 @@ docs/
 - [x] Tooltip 滚轮：`scroll_step` 与 `smooth_scroll` 接线（`TooltipScrollTest`）
 - [x] Tooltip 滚动条：贴图轨道/滑块/悬停态 + `nine_slice` + `min_thumb` + `draggable` 拖动
       （`MouseHandler#onMove`/`onButton` 混入）
-- [ ] Tooltip 剩余：`follow_cursor`/`sync_scroll` 未接线、`tooltip_scroll` 事件未回传服务端
+- [x] `tooltip_scroll` 回传：`sync_scroll: true` + 元素声明事件，100 ms 节流（`TooltipScrollReportTest`）
+- [ ] Tooltip 剩余：`follow_cursor` 未接线
 - [ ] `overlay` 元素只递归子元素，`modal`/`dim` 未实现
 - [x] `image.fit`：`stretch`/`contain`/`cover`（`RenderCommand.ImageProbe`，原生与 NanoVG 两个后端）
 - [x] `label` 的 `wrap`/`max_lines`：贪心折行（拉丁按词、CJK 按字符），带度量注入（`TextWrapTest`）

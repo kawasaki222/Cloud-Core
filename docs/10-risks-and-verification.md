@@ -519,7 +519,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `${placeholder:...}` 显式形式已真机验证；`async-namespaces` 白名单已实现（单测），
   `interval` 预算打满后的顺延与 `tick`/`event` 模式的真机行为尚未验证。
 - **控件/样式剩余**：文本 shaping、`overlay` 的
-  `modal`/`dim`、Tooltip 的 `tooltip_scroll` 回传与 `follow_cursor`/`sync_scroll`。
+  `modal`/`dim`、Tooltip 的 `follow_cursor`。
   `image.fit`（`stretch`/`contain`/`cover`）与 `label.wrap`/`max_lines` 已实现并有单测
   （`TextWrapTest`），Tooltip 的 `scroll_step`/`smooth_scroll` 有 `TooltipScrollTest`；
   这些都只做过编译与单元验证，尚未在真机截图比对换行、裁剪与滚动观感。

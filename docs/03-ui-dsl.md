@@ -985,7 +985,8 @@ elements:
 `hover_enter`/`hover_leave` 只在元素声明了对应事件时上报（页面作者显式选择，没有声明就没有流量），
 每次跨过元素边界各一次，受服务端事件限流约束。`scroll` 的载荷是滚动后的**绝对**偏移
 （文档像素）；服务端通常 `set_state` 保存它，文档再用 `scroll_y: "${state.offset}"` 渲染回去。
-`tooltip_scroll` 默认不上报，Tooltip 的滚轮只改本地偏移（该事件尚未接线）；
+`tooltip_scroll` 默认不上报：样式文档写 `sync_scroll: true` 且某个元素声明了 `tooltip_scroll`
+时，滚轮与拖动会以 100 ms 节流上报绝对偏移（载荷 `scroll`）；
 `select` 与 `drag_end` 已定义但客户端尚未发送（滑块拖动沿用 `change`）。
 
 `right_click` 已实现：右键优先找声明了 `right_click` 的元素，没有就回退到同一个元素的 `click`

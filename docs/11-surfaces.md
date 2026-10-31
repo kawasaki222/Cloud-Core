@@ -119,7 +119,8 @@
   - 滚轮按 `scroll_step`（默认 12）滚动，`smooth_scroll` 默认开；
   - 悬停物品变化时偏移归零；
   - 内容未超高时不消费滚轮。
-- **未实现**：`tooltip_scroll` 事件回传服务端；`follow_cursor`/`sync_scroll` 未接线。
+- **回传**：`sync_scroll: true` + 元素声明 `tooltip_scroll` 时回传绝对偏移（100 ms 节流）。
+- **未实现**：`follow_cursor`。
 - **服务端逐行内容**：v1 不支持；可以通过物品 `lore` 组件追加。
 - **失败**：无法接管时原版提示；滚动失效时退回不滚动。
 - **兼容**：其他 Tooltip 模组、REI/EMI 的追加行应保留。

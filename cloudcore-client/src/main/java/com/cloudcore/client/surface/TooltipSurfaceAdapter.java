@@ -52,7 +52,17 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
     private static final float SMOOTH_SNAP_PX = 0.5f;
     /** A scroll event applies only while a tooltip was drawn within this window. */
     private static final long SCROLL_WINDOW_MS = 150;
+    /** Minimum gap between two {@code tooltip_scroll} reports. */
+    private static final long REPORT_INTERVAL_MS = 100;
     private static final int DEFAULT_MAX_HEIGHT = 160;
+
+    /** uiId the style document belongs to; the scroll event is sent under it. */
+    private static volatile String scrollUiId;
+    /** Action id of the element that declared {@code tooltip_scroll}, or 0 when none. */
+    private static volatile int scrollActionId;
+    /** Last offset reported to the server, so a tiny movement does not spam the network. */
+    private static volatile int lastReportedOffset = Integer.MIN_VALUE;
+    private static volatile long lastReportMs;
 
     private static volatile float scrollOffset;
     /** Where a smooth scroll is heading; equals {@link #scrollOffset} when settled. */
@@ -76,6 +86,8 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
     @Override
     public void open(OpenRequest request, UiRuntime runtime) {
         DOCUMENT.set(runtime.document());
+        scrollUiId = request.uiId();
+        scrollActionId = scrollActionId(runtime.document());
         resetScroll();
     }
 
@@ -84,6 +96,8 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
         UiDocument document = DOCUMENT.get();
         if (document != null && document.id().equals(uiId)) {
             DOCUMENT.set(null);
+            scrollUiId = null;
+            scrollActionId = 0;
             resetScroll();
         }
     }
@@ -242,6 +256,7 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
         scrollTarget = target;
         if (!smooth) {
             scrollOffset = target;
+            reportScroll();
         }
         return true;
     }
@@ -303,6 +318,7 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
         }
         scrollOffset = target;
         scrollTarget = target;
+        reportScroll();
         return true;
     }
 
@@ -340,6 +356,53 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
     }
 
     /**
+     * Finds the element that asked for {@code tooltip_scroll} and returns its action id. The
+     * tooltip's own content is native, so the event belongs to the first element in the
+     * document that declares it; a style document without one reports nothing.
+     */
+    static int scrollActionId(UiDocument document) {
+        if (!Boolean.TRUE.equals(option(document, "sync_scroll"))) {
+            return 0;
+        }
+        for (com.cloudcore.api.document.UiElement element : document.elements()) {
+            Integer action = element.events().get("tooltip_scroll");
+            if (action != null) {
+                return action;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Reports the scroll offset to the server when {@code sync_scroll: true} and an element
+     * declared {@code tooltip_scroll}. Throttled to one report per 100 ms and skipped when the
+     * offset did not move, so a wheel spin cannot flood the event limiter.
+     */
+    /**
+     * Whether an offset should be reported now: it changed and enough time has passed. Pure
+     * so the throttle rule is testable without a rendered tooltip.
+     */
+    static boolean shouldReport(int offset, int lastOffset, long now, long lastMillis) {
+        return offset != lastOffset && now - lastMillis >= REPORT_INTERVAL_MS;
+    }
+
+    private static void reportScroll() {
+        String uiId = scrollUiId;
+        if (uiId == null || scrollActionId == 0) {
+            return;
+        }
+        int offset = (int) Math.round(scrollOffset);
+        long now = System.currentTimeMillis();
+        if (!shouldReport(offset, lastReportedOffset, now, lastReportMs)) {
+            return;
+        }
+        lastReportedOffset = offset;
+        lastReportMs = now;
+        com.cloudcore.client.CloudCoreClient.sendEvent(uiId, "tooltip", scrollActionId,
+                java.util.Map.of("scroll", new com.cloudcore.protocol.WireValue.IntValue(offset)));
+    }
+
+    /**
      * Where a wheel notch takes the offset. A smooth scroll accumulates on the target, so a
      * fast spin still ends at the same place as stepped scrolling would.
      */
@@ -360,6 +423,9 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
         long elapsed = lastSmoothMs == 0L ? 16L : Math.max(1L, now - lastSmoothMs);
         lastSmoothMs = now;
         scrollOffset = clamp(smoothStep(scrollOffset, scrollTarget, elapsed), 0.0f, maxOffset);
+        if (scrollOffset == scrollTarget) {
+            reportScroll();
+        }
     }
 
 
