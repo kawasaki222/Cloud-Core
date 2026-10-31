@@ -127,7 +127,7 @@ docs/
       `demo_layers` 用于 `/cloudcore page` 预览（真机截图验证）
 - [x] 客户端本地面板：`LocalPageRegistry` 按 `match` 正则接管容器/Boss 血条，
       服务端不下发也能用，`F9` 重载；服务端下发优先（`docs/05-client.md` 第 19 节）
-- [ ] Boss 剩余：多条血条堆叠与间距（`spacing`/`max_bars`）
+- [x] Boss 多条血条堆叠与间距：`spacing`/`max_bars`，只作用于哨兵血条（真机截图验证 3 条 → 2 条）
 - [x] Container 面板：NEXT_CONTAINER 绑定的箱子换背景，原版槽位保留（真机截图验证）
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
 - [x] 客户端快捷键：`F9` 重载本地资源、`F10` 诊断包（真机验证：贴图热替换、zip 内容、聊天提示）

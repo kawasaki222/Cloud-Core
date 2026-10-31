@@ -1017,7 +1017,7 @@ public final class CloudCorePlugin extends JavaPlugin
 
     private static final java.util.List<String> TAB_SUBCOMMANDS = java.util.List.of(
             "accessories", "validate", "reload", "state-export", "state-import",
-            "equipment", "equipment-stand", "page", "ping", "probe", "boss", "close",
+            "equipment", "equipment-stand", "page", "ping", "probe", "boss", "demo-boss-multi", "close",
             "diagnostic", "demo-hud", "demo-hud-rpg", "demo-hud-bg", "demo-tooltip",
             "demo-container", "demo-readonly", "demo-readonly-allow", "demo-passthrough",
             "demo-inventory", "demo-inventory-vanilla");
@@ -1178,6 +1178,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 sendProbe(target);
             } else if (args[0].equalsIgnoreCase("boss")) {
                 sendBoss(target);
+            } else if (args[0].equalsIgnoreCase("demo-boss-multi")) {
+                sendBoss(target, 3, 2, 16);
             } else if (args[0].equalsIgnoreCase("close")) {
                 sendClose(target);
             } else if (args[0].equalsIgnoreCase("diagnostic")) {
@@ -1336,6 +1338,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("demo-huge")
                 || action.equalsIgnoreCase("probe")
                 || action.equalsIgnoreCase("boss")
+                || action.equalsIgnoreCase("demo-boss-multi")
                 || action.equalsIgnoreCase("close")
                 || action.equalsIgnoreCase("diagnostic")
                 || action.equalsIgnoreCase("demo-hud")
@@ -1744,6 +1747,10 @@ public final class CloudCorePlugin extends JavaPlugin
     }
 
     private void sendBoss(Player player) {
+        sendBoss(player, 1, 0, 0);
+    }
+
+    private void sendBoss(Player player, int barCount, int maxBars, int spacing) {
         int token = random.nextInt();
         String tokenHex = Integer.toHexString(token);
         String uiId = "cloudcore_demo_boss";
@@ -1762,6 +1769,8 @@ public final class CloudCorePlugin extends JavaPlugin
                   "size": [320, 180],
                   "surface_options": {
                     "boss_bar": {
+                      "max_bars": %d,
+                      "spacing": %d,
                       "bar": {
                         "width": 200,
                         "height": 8,
@@ -1778,7 +1787,7 @@ public final class CloudCorePlugin extends JavaPlugin
                       "style": { "background": "#F0101828" } }
                   ]
                 }
-                """;
+                """.formatted(maxBars, spacing);
         UiDefinition definition = new UiDefinition(uiId, 1, 0,
                 json.getBytes(StandardCharsets.UTF_8));
         getServer().getScheduler().runTaskLater(this, () -> {
@@ -1788,23 +1797,29 @@ public final class CloudCorePlugin extends JavaPlugin
             }
         }, 1L);
 
-        BossBar bar = Bukkit.createBossBar("\u0000CCB:" + tokenHex + "\u0000Cloud Core Boss",
-                BarColor.RED, BarStyle.SOLID);
-        bar.addPlayer(player);
-        bar.setVisible(true);
-        // Partial progress so the texture fill is visibly clipped at 55%.
-        bar.setProgress(0.55);
         if (session.bossBar != null) {
             session.bossBar.removeAll();
+            session.bossBar = null;
         }
-        session.bossBar = bar;
-        getServer().getScheduler().runTaskLater(this, () -> {
-            bar.removeAll();
-            if (session.bossBar == bar) {
-                session.bossBar = null;
-            }
-        }, 200L);
-        getLogger().info("PROBE boss bar sent to " + player.getName() + " token=" + tokenHex);
+        for (BossBar existing : session.bossBars) {
+            existing.removeAll();
+        }
+        session.bossBars.clear();
+        for (int index = 0; index < barCount; index++) {
+            BossBar bar = Bukkit.createBossBar(" CCB:" + tokenHex + " Cloud Core Boss "
+                    + (index + 1), BarColor.RED, BarStyle.SOLID);
+            bar.addPlayer(player);
+            bar.setVisible(true);
+            // Partial progress so the texture fill is visibly clipped at 55%.
+            bar.setProgress(0.55);
+            session.bossBars.add(bar);
+            getServer().getScheduler().runTaskLater(this, () -> {
+                bar.removeAll();
+                session.bossBars.remove(bar);
+            }, 200L);
+        }
+        getLogger().info("PROBE boss bars sent to " + player.getName() + " count=" + barCount
+                + " token=" + tokenHex + " max=" + maxBars + " spacing=" + spacing);
     }
 
     private void sendProbe(Player player) {

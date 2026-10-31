@@ -45,6 +45,11 @@ public final class BossBarSurfaceAdapter implements SurfaceAdapter {
      * client-side page matched by name. Vanilla then draws its own title above the bar in
      * addition to the adapter's in-bar name, which stacks two labels on one bar.
      */
+    /** True when the title carries the server sentinel, even without an active document. */
+    public static boolean hasSentinel(Component title) {
+        return sentinel(title) != null;
+    }
+
     public static boolean skins(Component title) {
         if (DOCUMENT.get() != null && title.getString().contains(MARKER)) {
             return true;
@@ -62,6 +67,39 @@ public final class BossBarSurfaceAdapter implements SurfaceAdapter {
      * <em>over</em> each other: the inner layer is already on screen behind the outer one, so
      * depleting the outer layer uncovers what is underneath instead of switching bars.
      */
+    /** Maximum number of sentinel bars the active document wants on screen, or 0 = no limit. */
+    public static int maxBars() {
+        UiDocument document = DOCUMENT.get();
+        if (document == null) {
+            return 0;
+        }
+        Object value = options(document).get("max_bars");
+        int max = value instanceof Number number ? number.intValue() : -1;
+        return max > 0 ? max : 0;
+    }
+
+    /** Vertical distance between stacked sentinel bars, or 0 to keep vanilla spacing. */
+    public static int spacing() {
+        UiDocument document = DOCUMENT.get();
+        if (document == null) {
+            return 0;
+        }
+        Object value = options(document).get("spacing");
+        int spacing = value instanceof Number number ? number.intValue() : -1;
+        return spacing > 0 ? spacing : 0;
+    }
+
+    private static java.util.Map<String, Object> options(UiDocument document) {
+        Object bossBar = document.surfaceOptions().get("boss_bar");
+        return bossBar instanceof java.util.Map<?, ?> map ? stringMap(map) : document.surfaceOptions();
+    }
+
+    private static java.util.Map<String, Object> stringMap(java.util.Map<?, ?> map) {
+        java.util.Map<String, Object> copy = new java.util.LinkedHashMap<>();
+        map.forEach((key, value) -> copy.put(String.valueOf(key), value));
+        return copy;
+    }
+
     static final String MARKER = "\u0000CCB:";
 
     /**
