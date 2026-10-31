@@ -1020,7 +1020,7 @@ public final class CloudCorePlugin extends JavaPlugin
             "equipment", "equipment-stand", "page", "ping", "probe", "boss", "close",
             "diagnostic", "demo-hud", "demo-hud-rpg", "demo-hud-bg", "demo-tooltip",
             "demo-container", "demo-readonly", "demo-readonly-allow", "demo-passthrough",
-            "demo-inventory");
+            "demo-inventory", "demo-inventory-vanilla");
 
     @Override
     public java.util.List<String> onTabComplete(CommandSender sender, Command command,
@@ -1200,6 +1200,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 openDemoChest(target, ContainerClickPolicy.Interaction.PASSTHROUGH);
             } else if (args[0].equalsIgnoreCase("demo-inventory")) {
                 sendDemoInventory(target);
+            } else if (args[0].equalsIgnoreCase("demo-inventory-vanilla")) {
+                sendDemoInventory(target, "vanilla");
             } else if (args[0].equalsIgnoreCase("demo-layout")) {
                 sendDemoLayout(target);
             } else if (args[0].equalsIgnoreCase("demo-assets")) {
@@ -1345,12 +1347,18 @@ public final class CloudCorePlugin extends JavaPlugin
                 || action.equalsIgnoreCase("demo-readonly-allow")
                 || action.equalsIgnoreCase("demo-passthrough")
                 || action.equalsIgnoreCase("demo-inventory")
+                || action.equalsIgnoreCase("demo-inventory-vanilla")
                 || action.equalsIgnoreCase("demo-assets")
                 || action.equalsIgnoreCase("demo-layout")
                 || action.equalsIgnoreCase("demo-scroll");
     }
 
-    private void sendDemoInventory(Player player) {        String uiId = "cloudcore_demo_inventory";
+    private void sendDemoInventory(Player player) {
+        sendDemoInventory(player, "hide");
+    }
+
+    private void sendDemoInventory(Player player, String recipeBook) {
+        String uiId = "cloudcore_demo_inventory";
         int token = random.nextInt();
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
         session.lastUiId = uiId;
@@ -1367,7 +1375,8 @@ public final class CloudCorePlugin extends JavaPlugin
                   "size": [176, 166],
                   "surface_options": {
                     "player_inventory": { "show_player_model": true,
-                                          "show_effects": true }
+                                          "show_effects": true,
+                                          "recipe_book": "%s" }
                   },
                   "elements": [
                     { "id": "inventory_bg", "type": "panel", "x": 0, "y": 0,
@@ -1385,7 +1394,7 @@ public final class CloudCorePlugin extends JavaPlugin
                       "columns": 9 }
                   ]
                 }
-                """;
+                """.formatted(recipeBook);
         UiDefinition definition = new UiDefinition(uiId, 1, 0,
                 json.getBytes(StandardCharsets.UTF_8));
         getServer().getScheduler().runTaskLater(this, () -> {
@@ -1394,7 +1403,8 @@ public final class CloudCorePlugin extends JavaPlugin
                         UiCodec.encodeDefinition(definition, Limits.S2C)));
             }
         }, 1L);
-        getLogger().info("Sent player inventory UI_OPEN/UI_DEFINITION to " + player.getName());
+        getLogger().info("Sent player inventory UI_OPEN/UI_DEFINITION to " + player.getName()
+                + " recipe_book=" + recipeBook);
     }
 
     private void sendDemoContainer(Player player) {

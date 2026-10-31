@@ -11,7 +11,9 @@
     "MouseHandlerMixin",
     "FontManagerAccessor",
     "MinecraftAccessor",
-    "AbstractContainerScreenAccessor"
+    "AbstractContainerScreenAccessor",
+    "RecipeBookAccessor",
+    "RecipeBookComponentAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

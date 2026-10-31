@@ -4,8 +4,12 @@ import com.cloudcore.api.document.UiDocument;
 import com.cloudcore.client.render.DocumentRenderListBuilder;
 import com.cloudcore.client.render.DocumentRenderer;
 import com.cloudcore.client.render.FrameContext;
+import com.cloudcore.client.mixin.RecipeBookAccessor;
+import com.cloudcore.client.mixin.RecipeBookComponentAccessor;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.navigation.ScreenPosition;
+import net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen;
+import net.minecraft.client.gui.screens.recipebook.CraftingRecipeBookComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.InventoryMenu;
@@ -20,7 +24,7 @@ import org.joml.Matrix3x2fStack;
  *
  * <p>Thread: render thread only.
  */
-public final class CloudInventoryScreen extends AbstractContainerScreen<InventoryMenu> {
+public final class CloudInventoryScreen extends AbstractRecipeBookScreen<InventoryMenu> {
     private static final int PANEL_FILL = 0xFF181C24;
     private static final int SLOT_BORDER = 0xFF8A8A8A;
     private static final int SLOT_FILL = 0xFF2B2B2B;
@@ -30,7 +34,8 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
     private final net.minecraft.client.gui.screens.inventory.EffectsInInventory effects;
 
     public CloudInventoryScreen(Player player, UiDocument document) {
-        super(player.inventoryMenu, player.getInventory(), Component.empty());
+        super(player.inventoryMenu, new CraftingRecipeBookComponent(player.inventoryMenu),
+                player.getInventory(), Component.empty());
         this.document = document;
         this.imageWidth = Math.max(1, document.width());
         this.imageHeight = Math.max(1, document.height());
@@ -43,6 +48,29 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
         // Only main inventory (9..35) and hotbar (36..44) are plain InventorySlots; armour,
         // crafting, result and offhand keep their subclasses and vanilla positions.
         SlotLayout.apply(document, menu.slots, index -> index >= 9 && index <= 44);
+        if ("hide".equals(recipeBookMode())) {
+            RecipeBookAccessor accessor = (RecipeBookAccessor) (Object) this;
+            var component = accessor.cloudcore$recipeBook();
+            ((RecipeBookComponentAccessor) (Object) component).cloudcore$setVisible(false);
+            // The vanilla screen adds its recipe button unconditionally; hide it too.
+            for (var child : java.util.List.copyOf(children())) {
+                if (child instanceof net.minecraft.client.gui.components.ImageButton) {
+                    removeWidget(child);
+                }
+            }
+            leftPos = component.updateScreenPosition(width, imageWidth);
+        }
+    }
+
+    @Override
+    protected ScreenPosition getRecipeBookButtonPosition() {
+        return new ScreenPosition(leftPos + 104, topPos + imageHeight / 2 - 22);
+    }
+
+    private String recipeBookMode() {
+        Object value = optionValue("recipe_book");
+        return value instanceof String text ? text.trim().toLowerCase(java.util.Locale.ROOT)
+                : "hide";
     }
 
     @Override
