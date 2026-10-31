@@ -720,6 +720,76 @@ class PageLoaderTest {
 
 
     @Test
+    void nestedRepeatsBeyondTwoLevelsAreRejected() throws Exception {
+        Path page = write("deep.yml", """
+                schema: 1
+                id: deep
+                surface: custom_screen
+                title: "Deep"
+                size: [200, 100]
+                state:
+                  outer: [{ name: a }]
+                  middle: [{ name: b }]
+                  inner: [{ name: c }]
+                elements:
+                  - type: repeat
+                    id: l1
+                    source: "${state.outer}"
+                    as: o
+                    children:
+                      - type: repeat
+                        id: l2
+                        source: "${state.middle}"
+                        as: m
+                        children:
+                          - type: repeat
+                            id: l3
+                            source: "${state.inner}"
+                            as: n
+                            children:
+                              - type: label
+                                id: leaf
+                                text: "${n.name}"
+                """);
+
+        PageLoadException exception = assertThrows(PageLoadException.class,
+                () -> PageLoader.load(pages, page, Map.of()));
+
+        assertTrue(exception.getMessage().contains("nests deeper than 2"),
+                exception.getMessage());
+    }
+
+    @Test
+    void twoLevelsOfNestingStillLoad() throws Exception {
+        Path page = write("two.yml", """
+                schema: 1
+                id: two
+                surface: custom_screen
+                title: "Two"
+                size: [200, 100]
+                state:
+                  outer: [{ name: a }]
+                  inner: [{ name: b }]
+                elements:
+                  - type: repeat
+                    id: l1
+                    source: "${state.outer}"
+                    as: o
+                    children:
+                      - type: repeat
+                        id: l2
+                        source: "${state.inner}"
+                        as: n
+                        children:
+                          - type: label
+                            id: leaf
+                            text: "${n.name}"
+                """);
+
+        assertEquals(1, PageLoader.load(pages, page, Map.of()).document().elements().size());
+    }
+
+    @Test
     void permissionNodeIsKeptForTheServerToCheck() throws Exception {
         Path page = write("vip.yml", """
                 schema: 1

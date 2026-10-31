@@ -306,6 +306,7 @@
 | 元素数 | 512 | `PageLoader.MAX_ELEMENTS`（客户端校验器用 10,000 作为防御上限） |
 | 树深 | 32 | 目标值；客户端校验器当前用 64 |
 | `repeat` 实例 | 256/单 repeat | `PageLoader.MAX_REPEAT_INSTANCES` |
+| `repeat` 嵌套深度 | 2 | `PageLoader.MAX_REPEAT_DEPTH` |
 | 片段文件 | 64 | `PageLoader.MAX_FRAGMENT_FILES` |
 | include 深度 | 8 | `PageLoader.MAX_INCLUDE_DEPTH` |
 | `inventory_grid` 槽位 | 容器大小 | 校验器 |

@@ -152,6 +152,8 @@ public final class PageLoader {
     public static final int MAX_INCLUDE_DEPTH = 8;
     public static final int MAX_FRAGMENT_FILES = 64;
     public static final int MAX_REPEAT_INSTANCES = 256;
+    /** Nested repeats beyond this depth are rejected; the client never sees a deeper tree. */
+    public static final int MAX_REPEAT_DEPTH = 2;
     public static final int MAX_ELEMENTS = 512;
     public static final long MAX_FILE_BYTES = 256L * 1024L;
 
@@ -381,7 +383,7 @@ public final class PageLoader {
         List<UiElement> elements = new ArrayList<>();
         for (Map<String, Object> element : raw) {
             if ("repeat".equals(String.valueOf(element.get("type")))) {
-                elements.addAll(expandRepeat(element, scope, idPrefix, context));
+                elements.addAll(expandRepeat(element, scope, idPrefix, context, 1));
                 continue;
             }
             elements.add(buildElement(element, scope, idPrefix, 0, context));
@@ -393,9 +395,13 @@ public final class PageLoader {
     }
 
     private static List<UiElement> expandRepeat(Map<String, Object> repeat,
-            Map<String, Object> scope, String idPrefix, BuildContext context)
+            Map<String, Object> scope, String idPrefix, BuildContext context, int depth)
             throws PageLoadException {
         String repeatId = String.valueOf(repeat.get("id"));
+        if (depth > MAX_REPEAT_DEPTH) {
+            throw new PageLoadException("repeat '" + repeatId + "' nests deeper than "
+                    + MAX_REPEAT_DEPTH + " levels");
+        }
         Object source = resolveTemplate(repeat.get("source"), scope);
         if (!(source instanceof List<?> items)) {
             throw new PageLoadException("repeat '" + repeatId + "' source is not a list");
@@ -426,7 +432,7 @@ public final class PageLoader {
                 Map<String, Object> materialised = toStringMap(childMap);
                 if ("repeat".equals(String.valueOf(materialised.get("type")))) {
                     result.addAll(expandRepeat(materialised, instanceScope, instancePrefix,
-                            context));
+                            context, depth + 1));
                 } else {
                     result.add(buildElement(materialised, instanceScope, instancePrefix,
                             yOffset, context));
