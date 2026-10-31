@@ -60,10 +60,11 @@ textures:
     enabled: true
     mode: client            # client | proxy | auto
     allowlist: ["https://cdn.example.com/"]   # proxy/auto 的服务端拉取白名单
-    max-bytes: 1048576
-    timeout-ms: 3000
-    max-redirects: 2
-    cache-dir: "cache/textures"
+    max-bytes: 8388608
+    timeout-seconds: 10
+    ttl-seconds: 3600
+    cache-mb: 256
+    cache-dir: "texture-cache"
   gif:
     enabled: true
     max-frames: 64

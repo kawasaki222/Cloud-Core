@@ -68,7 +68,7 @@ public final class TextureProxy implements AutoCloseable {
     }
 
     public record Settings(Mode mode, List<String> allowlist, long maxBytes, Duration timeout,
-            int ttlSeconds, Path cacheDir) {
+            int ttlSeconds, Path cacheDir, long cacheMaxBytes) {
         public Settings {
             mode = mode == null ? Mode.CLIENT : mode;
             allowlist = List.copyOf(allowlist == null ? List.of() : allowlist);
@@ -76,11 +76,12 @@ public final class TextureProxy implements AutoCloseable {
             timeout = timeout == null || timeout.isNegative() || timeout.isZero()
                     ? Duration.ofSeconds(10) : timeout;
             ttlSeconds = Math.max(0, ttlSeconds);
+            cacheMaxBytes = cacheMaxBytes <= 0 ? 256L * 1024L * 1024L : cacheMaxBytes;
         }
 
         public static Settings client() {
             return new Settings(Mode.CLIENT, List.of(), 8L * 1024L * 1024L,
-                    Duration.ofSeconds(10), 3600, null);
+                    Duration.ofSeconds(10), 3600, null, 256L * 1024L * 1024L);
         }
     }
 
@@ -635,8 +636,43 @@ public final class TextureProxy implements AutoCloseable {
             }
             Files.move(tempMeta, meta, StandardCopyOption.REPLACE_EXISTING,
                     StandardCopyOption.ATOMIC_MOVE);
+            trimDisk(dir, settings.cacheMaxBytes());
         } catch (IOException exception) {
             logger.log(Level.FINE, "Cannot write texture cache entry " + png, exception);
+        }
+    }
+
+    /** Evicts the oldest cache entries until the directory fits its byte budget. */
+    static void trimDisk(Path dir, long maxBytes) throws IOException {
+        if (dir == null || maxBytes <= 0) {
+            return;
+        }
+        java.util.List<Path> files = new ArrayList<>();
+        try (var stream = Files.list(dir)) {
+            stream.filter(Files::isRegularFile).forEach(files::add);
+        }
+        long total = 0;
+        for (Path file : files) {
+            total += Files.size(file);
+        }
+        if (total <= maxBytes) {
+            return;
+        }
+        files.sort(java.util.Comparator.comparingLong(file -> {
+            try {
+                return Files.getLastModifiedTime(file).toMillis();
+            } catch (IOException exception) {
+                return 0L;
+            }
+        }));
+        for (Path file : files) {
+            if (total <= maxBytes) {
+                break;
+            }
+            long size = Files.size(file);
+            if (Files.deleteIfExists(file)) {
+                total -= size;
+            }
         }
     }
 

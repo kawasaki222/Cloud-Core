@@ -6,6 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.util.List;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
@@ -58,6 +62,25 @@ class TextureProxyTest {
         assertEquals(com.cloudcore.protocol.TexturePut.FORMAT_ANIMATED_SHEET, put.format());
         org.junit.jupiter.api.Assertions.assertArrayEquals(new int[] {100, 100},
                 put.frameDelaysMs());
+    }
+
+    @Test
+    void trimsTheProxyDiskCacheToItsByteBudget(@org.junit.jupiter.api.io.TempDir Path dir)
+            throws Exception {
+        Path old = dir.resolve("old.png");
+        Path middle = dir.resolve("middle.png");
+        Path newest = dir.resolve("newest.png");
+        Files.write(old, new byte[4]);
+        Files.setLastModifiedTime(old, FileTime.from(Instant.EPOCH));
+        Files.write(middle, new byte[4]);
+        Files.setLastModifiedTime(middle, FileTime.from(Instant.EPOCH.plusSeconds(1)));
+        Files.write(newest, new byte[4]);
+
+        TextureProxy.trimDisk(dir, 8);
+
+        assertFalse(Files.exists(old));
+        assertTrue(Files.exists(middle));
+        assertTrue(Files.exists(newest));
     }
 
     private static long crc(byte[] data) {

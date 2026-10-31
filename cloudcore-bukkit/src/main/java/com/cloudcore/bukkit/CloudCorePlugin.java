@@ -2277,6 +2277,8 @@ public final class CloudCorePlugin extends JavaPlugin
                 getConfig().getInt("textures.url.timeout-seconds", 10));
         int ttlSeconds = Math.max(0,
                 getConfig().getInt("textures.url.ttl-seconds", 3600));
+        long cacheMaxBytes = Math.max(1,
+                getConfig().getLong("textures.url.cache-mb", 256L)) * 1024L * 1024L;
         TextureProxy.Mode parsed = TextureProxy.Mode.parse(mode);
         if (parsed != TextureProxy.Mode.CLIENT && allowlist.isEmpty()) {
             getLogger().warning("textures.url.mode=" + parsed
@@ -2284,7 +2286,7 @@ public final class CloudCorePlugin extends JavaPlugin
         }
         return new TextureProxy(new TextureProxy.Settings(parsed, allowlist, maxBytes,
                 java.time.Duration.ofSeconds(timeoutSeconds), ttlSeconds,
-                getDataFolder().toPath().resolve("texture-cache")), getLogger());
+                getDataFolder().toPath().resolve("texture-cache"), cacheMaxBytes), getLogger());
     }
 
     /**
