@@ -558,8 +558,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
     滚 3 格后客户端 `offset=24.0`，服务端收到 `EVENT ui=verify_tooltip element=tooltip`。
   - 期间发现并修复：滚动条拖动从未接线——`TooltipSurfaceAdapter.onMouseDrag` 没有任何调用方，
     `draggingThumb` 永远是 false；现在由 `MouseHandler#onMove` 混入在每次移动时调用。
-  - 未在本次验证：滚动条拖动的真机效果（修复后只编译与单测通过，没再跑真机）、
-    `fit`/`wrap` 的像素级比对（只做了肉眼确认），以及 NanoVG 后端下的同样场景。
+  - 滚动条拖动（修复后复测）：悬停石头、把滑块从底部向上拖，客户端 `offset` 从 8.0 变成 26.0，
+    提示框内容随之回到顶部，滑块停在中间；服务端同时收到 `EVENT ui=verify_tooltip element=tooltip`。
+  - `/cloudcore stats` 复测：`sessions active=1 ... documents=4` 与 `tooltip=2`（两个 tooltip
+    文档同时存在），与 `surfaces` 的逐条输出一致。
+  - 未在本次验证：`fit`/`wrap` 的像素级比对（只做了肉眼确认），以及 NanoVG 后端下的同样场景。
 - **互操作与性能**：与 REI/EMI、其他 Tooltip/物品栏模组的共存矩阵未测；NanoVG FBO 的帧率与
   显存占用没有测量数据（只有功能正确性）。
 - **原生崩溃（未定位，帧不在本项目代码）**：开发客户端偶发
