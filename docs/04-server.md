@@ -123,14 +123,20 @@ debug: false                    # 单玩家报文头日志
 以上全部已实现，统一使用 `cloudcore.admin`；`/cloudcore` 带 Tab 补全（子命令、页面名、
 `state-import` 的导出文件、玩家名）。
 
+排障命令：
+
+```
+/cloudcore stats                        会话数与聚合计数器（S2C/C2S 帧与字节、限流、拒绝、
+                                        贴图、绑定、刷新、编译失败）
+/cloudcore surfaces <player>            该玩家每个面板当前显示的页面、修订号与是否在刷新
+```
+
 计划中的命令（尚未实现）：
 
 ```
 /cloudcore list                         列出已加载页面、面板类型与修订号
-/cloudcore stats                        计数器
-/cloudcore debug <player> [on|off]      单玩家报文日志
+/cloudcore debug <player> [on|off]      单玩家报文日志（当前用 config.yml 的 debug: true）
 /cloudcore texture push <player> <key> <file.png>
-/cloudcore surfaces <player>            查看该玩家各面板的绑定状态
 ```
 
 | 权限 | 默认 | 用途 |
@@ -700,7 +706,24 @@ public interface CloudCoreApi {
 
 ## 15. 诊断
 
-**尚未实现**：`/cloudcore stats` 与 `/cloudcore surfaces <player>`。设计中的输出形态：
+`/cloudcore stats` 输出会话数与 `ServerMetrics` 的计数器：
+
+```
+sessions active=7 no-document=2 with-document=5
+surfaces custom_screen=3 container=2 hud=1 tooltip=1 boss_bar=1
+s2c_frames=812 s2c_fragments=97 s2c_bytes=214331
+c2s_frames=190 c2s_bytes=9120
+rate_limited=2 unknown_element=0 rejected=0 surface_unsupported=0 malformed_frames=0
+textures_put=12 textures_bytes=204800 textures_evicted=1
+bind_pre=40 bind_legacy=15 bind_timeout=0
+repeat_expanded=128 refresh_incremental=9 refresh_full=1
+pages_compiled=14 pages_failed=0
+```
+
+`/cloudcore surfaces <player>` 每个面板一行：`surface=... ui=... page=... revision=... refresh=...`。
+计数器只在内存里累计，重启归零；不记录玩家名、uiId 或页面文本。
+
+下面这段是设计基线里更细的统计口径，尚未全部落地：
 
 ```
 sessions active=7 ephemeral=2 persistent=5

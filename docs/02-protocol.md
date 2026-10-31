@@ -506,5 +506,5 @@ Tooltip 的滚轮事件默认**不**上报服务端；只有文档显式声明 `
   客户端刚在 `JOIN` 回调里发出 `HELLO`，其 S2C 接收器尚未完全就绪，ACK 会丢失；延迟 1 tick
   后稳定送达。这是传输实现约束，不改变线上格式。
 - 计数器（`unknown_opcode`、`bad_fragment`、`crc_fail`、`rate_limited`、`surface_unsupported`）
-  目前只有客户端侧的部分（未知操作码日志、`Rate limited EVENT` 服务端日志、`UI_READY(state=4)`）；
-  `/cloudcore stats` 尚未实现，客户端 F3 叠加层显示活动文档而非计数器。
+  `/cloudcore stats` 输出 `ServerMetrics` 的聚合计数（帧、字节、限流、拒绝、贴图、绑定、刷新）；
+  客户端侧只有未知操作码日志与 `UI_READY(state=4)`，F3 叠加层显示活动文档而非计数器。

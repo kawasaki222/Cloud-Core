@@ -161,8 +161,8 @@ plugins/CloudCore/
 1. 备份 `plugins/CloudCore/`。
 2. 阅读发布说明的协议版本和最低客户端版本。
 3. 先升级服务端，再升级客户端；或先在测试服验证。
-4. 检查服务端日志里的 `Rate limited EVENT`、`Unsupported action`、`CANCELLED click`
-   以及客户端日志里的 `CC-SURF-*`/`CC-UPDATE-*`（`/cloudcore stats` 尚未实现）。
+4. 检查 `/cloudcore stats` 的 `rate_limited`、`unknown_element`、`surface_unsupported`、
+   `pages_failed`，以及服务端日志里的 `Unsupported action`、`CANCELLED click`。
 5. 26.1 迁移见 `10-risks-and-verification.md` 第 5 节。
 
 ## 8. 监控与诊断
@@ -171,7 +171,8 @@ plugins/CloudCore/
 
 - `/cloudcore validate`：全部页面编译结果（`[OK]` / `[FAIL] 名字: 原因`）。
 - 日志：握手失败、版本不匹配、通道异常、动作异常、PAPI 超预算、页面热重载。
-- 尚未实现：`/cloudcore stats`（会话/报文/拒绝计数器）与 `/cloudcore surfaces <player>`。
+- `/cloudcore stats`：会话数与聚合计数器（帧/字节、限流、拒绝、贴图、绑定、刷新、编译）。
+- `/cloudcore surfaces <player>`：该玩家每个面板的页面、修订号与刷新状态。
 
 客户端：
 

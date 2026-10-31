@@ -34,7 +34,7 @@ M8 占位符刷新的大部分也已落地。**
 - 协议：`ELEMENT_UPDATE`（元素/属性增量、revision 顺序、完整文档回退；自定义页真机验证）。
 - 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
   `cloudcore-api-testkit`。
-- 构建：`./gradlew build` 通过，360 个测试 / 69 个测试类，0 失败。
+- 构建：`./gradlew build` 通过，366 个测试 / 70 个测试类，0 失败。
 
 ## 已有内容
 
@@ -143,6 +143,7 @@ docs/
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
 - [x] 客户端快捷键：`F9` 重载本地资源、`F10` 诊断包（真机验证：贴图热替换、zip 内容、聊天提示）
 - [x] F3 调试叠加层：右侧中部显示活动文档的 uiId/surface/revision 与文档数（真机截图验证）
+- [x] `/cloudcore stats` 与 `/cloudcore surfaces <player>`（`ServerMetrics` + 单测）
 - [ ] 客户端命令：`/cloudcore-client reloadassets|dump` 已注册但未在聊天执行验证；
       `log <level>` 已实现（运行时改 `cloudcore` logger 级别，不动 root）
 - [x] M2 渲染：NanoVG 后端、裁剪/滚动偏移（原生 + NanoVG 真机验证）

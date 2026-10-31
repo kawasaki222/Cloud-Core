@@ -9,7 +9,7 @@
 
 **M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集已完成并在真机联调。**
 
-- 构建：`./gradlew build` 通过（JDK 21，360 个测试 / 69 个测试类，0 失败）。
+- 构建：`./gradlew build` 通过（JDK 21，366 个测试 / 70 个测试类，0 失败）。
 - 协议：信封、DEFLATE、分片/重组、HELLO/HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED、
   `EVENT`/`EVENT_RESULT`、`ELEMENT_UPDATE`、`TEXTURE_REF`、`TEXTURE_REQUEST`/`TEXTURE_PUT`、
   `DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
@@ -27,7 +27,8 @@
   `allow_player_inventory`、`inventory_grid` 槽位重排、事件限流、`command` 动作闸门、
   代理贴图（`textures.url.mode: client|proxy|auto`，磁盘缓存按最旧淘汰）、
   数据驱动饰品槽位（`slots.yml` + `/cloudcore accessories`）、装备资产绑定、
-  `/cloudcore validate|reload|page|state-export|state-import|equipment|demo-*`（含 Tab 补全）；
+  `/cloudcore validate|reload|page|stats|surfaces|state-export|state-import|equipment|demo-*`
+  （含 Tab 补全）；
   WatchService 热重载。
 - 页面：YAML 单文件或 `includes` 组合、`repeat`（含嵌套）、`${...}` 模板、动作编译成 actionId；
   动作引擎子集（`message`/`close_ui`/`set_state`/`if`/`delay`/`command`/`open_page`/`sound`）与表达式求值；

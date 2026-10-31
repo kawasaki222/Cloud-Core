@@ -89,6 +89,9 @@ public final class CloudCorePlugin extends JavaPlugin
             new com.cloudcore.server.surface.EventRateLimiter();
     private final com.cloudcore.server.action.ActionCooldown actionCooldowns =
             new com.cloudcore.server.action.ActionCooldown();
+    /** Aggregate counters for {@code /cloudcore stats}; never holds player data. */
+    private final com.cloudcore.server.surface.ServerMetrics metrics =
+            new com.cloudcore.server.surface.ServerMetrics();
     /** Addon actions registered through {@link com.cloudcore.bukkit.api.CloudCoreApi}. */
     private final Map<String, com.cloudcore.bukkit.api.ActionHandler> actionHandlers =
             new ConcurrentHashMap<>();
@@ -230,6 +233,7 @@ public final class CloudCorePlugin extends JavaPlugin
             return;
         }
         Session session = sessions.computeIfAbsent(player.getUniqueId(), ignored -> new Session());
+        metrics.c2sFrame(message.length);
         try {
             Frame frame = FrameCodec.decode(message, Limits.C2S);
             if ((frame.flags() & FrameFlags.FRAGMENT) != 0) {
@@ -242,6 +246,7 @@ public final class CloudCorePlugin extends JavaPlugin
             dispatch(player, session, frame);
         } catch (ProtocolException exception) {
             session.assembler.clear();
+            metrics.malformedFrame();
             getLogger().warning("Dropped malformed frame from " + player.getUniqueId()
                     + ": " + exception.getMessage());
         } catch (RuntimeException exception) {
@@ -284,6 +289,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 page == null ? null : page.actions().get(event.actionId());
         publishElementEvent(player, event);
         if (actions == null) {
+            metrics.unknownElement();
             getLogger().warning("EVENT for unknown action ui=" + event.uiId()
                     + " element=" + event.elementId() + " action=" + event.actionId()
                     + " player=" + player.getName());
@@ -293,6 +299,7 @@ public final class CloudCorePlugin extends JavaPlugin
             return;
         }
         if (!eventLimiter.tryAcquire(player.getUniqueId())) {
+            metrics.rateLimited();
             getLogger().warning("Rate limited EVENT from " + player.getName());
             sendEventResult(player, event.requestId(),
                     com.cloudcore.protocol.EventResult.RATE_LIMITED);
@@ -1089,9 +1096,13 @@ public final class CloudCorePlugin extends JavaPlugin
     private void sendFrame(Player player, Frame frame) {
         try {
             int fragmentId = Fragmenter.randomFragmentId(random);
+            int fragments = 0;
+            int bytes = 0;
             for (Frame part : Fragmenter.fragment(
                     FrameCodec.compressIfUseful(frame), Limits.S2C, fragmentId)) {
                 byte[] data = FrameCodec.encode(part, Limits.S2C);
+                fragments++;
+                bytes += data.length;
                 player.sendPluginMessage(this, CHANNEL, data);
                 if (getConfig().getBoolean("debug", false)) {
                     getLogger().info("S2C opcode=0x" + Integer.toHexString(part.opcode())
@@ -1100,6 +1111,7 @@ public final class CloudCorePlugin extends JavaPlugin
                             + " player=" + player.getUniqueId());
                 }
             }
+            metrics.s2cFrame(bytes, fragments);
         } catch (ProtocolException exception) {
             getLogger().warning("Failed to encode opcode 0x" + Integer.toHexString(frame.opcode())
                     + " for " + player.getName() + ": " + exception.getMessage());
@@ -1111,7 +1123,7 @@ public final class CloudCorePlugin extends JavaPlugin
             "equipment", "equipment-stand", "page", "ping", "probe", "boss", "demo-boss-multi", "close",
             "diagnostic", "demo-hud", "demo-hud-rpg", "demo-hud-bg", "demo-tooltip",
             "demo-container", "demo-readonly", "demo-readonly-allow", "demo-passthrough",
-            "demo-inventory", "demo-inventory-vanilla");
+            "demo-inventory", "demo-inventory-vanilla", "stats", "surfaces");
 
     @Override
     public java.util.List<String> onTabComplete(CommandSender sender, Command command,
@@ -1148,6 +1160,7 @@ public final class CloudCorePlugin extends JavaPlugin
             }
         }
         if ((args.length == 2 && args[0].equalsIgnoreCase("accessories"))
+                || (args.length == 2 && args[0].equalsIgnoreCase("surfaces"))
                 || (args.length == 3 && args[0].equalsIgnoreCase("page"))) {
             String prefix = args[args.length - 1].toLowerCase(java.util.Locale.ROOT);
             return getServer().getOnlinePlayers().stream()
@@ -1239,6 +1252,21 @@ public final class CloudCorePlugin extends JavaPlugin
                 sender.sendMessage(Component.text("Cloud Core accessories opened for "
                         + target.getName()));
             }
+            return true;
+        }
+        if (args.length == 1 && args[0].equalsIgnoreCase("stats")) {
+            reportStats(sender);
+            return true;
+        }
+        if (args.length >= 1 && args[0].equalsIgnoreCase("surfaces")) {
+            Player target = args.length >= 2
+                    ? getServer().getPlayerExact(args[1])
+                    : sender instanceof Player self ? self : null;
+            if (target == null) {
+                sender.sendMessage(Component.text("Usage: /cloudcore surfaces <player>"));
+                return true;
+            }
+            reportSurfaces(sender, target);
             return true;
         }
         if (args.length >= 2 && args[0].equalsIgnoreCase("page")) {
@@ -2123,6 +2151,64 @@ public final class CloudCorePlugin extends JavaPlugin
      * compiled JSON to the client. Only custom screens are bound here; other surfaces keep
      * their dedicated flows (container/HUD/tooltip/boss).
      */
+    /**
+     * {@code /cloudcore stats}: aggregate counters plus a live session breakdown. Deliberately
+     * prints counts only — no player names, uiIds or page text.
+     */
+    private void reportStats(CommandSender sender) {
+        int ephemeral = 0;
+        int persistent = 0;
+        java.util.Map<SurfaceType, Integer> bySurface = new java.util.EnumMap<>(SurfaceType.class);
+        for (Session session : sessions.values()) {
+            if (session.lastUiId == null) {
+                ephemeral++;
+            } else {
+                persistent++;
+            }
+            for (UiDocument document : session.sentDocuments.values()) {
+                bySurface.merge(document.surface(), 1, Integer::sum);
+            }
+        }
+        sender.sendMessage(Component.text("sessions active=" + sessions.size()
+                + " no-document=" + ephemeral + " with-document=" + persistent));
+        StringBuilder surfaces = new StringBuilder("surfaces");
+        for (java.util.Map.Entry<SurfaceType, Integer> entry : bySurface.entrySet()) {
+            surfaces.append(' ').append(entry.getKey().name().toLowerCase(java.util.Locale.ROOT))
+                    .append('=').append(entry.getValue());
+        }
+        sender.sendMessage(Component.text(surfaces.toString()));
+        for (java.util.Map.Entry<String, Long> entry : metrics.snapshot().entrySet()) {
+            sender.sendMessage(Component.text(entry.getKey() + "=" + entry.getValue()));
+        }
+    }
+
+    /**
+     * {@code /cloudcore surfaces <player>}: which page each surface currently shows, its
+     * revision and when the last document was sent. The row is what an operator needs to tell
+     * "the server never sent it" from "the client rejected it".
+     */
+    private void reportSurfaces(CommandSender sender, Player target) {
+        Session session = sessions.get(target.getUniqueId());
+        if (session == null) {
+            sender.sendMessage(Component.text(target.getName() + " has no Cloud Core session"));
+            return;
+        }
+        if (session.sentDocuments.isEmpty()) {
+            sender.sendMessage(Component.text(target.getName() + " has no open documents"));
+            return;
+        }
+        for (java.util.Map.Entry<String, UiDocument> entry : session.sentDocuments.entrySet()) {
+            String uiId = entry.getKey();
+            UiDocument document = entry.getValue();
+            String page = session.pageNames.getOrDefault(uiId, "?");
+            int revision = session.pageRevisions.getOrDefault(uiId, 0);
+            boolean refreshing = session.refreshes.containsKey(uiId);
+            sender.sendMessage(Component.text("surface=" + document.surface().name().toLowerCase(
+                            java.util.Locale.ROOT) + " ui=" + uiId + " page=" + page
+                    + " revision=" + revision + " refresh=" + refreshing));
+        }
+    }
+
     /**
      * Returns false (and logs once) when {@code player} may not open {@code name}. A page opts
      * in with {@code permission: <node>} in its YAML; without one, only the command permission
