@@ -187,12 +187,21 @@ public final class CloudCorePlugin extends JavaPlugin
             return;
         }
         try {
-            pageWatcher = new com.cloudcore.bukkit.PageWatcher(pagesRoot, () -> {
+            pageWatcher = new com.cloudcore.bukkit.PageWatcher(pagesRoot, changed -> {
                 if (!isEnabled()) {
                     return;
                 }
-                getServer().getScheduler().runTask(this,
-                        () -> reloadPages(getServer().getConsoleSender()));
+                // Only pages that own the changed file or include it are recompiled; an edit
+                // to one fragment no longer reloads every page on the server.
+                java.util.Set<String> affected = com.cloudcore.bukkit.PageDependencies
+                        .affected(pagesRoot, listPageNames(), changed);
+                if (affected.isEmpty()) {
+                    getLogger().fine("Page watcher saw " + changed
+                            + " but no page depends on it");
+                    return;
+                }
+                getServer().getScheduler().runTask(this, () -> reloadPages(
+                        getServer().getConsoleSender(), affected));
             }, getLogger());
             getLogger().info("Watching " + pagesRoot + " for page changes");
         } catch (java.io.IOException exception) {
@@ -2786,9 +2795,20 @@ public final class CloudCorePlugin extends JavaPlugin
 
     /** Reloads config.yml, then recompiles every page and refreshes open views. */
     private void reloadPages(CommandSender sender) {
+        reloadPages(sender, null);
+    }
+
+    /**
+     * @param only the pages to recompile, or null for every page. The watcher passes the
+     *             pages a changed file affects; a command passes null.
+     */
+    private void reloadPages(CommandSender sender, java.util.Set<String> only) {
         reloadConfig();
         getLogger().info("Reloaded config.yml");
         java.util.List<String> names = listPageNames();
+        if (only != null) {
+            names = names.stream().filter(only::contains).toList();
+        }
         int refreshed = 0;
         for (String name : names) {
             java.nio.file.Path file = resolvePageFile(name);
@@ -2809,8 +2829,12 @@ public final class CloudCorePlugin extends JavaPlugin
                 }
             }
         }
-        sender.sendMessage(Component.text("Reloaded " + names.size() + " pages, refreshed "
-                + refreshed + " open views"));
+        if (only != null) {
+            getLogger().info("Reloaded " + names.size() + " affected page(s): " + only);
+        } else {
+            sender.sendMessage(Component.text("Reloaded " + names.size() + " pages, refreshed "
+                    + refreshed + " open views"));
+        }
         getLogger().info(sender.getName() + " reloaded " + names.size() + " pages");
     }
 

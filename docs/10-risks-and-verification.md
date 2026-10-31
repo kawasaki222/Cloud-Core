@@ -528,7 +528,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **附属 API**：`SurfaceProvider`、`setState`/`getState`、四类事件监听与
   `cloudcore-api-testkit` 已实现（单测）；`registerSurfaceProvider` 的服务端生命周期尚未用
   第二个插件真机验证。剩余：独立示例 addon 工程。
-- **M3 剩余**：依赖图增量编译/内容哈希去重。
+- **M3 剩余**：依赖图增量编译已实现（`PageDependencies`，单测）；内容哈希去重未实现。
 - **F9 重载与 F10 诊断包（2026-10-27 已核实）**：替换 `hud_panel.png` 后画面保持旧贴图
   （`LocalTextureRegistry` 按路径缓存），按 `F9` 后同一进程内立即生效（`f9-stale.png` /
   `f9-after.png`，日志 `Local CloudCore assets reloaded`）；`F10` 生成 `logs/cloudcore-dump-*.zip`

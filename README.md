@@ -9,7 +9,7 @@
 
 **M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集已完成并在真机联调。**
 
-- 构建：`./gradlew build` 通过（JDK 21，371 个测试 / 71 个测试类，0 失败）。
+- 构建：`./gradlew build` 通过（JDK 21，378 个测试 / 72 个测试类，0 失败）。
 - 协议：信封、DEFLATE、分片/重组、HELLO/HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED、
   `EVENT`/`EVENT_RESULT`、`ELEMENT_UPDATE`、`TEXTURE_REF`、`TEXTURE_REQUEST`/`TEXTURE_PUT`、
   `DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
@@ -48,7 +48,7 @@
 - 尚未验证/未实现：Linux/macOS 运行、NanoVG 默认化（当前默认仍是原生后端）、
   配方书 `skinned`/`custom`（当前回退 `vanilla`）、文本 shaping、Tooltip 滚动条拖动与
   `tooltip_scroll` 回传、`placeholders.async-namespaces` 白名单、SQL 后端连接池、
-  依赖图增量编译/内容哈希去重、与 REI/EMI 等模组的互操作矩阵。
+  内容哈希去重、与 REI/EMI 等模组的互操作矩阵。
   详见 `docs/TODO_HANDOFF.md` 与 `docs/10-risks-and-verification.md`。
 
 ## 示例页面

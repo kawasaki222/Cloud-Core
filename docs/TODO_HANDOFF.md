@@ -34,7 +34,7 @@ M8 占位符刷新的大部分也已落地。**
 - 协议：`ELEMENT_UPDATE`（元素/属性增量、revision 顺序、完整文档回退；自定义页真机验证）。
 - 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
   `cloudcore-api-testkit`。
-- 构建：`./gradlew build` 通过，371 个测试 / 71 个测试类，0 失败。
+- 构建：`./gradlew build` 通过，378 个测试 / 72 个测试类，0 失败。
 
 ## 已有内容
 
@@ -119,7 +119,8 @@ docs/
 - [ ] 持久化剩余：连接池（当前每次操作开一条连接，单写线程串行）
 - [x] `EVENT_RESULT` 下发（OK/UNKNOWN_ELEMENT/REJECTED，固定枚举名）
 - [x] `command` 动作 + 配置闸门（默认拒绝，按首个词 allowlist；单测）
-- [ ] M3 剩余：依赖图增量编译/内容哈希去重（WatchService 已有 400ms 合并，但未按依赖只重编译）
+- [x] 依赖图增量编译：`PageDependencies` 按 `includes:` 链只重编译受影响页面（`PageDependenciesTest`）
+- [ ] M3 剩余：内容哈希去重（内容未变的保存仍会重编译一次）
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
 - [x] `image` 的 `local:`/`pack:`/`builtin:` 贴图，以及 `item_icon`（原生物品、数量、缩放）（真机截图验证）
 - [x] HUD 面板：Fabric `HudElementRegistry` + 持久文档 + UI_CLOSE 清除（真机截图验证）

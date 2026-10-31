@@ -9,30 +9,43 @@ import java.nio.file.StandardWatchEventKinds;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Watches the pages directory and calls {@code onChange} once per quiet period.
+ * Watches the pages directory and calls {@code onChange} once per quiet period, with the
+ * files that changed.
  *
  * <p>The callback runs on the watcher thread; callers must schedule their own main-thread
- * work. Only {@code .yml}/{@code .yaml} changes count.
+ * work. Only {@code .yml}/{@code .yaml} changes count. Deleted files are reported too, so a
+ * reload can tell "this page is gone" from "this page is fine".
  */
 final class PageWatcher implements AutoCloseable {
     private static final long QUIET_MS = 400;
 
+    /** Receives the changed paths, relative to the pages root and slash-separated. */
+    interface ChangeListener {
+        void changed(Set<String> relativePaths);
+    }
+
     private final Path root;
-    private final Runnable onChange;
+    private final ChangeListener onChange;
     private final Logger logger;
     private final WatchService service;
     private final Map<WatchKey, Path> directories = new HashMap<>();
+    /** Paths seen since the last callback; drained when the quiet period ends. */
+    private final Set<String> pending = ConcurrentHashMap.newKeySet();
     private final Thread thread;
     private volatile boolean running = true;
 
-    PageWatcher(Path root, Runnable onChange, Logger logger) throws IOException {
+    PageWatcher(Path root, ChangeListener onChange, Logger logger) throws IOException {
         this.root = root;
         this.onChange = onChange;
         this.logger = logger;
@@ -71,11 +84,12 @@ final class PageWatcher implements AutoCloseable {
                     for (WatchEvent<?> event : key.pollEvents()) {
                         if (isRelevant(event)) {
                             relevant = true;
-                            if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE
-                                    && directory != null) {
-                                Path created = directory.resolve((Path) event.context());
-                                if (Files.isDirectory(created)) {
-                                    registerTree(created);
+                            if (directory != null) {
+                                Path changed = directory.resolve((Path) event.context());
+                                pending.add(relative(changed));
+                                if (event.kind() == StandardWatchEventKinds.ENTRY_CREATE
+                                        && Files.isDirectory(changed)) {
+                                    registerTree(changed);
                                 }
                             }
                         }
@@ -86,7 +100,21 @@ final class PageWatcher implements AutoCloseable {
                 if (relevant) {
                     // Coalesce rapid saves into one reload.
                     Thread.sleep(QUIET_MS);
-                    onChange.run();
+                    // Keep polling during the quiet window so a second save joins this batch.
+                    WatchKey next = service.poll();
+                    while (next != null) {
+                        Path directory = directories.get(next);
+                        for (WatchEvent<?> event : next.pollEvents()) {
+                            if (isRelevant(event) && directory != null) {
+                                pending.add(relative(directory.resolve((Path) event.context())));
+                            }
+                        }
+                        next.reset();
+                        next = service.poll();
+                    }
+                    List<String> changed = new ArrayList<>(pending);
+                    pending.clear();
+                    onChange.changed(Set.copyOf(changed));
                 }
             } catch (ClosedWatchServiceException exception) {
                 return;
@@ -98,6 +126,13 @@ final class PageWatcher implements AutoCloseable {
                         exception);
             }
         }
+    }
+
+    /** Slash-separated path below the pages root; absolute paths never leave this class. */
+    private String relative(Path path) {
+        Path normalised = path.toAbsolutePath().normalize();
+        return normalised.startsWith(root) ? root.relativize(normalised).toString()
+                .replace('\\', '/') : normalised.getFileName().toString();
     }
 
     private static boolean isRelevant(WatchEvent<?> event) {

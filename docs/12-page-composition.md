@@ -27,8 +27,10 @@
 - 已实现：`PageWatcher` 监听 `pages/`（含子目录，`pages.watch` 默认开），`.yml`/`.yaml` 变化 400ms
   合并后回调主线程重载并推送更新；`/cloudcore validate`、`/cloudcore reload`、动作绑定（actionId +
   服务端动作表）。
-- 尚未实现：依赖图增量编译（当前任何页面变化都全量重载所有页面）、内容哈希去重
-  （`PageWatcher` 只按文件事件与时间窗合并，不比较内容）。
+- 依赖图增量编译：`PageWatcher` 现在把变更路径交给 `PageDependencies`，后者按 YAML 的
+  `includes:` 链（含嵌套，深度上限 8）判断哪些页面受影响，只重编译这些页面并推送。
+  `/cloudcore reload` 仍是全量重载。
+- 尚未实现：内容哈希去重（同一文件保存两次内容未变也会触发一次重载）。
 
 ## 2. 目录结构
 
@@ -155,9 +157,10 @@ page.yml
 - 删除片段 → 依赖它的页面编译失败，保留旧版本并在 `/cloudcore validate` 中报告。
 - `/cloudcore reload` 全量重载，但仍走同一套校验。
 
-**当前实现**：`PageWatcher` 只在 400ms 静默窗后触发一次全量 `reloadPages`，
-没有依赖图、没有内容哈希；重编译失败时保留旧修订号并写服务端日志。
-依赖图增量编译仍是待办。
+**当前实现**：`PageWatcher` 在 400ms 静默窗后把变更路径交给 `PageDependencies`，
+只重编译「文件本身变化」或「include 链上有变化」的页面（`PageDependenciesTest` 覆盖直接依赖、
+嵌套依赖、无关片段与目录页）；重编译失败时保留旧修订号并写服务端日志。
+没有内容哈希去重：内容未变的保存也会重编译一次。
 
 依赖图示例：
 
