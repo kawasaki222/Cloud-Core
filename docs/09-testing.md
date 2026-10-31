@@ -69,7 +69,7 @@
 - `source` 不是列表时运行时报错，不崩溃。
 - 列表增删触发修订号提升与完整文档下发。
 - 单 repeat 超过 256、整文档超过 512 时拒绝并记录。
-- 嵌套 3 层被校验器拒绝。
+- 嵌套 `repeat` 当前**没有**深度限制；文档里"最多 2 层、3 层被拒绝"是目标规则，尚未实现。
 - 遍历项中的模板变量 `${item.field}`、`${i}` 正确求值。
 - 点击第 3 项时 `actionId` 对应到正确的实例。
 
@@ -120,17 +120,14 @@
 
 ## 7. 客户端测试模式
 
-系统属性激活（`-Dcloudcore.test.scenario=...`）：
+**尚未实现**：项目里没有 `cloudcore.test.scenario` 系统属性或自动客户端场景。目前客户端验证
+靠真机手动操作 + 截图，记录在 `10-risks-and-verification.md` 第 2.1 节；可以在 `runClient` 上加
+`-Dcloudcore.nanovg.spike=true` 做一次 NanoVG FBO 自检。
 
-- 自动连接本地服务端；
-- 可切换 `renderer=nanovg|native` 跑同一套场景；
-- 脚本化打开/关闭六类面板；
-- 模拟点击、输入、滚轮；
-- 断言界面类型、会话状态、滚动偏移、Boss 绑定数、报文计数；
-- 写出 `build/test-results/client/<scenario>.json`；
-- 失败非零退出。
-
-需要显示器：本地 Windows runner 或 Linux + Xvfb + 软件 GL。测试模式不打进发布 jar。
+目标形态（下述步骤尚待开发）：系统属性激活后自动连接本地服务端、可切换
+`renderer=nanovg|native`、脚本化打开/关闭六类面板、模拟点击/输入/滚轮、断言界面类型、会话状态、
+滚动偏移、Boss 绑定数、报文计数，写出 `build/test-results/client/<scenario>.json`，失败非零退出；
+需要显示器，测试模式不打进发布 jar。
 
 ## 5.1 日志与诊断
 
@@ -192,13 +189,14 @@
 
 - [ ] 打开 `E` 应用皮肤；再次打开保持一致。
 - [ ] 合成、护甲、主物品栏、快捷栏、副手槽位正确。
-- [ ] 配方书隐藏；关闭皮肤后配方书恢复。
+- [ ] 配方书 `hide` / `vanilla`；关闭皮肤后回原版（`skinned`/`custom` 尚未实现）。
 - [ ] 玩家模型与效果图标开关。
 - [ ] 创造模式背包不受影响。
 
 ### 8.5 HUD
 
 - [ ] 三层 HUD 叠加顺序正确。
+- [ ] `replace: [health, food, xp, hotbar]` 取消原版绘制，`value_from`/`text_from` 实时数值正确。
 - [ ] 隐藏时无绘制。
 - [ ] 状态更新无闪烁。
 

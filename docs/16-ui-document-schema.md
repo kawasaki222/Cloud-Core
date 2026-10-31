@@ -355,7 +355,7 @@ elements:
     text: "购买"
     on:
       click:
-        - action: player_command
+        - action: message
           value: "shop buy"
 ```
 
@@ -399,4 +399,4 @@ elements:
 }
 ```
 
-动作 `player_command` 和命令字符串只保留在服务端 `DefinitionStore` 中；客户端只拿到 `actionId`。
+动作体和命令字符串只保留在服务端的编译结果里；客户端只拿到 `actionId`。

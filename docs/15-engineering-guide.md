@@ -141,9 +141,11 @@ cloud-core/
 
 ### 6.2 新增元素
 
-1. `cloudcore-api` 增加元素类型和字段；更新 `16-ui-document-schema.md`。
-2. 服务端校验器加规则与失败样例。
-3. 客户端布局、渲染、命中测试、输入路由。
+1. `cloudcore-api` 的 `UiDocumentValidator.KNOWN_ELEMENT_TYPES` 增加类型；更新
+   `16-ui-document-schema.md`。
+2. 服务端 `PageLoader` 加编译/校验规则与失败样例。
+3. 客户端 `DocumentRenderListBuilder` 加渲染与几何，`ElementHitTester` 加命中；交互元素加
+   `CloudScreen` 里的输入处理。
 4. 如果是交互元素，定义事件与 `actionId` 映射。
 5. 更新 `03-ui-dsl.md` 元素目录、示例、限额。
 6. 增加单元测试和手动矩阵条目。
@@ -151,16 +153,19 @@ cloud-core/
 ### 6.3 新增面板
 
 1. 协议分配 `SurfaceType` 值，增加特性位。
-2. 客户端实现 `SurfaceAdapter`，服务端实现 `SurfaceProvider`（接口在 `cloudcore-api` 的
-   `com.cloudcore.api.surface`，通过 `CloudCoreApi#registerSurfaceProvider` 注册）。
+2. 客户端实现 `SurfaceAdapter` 并在 `SurfaceRegistry` 注册（`surface/` 包，如
+   `HudSurfaceAdapter`）；服务端实现 `SurfaceProvider`（接口在 `cloudcore-api` 的
+   `com.cloudcore.api.surface`，通过 `CloudCoreApi#registerSurfaceProvider` 注册），并在
+   `CloudCorePlugin` 的表面路由与 `DEMO_PAGES`/页面下发逻辑里接线。
 3. 定义生命周期、绑定方式、数据来源、失败回退。
 4. 更新 `11-surfaces.md`、`02-protocol.md`、`05-client.md`。
 5. 加互操作与回退测试。
 
 ### 6.4 新增动作
 
-1. `cloudcore-server-core` 实现 `ActionHandler`，声明参数 schema 与权限。
-2. 编译期校验动作名与参数。
+1. 在 `CloudCorePlugin` 的动作分派（`BUILT_IN_ACTIONS` 与 `runAction` 的 `switch`）里实现分支，
+   或让附属插件通过 `CloudCoreApi.registerActionHandler` 注册 `ActionHandler`（可声明 `permission()`）。
+2. 编译期校验动作名与参数（`PageLoader`）。
 3. 更新 `03-ui-dsl.md` 动作表；v2 节点更新 `13-action-engine.md`。
 4. 加执行次数、权限失败、冷却、异常测试。
 
@@ -172,20 +177,23 @@ cloud-core/
 
 ## 7. 调试与诊断
 
-- 服务端：`/cloudcore stats`、`/cloudcore surfaces`、`/cloudcore validate`、`/cloudcore debug`。
-- 客户端：`logs/cloudcore-client.log`、F3 叠加层、`renderer` 切换、FBO/字体计数器、
-  `F10` 诊断包。
+- 服务端：`/cloudcore validate`、`/cloudcore reload`、`/cloudcore diagnostic <player>`、
+  `/cloudcore demo-*`；日志里的 `Rate limited EVENT`、`CANCELLED click`、`Updated page ... incrementally`。
+  `/cloudcore stats`、`/cloudcore surfaces`、`/cloudcore debug` 尚未实现。
+- 客户端：`logs/cloudcore-client.log`、F3 叠加层、`/cloudcore-client log <level>`、
+  `renderer` 切换、`F10` 诊断包。
 - 协议：调试模式只记录帧头（操作码、长度、uiId），不记录 body。
 - 渲染：先切 `NativeBackend` 判断是内容问题还是 NanoVG/FBO 问题。
-- 性能：`/cloudcore-client bench`；记录 CPU/GPU/JVM/Fabric API 版本。
+- 性能：暂无内置基准命令；记录 CPU/GPU/JVM/Fabric API 版本并按 `09-testing.md` 第 10 节手测。
 
 ## 8. 测试与 CI
 
 - 单元：协议、组合、遍历、校验器、模板、布局数学。
-- 属性/模糊：随机帧、随机 YAML、限额边界。
-- 集成：`runPaper` + 测试客户端场景。
+- 属性/模糊：随机帧、随机 YAML、限额边界（手写随机循环，无 jqwik）。
+- 集成：本地 Paper 1.21.11 + 开发客户端手动联调。
 - 客户端：`renderer=nanovg|native` 各跑一遍。
-- 夜间：完整模糊、30 分钟浸泡、三平台 NanoVG 初始化。
+- CI：`.github/workflows/build.yml` 在 Windows + Linux 上跑 `./gradlew build`；
+  夜间完整模糊、浸泡、三平台 NanoVG 初始化尚未配置。
 
 ## 9. 提交与评审
 

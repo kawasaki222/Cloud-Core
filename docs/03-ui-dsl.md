@@ -281,7 +281,7 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
 - 展开上限 256 个实例；整个文档元素上限 512。超限在运行时报错并拒绝更新。
 - 列表变化触发重新展开。v1 会提升修订号并下发完整文档；后续动作引擎版本会改为增量增删。
 - `repeat` 是作者语法；下发文档里只有展开后的普通元素，没有 `repeat` 节点。
-- `repeat` 不能嵌套超过 2 层；`scroll` 内的 `repeat` 是推荐用法。
+- `scroll` 内放 `repeat` 是推荐用法；嵌套 `repeat` 当前没有深度上限（目标规则是 2 层）。
 - 静态列表（写死的值）可以在编译期展开，但为了行为一致，v1 统一在状态求值时展开。
 
 ### 4.7 `tabs`（v2）
@@ -1031,7 +1031,7 @@ on:
 3. `surface` 与 `container` 不匹配（例如 `hud` 声明了 `container`）。
 4. `container` 页面没有容器段；非 `container` 页面声明了 `inventory_grid`（玩家背包除外）。
 5. `inventory_grid` 范围越界、重叠，或槽位映射不完整（`managed`）。
-6. `repeat` 的 `source` 不是 `${state.xxx}`，`max` 越界，嵌套超过 2 层。
+6. `repeat` 的 `source` 不是 `${state.xxx}`，`max` 越界，嵌套超过 2 层（嵌套限制未实现）。
 7. 未知主题、令牌或字体 provider。
 8. 动作类型未知或缺少必填字段。
 9. 模板解析失败、未知根、循环引用 `tooltip_ref`。
@@ -1120,8 +1120,9 @@ elements:
         enabled: "${state.selected >= 0}"
         on:
           click:
-            - action: player_command
-              value: "shop buy ${state.selected}"
+            - action: set_state
+              key: balance
+              value: "${state.balance - 100}"
             - action: message
               value: "&a已购买"
 ```

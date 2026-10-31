@@ -133,7 +133,7 @@ Cloud Core 把界面权威移到服务端。服务端必须把每个入站字节
 - 文档 `sensitive: true` 的输入框：客户端掩码显示，服务端仍收到原文用于校验。
 - 原文绝不写日志、绝不进调试输出、绝不作为 `message` / `title` 回显。
 - 服务端重新校验长度、字符集和过滤器；不依赖客户端掩码或客户端过滤。
-- 不要把敏感值拼进 `console_command` / `player_command`；用专用 `ActionHandler` 处理。
+- 不要把敏感值拼进 `command` 动作；用专用 `ActionHandler` 处理。
 - `change` 事件同样受 250 ms 防抖和服务端限流。
 - 连接本身由 Minecraft 登录后的加密层保护；Cloud Core 不额外加密，因为不掌握会话密钥。
 
@@ -233,9 +233,9 @@ Cloud Core 把界面权威移到服务端。服务端必须把每个入站字节
 
 - 客户端只能命名文档中存在的 `(elementId, actionId)` 对。
 - 动作体、命令、权限和 `state` 不下发客户端；客户端只拿到 actionId 映射，无法读取命令内容。
-- `player_command` 以玩家权限执行，没有绕过。
-- `console_command` 只允许管理员编写的页面使用，并记录 INFO 日志。
-- `run_action` 的处理器是编译代码；未知处理器是编译期错误。
+- `command` 默认关闭；开启后只有 allowlist 里的首个词能执行，`as: player` 走玩家权限，`as: console`
+  需要管理员显式声明。
+- 自定义 `ActionHandler` 是编译代码，且可声明 `permission()`；未注册的动作名在运行期被拒绝。
 - 动作参数来自会话状态和模板，不来自原始载荷，除非文档显式绑定。
 - 模板在命令动作中引用事件载荷时，校验器警告。
 - 冷却在执行前检查。

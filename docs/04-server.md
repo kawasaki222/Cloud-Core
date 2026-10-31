@@ -544,15 +544,16 @@ public interface ActionEngine {
 v1 的 `LinearActionEngine` 实现 `submit` 时立即执行，`tick` 只处理 `delay`。v2 的
 `GraphActionEngine` 支持分支、循环、等待和持久化，见 `13-action-engine.md`。
 
-内置处理器：
+内置处理器（前三项为设计形态；`command` 已实现并受闸门限制）：
 
 | 名称 | 实现细节 |
 | --- | --- |
-| `player_command` | `player.performCommand(stripSlash(cmd))` |
-| `console_command` | `Bukkit.dispatchCommand(console, cmd)` |
+| `player_command` | `player.performCommand(stripSlash(cmd))`（未实现，用 `command` + `as: player`） |
+| `console_command` | `Bukkit.dispatchCommand(console, cmd)`（未实现，用 `command` + `as: console`） |
+| `command` | `Bukkit.dispatchCommand`，受 `actions.commands.*` 闸门限制（已实现） |
 | `message` | `player.sendMessage(...)` |
 | `close_ui` | 关闭会话 |
-| `open_ui` | 按页面声明的 surface 打开；可指定 `surface` |
+| `open_page` | 关闭当前页并打开目标页（支持 `surface` 路由） |
 | `set_state` | 校验键属于文档声明的状态并做类型转换 |
 | `run_action` | 查找已注册处理器 |
 

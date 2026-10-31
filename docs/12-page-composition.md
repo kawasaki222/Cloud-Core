@@ -298,7 +298,7 @@ elements:
     enabled: "${state.selected >= 0}"
     on:
       click:
-        - action: player_command
+        - action: message
           value: "shop buy ${state.selected}"
 ```
 
