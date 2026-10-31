@@ -176,7 +176,7 @@ plugins/CloudCore/
 
 客户端：
 
-- F3 叠加层：活动文档的 uiId/surface/revision 与文档数（不是后端/FBO 计数器）。
+- F3 叠加层：握手状态、文档数、S2C/C2S 帧计数、丢弃数、当前渲染后端与活动文档列表。
 - `renderer=native` 用于区分“内容问题”和“NanoVG/FBO 问题”。
 - 客户端日志：`logs/cloudcore-client.log`；排障时让玩家按 `F10` 导出 `cloudcore-dump-*.zip`，
   里面包含日志尾部、客户端配置、系统信息、最近报文头，默认脱敏。

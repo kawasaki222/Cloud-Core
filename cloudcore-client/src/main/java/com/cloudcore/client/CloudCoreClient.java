@@ -69,6 +69,11 @@ public final class CloudCoreClient implements ClientModInitializer {
     /** The single initializer instance; diagnostics needs its session maps. */
     private static CloudCoreClient instance;
     private final FragmentAssembler assembler = new FragmentAssembler(Limits.S2C);
+    /** Frame counters for the F3 overlay; plain longs, incremented on the net thread. */
+    private volatile long s2cFrames;
+    private volatile long c2sFrames;
+    private volatile long droppedFrames;
+
     private static final java.util.concurrent.atomic.AtomicInteger EVENT_REQUEST_ID =
             new java.util.concurrent.atomic.AtomicInteger();
     private final Map<String, OpenRequest> pendingOpens = new HashMap<>();
@@ -141,6 +146,12 @@ public final class CloudCoreClient implements ClientModInitializer {
     }
 
     /** One line per open document; the F3 overlay renders these on the right. */
+    /** Which backend drew the last frame, for the F3 overlay. */
+    private String rendererName() {
+        return com.cloudcore.client.render.DocumentRenderer.lastBackend() ==
+                com.cloudcore.client.render.BackendId.NANOVG ? "nanovg" : "native";
+    }
+
     public static java.util.List<String> debugLines() {
         CloudCoreClient client = instance;
         if (client == null) {
@@ -149,6 +160,11 @@ public final class CloudCoreClient implements ClientModInitializer {
         java.util.List<String> lines = new java.util.ArrayList<>();
         lines.add("CloudCore " + (handshakeComplete ? "ready" : "handshaking")
                 + " docs=" + client.openDocuments.size());
+        // Traffic and backend first: "nothing is arriving" and "why is it slow" are the
+        // two questions the overlay exists to answer.
+        lines.add("net s2c=" + client.s2cFrames + " c2s=" + client.c2sFrames
+                + " dropped=" + client.droppedFrames);
+        lines.add("render backend=" + client.rendererName());
         int shown = 0;
         for (Map.Entry<String, UiDocument> entry : client.openDocuments.entrySet()) {
             if (shown++ >= 8) {
@@ -205,6 +221,7 @@ public final class CloudCoreClient implements ClientModInitializer {
     }
 
     private void dispatch(Frame frame) {
+        s2cFrames++;
         switch (frame.opcode()) {
             case Opcode.HELLO_ACK -> handleHelloAck(frame);
             case Opcode.PING -> handlePing(frame);
@@ -480,6 +497,10 @@ public final class CloudCoreClient implements ClientModInitializer {
             java.util.Map<String, com.cloudcore.protocol.WireValue> payload) {
         if (!handshakeComplete) {
             LOGGER.debug("Dropping event before handshake: {}/{}", uiId, elementId);
+            CloudCoreClient live = instance;
+            if (live != null) {
+                live.droppedFrames++;
+            }
             return;
         }
         int requestId = EVENT_REQUEST_ID.incrementAndGet();
@@ -714,6 +735,10 @@ public final class CloudCoreClient implements ClientModInitializer {
                     System.currentTimeMillis());
             Frame outbound = FrameCodec.compressIfUseful(frame);
             int fragmentId = Fragmenter.randomFragmentId(java.util.concurrent.ThreadLocalRandom.current());
+            CloudCoreClient live = instance;
+            if (live != null) {
+                live.c2sFrames++;
+            }
             for (Frame part : Fragmenter.fragment(outbound, Limits.C2S, fragmentId)) {
                 byte[] data = FrameCodec.encode(part, Limits.C2S);
                 // Paper does not necessarily advertise channels through minecraft:register,

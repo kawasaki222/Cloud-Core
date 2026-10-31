@@ -507,4 +507,4 @@ Tooltip 的滚轮事件默认**不**上报服务端；只有文档显式声明 `
   后稳定送达。这是传输实现约束，不改变线上格式。
 - 计数器（`unknown_opcode`、`bad_fragment`、`crc_fail`、`rate_limited`、`surface_unsupported`）
   `/cloudcore stats` 输出 `ServerMetrics` 的聚合计数（帧、字节、限流、拒绝、贴图、绑定、刷新）；
-  客户端侧只有未知操作码日志与 `UI_READY(state=4)`，F3 叠加层显示活动文档而非计数器。
+  客户端侧 F3 叠加层显示 S2C/C2S 帧计数、握手前丢弃数与当前渲染后端。

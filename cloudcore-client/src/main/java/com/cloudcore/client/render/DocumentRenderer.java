@@ -15,6 +15,13 @@ public final class DocumentRenderer {
     private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
     /** Gated by {@code -Dcloudcore.hud.debug}; the property is set before the class loads. */
     private static final boolean DEBUG = Boolean.getBoolean("cloudcore.hud.debug");
+    /** Backend that drew the most recent frame; the F3 overlay reports it. */
+    private static volatile BackendId lastBackend = BackendId.NATIVE;
+
+    public static BackendId lastBackend() {
+        return lastBackend;
+    }
+
     private final NanoVgBackend nanoVg = new NanoVgBackend();
     private final NativeBackend nativeBackend = new NativeBackend();
 
@@ -27,6 +34,7 @@ public final class DocumentRenderer {
             LOGGER.info("render backend={} commands={} viewport={}x{}", vector.id(),
                     list.commands().size(), context.width(), context.height());
         }
+        lastBackend = vector.id();
         vector.beginFrame(context);
         try {
             vector.draw(list, Layer.BACKGROUND);

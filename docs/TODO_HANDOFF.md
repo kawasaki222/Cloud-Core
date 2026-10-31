@@ -143,7 +143,7 @@ docs/
 - [x] Container 面板：NEXT_CONTAINER 绑定的箱子换背景，原版槽位保留（真机截图验证）
 - [x] 客户端日志文件：`logs/cloudcore-client.log` + 轮转（真机验证）
 - [x] 客户端快捷键：`F9` 重载本地资源、`F10` 诊断包（真机验证：贴图热替换、zip 内容、聊天提示）
-- [x] F3 调试叠加层：右侧中部显示活动文档的 uiId/surface/revision 与文档数（真机截图验证）
+- [x] F3 调试叠加层：活动文档列表（真机截图验证）+ S2C/C2S 帧计数、丢弃数、渲染后端（未截图验证）
 - [x] `/cloudcore stats` 与 `/cloudcore surfaces <player>`（`ServerMetrics` + 单测）
 - [ ] 客户端命令：`/cloudcore-client reloadassets|dump` 已注册但未在聊天执行验证；
       `log <level>` 已实现（运行时改 `cloudcore` logger 级别，不动 root）
