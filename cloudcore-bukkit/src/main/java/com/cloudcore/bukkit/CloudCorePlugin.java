@@ -68,7 +68,8 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.messaging.PluginMessageListener;
 
 public final class CloudCorePlugin extends JavaPlugin
-        implements PluginMessageListener, CommandExecutor, Listener {
+        implements PluginMessageListener, CommandExecutor, org.bukkit.command.TabCompleter,
+        Listener {
 
     public static final String CHANNEL = "cloudcore:main";
     private static final int SERVER_FEATURES = FeatureFlags.NONE;
@@ -128,6 +129,7 @@ public final class CloudCorePlugin extends JavaPlugin
                 api, this, org.bukkit.plugin.ServicePriority.Normal);
         if (getCommand("cloudcore") != null) {
             getCommand("cloudcore").setExecutor(this);
+            getCommand("cloudcore").setTabCompleter(this);
         } else {
             getLogger().warning("Command 'cloudcore' is missing from plugin.yml");
         }
@@ -1011,6 +1013,58 @@ public final class CloudCorePlugin extends JavaPlugin
             getLogger().warning("Failed to encode opcode 0x" + Integer.toHexString(frame.opcode())
                     + " for " + player.getName() + ": " + exception.getMessage());
         }
+    }
+
+    private static final java.util.List<String> TAB_SUBCOMMANDS = java.util.List.of(
+            "accessories", "validate", "reload", "state-export", "state-import",
+            "equipment", "equipment-stand", "page", "ping", "probe", "boss", "close",
+            "diagnostic", "demo-hud", "demo-hud-rpg", "demo-hud-bg", "demo-tooltip",
+            "demo-container", "demo-readonly", "demo-passthrough", "demo-inventory");
+
+    @Override
+    public java.util.List<String> onTabComplete(CommandSender sender, Command command,
+            String alias, String[] args) {
+        if (args.length == 1) {
+            return TAB_SUBCOMMANDS.stream()
+                    .filter(value -> value.startsWith(args[0].toLowerCase(java.util.Locale.ROOT)))
+                    .toList();
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("state-import")) {
+            java.nio.file.Path exports = getDataFolder().toPath().resolve("exports");
+            if (java.nio.file.Files.isDirectory(exports)) {
+                try (var files = java.nio.file.Files.list(exports)) {
+                    return files.map(file -> file.getFileName().toString())
+                            .filter(name -> name.startsWith(args[1]))
+                            .sorted()
+                            .toList();
+                } catch (java.io.IOException ignored) {
+                    return java.util.List.of();
+                }
+            }
+            return java.util.List.of();
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("page") && pagesRoot != null) {
+            try (var files = java.nio.file.Files.list(pagesRoot)) {
+                return files.map(file -> file.getFileName().toString())
+                        .filter(name -> name.endsWith(".yml"))
+                        .map(name -> name.substring(0, name.length() - ".yml".length()))
+                        .filter(name -> name.startsWith(args[1]))
+                        .sorted()
+                        .toList();
+            } catch (java.io.IOException ignored) {
+                return java.util.List.of();
+            }
+        }
+        if ((args.length == 2 && args[0].equalsIgnoreCase("accessories"))
+                || (args.length == 3 && args[0].equalsIgnoreCase("page"))) {
+            String prefix = args[args.length - 1].toLowerCase(java.util.Locale.ROOT);
+            return getServer().getOnlinePlayers().stream()
+                    .map(Player::getName)
+                    .filter(name -> name.toLowerCase(java.util.Locale.ROOT).startsWith(prefix))
+                    .sorted()
+                    .toList();
+        }
+        return java.util.List.of();
     }
 
     @Override
