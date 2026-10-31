@@ -6,8 +6,10 @@ import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -59,6 +61,28 @@ public final class FilePlayerStateStore implements PlayerStateStore {
         } catch (AtomicMoveNotSupportedException ignored) {
             Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
         }
+    }
+
+    @Override
+    public Set<UUID> players() throws IOException {
+        if (Files.notExists(root)) {
+            return Set.of();
+        }
+        Set<UUID> players = new LinkedHashSet<>();
+        try (var files = Files.list(root)) {
+            files.filter(Files::isRegularFile)
+                    .map(file -> file.getFileName().toString())
+                    .filter(name -> name.endsWith(".json") && !name.endsWith(".tmp"))
+                    .forEach(name -> {
+                        try {
+                            players.add(UUID.fromString(name.substring(0,
+                                    name.length() - ".json".length())));
+                        } catch (IllegalArgumentException ignored) {
+                            // A hand-made file that is not named after a UUID is not state.
+                        }
+                    });
+        }
+        return players;
     }
 
     public Path fileFor(UUID player) {

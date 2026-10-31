@@ -21,4 +21,7 @@ public interface PlayerStateStore {
 
     /** Replaces the player's stored state. Called from a worker thread. */
     void save(UUID player, Map<String, Map<String, Object>> state) throws IOException;
+
+    /** @return every player with stored state, for export/migration tools */
+    java.util.Set<UUID> players() throws IOException;
 }

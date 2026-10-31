@@ -120,6 +120,26 @@ public final class SqlPlayerStateStore implements PlayerStateStore {
     }
 
     @Override
+    public synchronized java.util.Set<UUID> players() throws IOException {
+        String sql = "SELECT player_id FROM " + TABLE;
+        java.util.Set<UUID> players = new java.util.LinkedHashSet<>();
+        try (Connection connection = open();
+                PreparedStatement statement = connection.prepareStatement(sql);
+                ResultSet result = statement.executeQuery()) {
+            while (result.next()) {
+                try {
+                    players.add(UUID.fromString(result.getString(1)));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore a row that was edited outside Cloud Core.
+                }
+            }
+        } catch (SQLException exception) {
+            throw new IOException("cannot list page state players", exception);
+        }
+        return players;
+    }
+
+    @Override
     public synchronized void save(UUID player, Map<String, Map<String, Object>> state)
             throws IOException {
         Objects.requireNonNull(player, "player");

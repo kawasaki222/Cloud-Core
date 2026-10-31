@@ -1027,6 +1027,14 @@ public final class CloudCorePlugin extends JavaPlugin
             reloadPages(sender);
             return true;
         }
+        if (args.length == 2 && args[0].equalsIgnoreCase("state-export")) {
+            exportState(sender, args[1]);
+            return true;
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("state-import")) {
+            importState(sender, args[1]);
+            return true;
+        }
         if (args.length >= 2 && args[0].equalsIgnoreCase("equipment")) {
             Player target = args.length >= 3
                     ? getServer().getPlayerExact(args[2])
@@ -2771,6 +2779,69 @@ public final class CloudCorePlugin extends JavaPlugin
                     + "' failed to start; falling back to files", exception);
         }
         return new com.cloudcore.server.state.FilePlayerStateStore(stateRoot);
+    }
+
+    /** Export all persisted page state to {@code exports/<name>.json} off the main thread. */
+    private void exportState(org.bukkit.command.CommandSender sender, String name) {
+        if (stateStore == null) {
+            sender.sendMessage(Component.text("Page state persistence is disabled."));
+            return;
+        }
+        java.nio.file.Path file = stateFile(name);
+        if (file == null) {
+            sender.sendMessage(Component.text(
+                    "Usage: /cloudcore state-export <file.json> (letters, digits, . _ -)"));
+            return;
+        }
+        getServer().getScheduler().runTaskAsynchronously(this, () -> {
+            try {
+                flushDirtyState();
+                int count = com.cloudcore.server.state.StateTransfer.export(stateStore, file);
+                getServer().getScheduler().runTask(this, () -> sender.sendMessage(Component.text(
+                        "Exported page state for " + count + " player(s) to " + file)));
+            } catch (java.io.IOException exception) {
+                getLogger().log(Level.WARNING, "Cannot export page state to " + file, exception);
+                getServer().getScheduler().runTask(this, () -> sender.sendMessage(Component.text(
+                        "State export failed: " + exception.getMessage())));
+            }
+        });
+    }
+
+    /** Import replaces each player's stored state; online sessions keep their live state. */
+    private void importState(org.bukkit.command.CommandSender sender, String name) {
+        if (stateStore == null) {
+            sender.sendMessage(Component.text("Page state persistence is disabled."));
+            return;
+        }
+        java.nio.file.Path file = stateFile(name);
+        if (file == null || java.nio.file.Files.notExists(file)) {
+            sender.sendMessage(Component.text("No such state export: " + name));
+            return;
+        }
+        getServer().getScheduler().runTaskAsynchronously(this, () -> {
+            try {
+                int count = com.cloudcore.server.state.StateTransfer.importFile(stateStore, file);
+                getLogger().info("Imported page state for " + count + " player(s) from "
+                        + file + "; online sessions keep their live state until rejoin");
+                getServer().getScheduler().runTask(this, () -> sender.sendMessage(Component.text(
+                        "Imported page state for " + count
+                                + " player(s); online players keep live state until rejoin")));
+            } catch (java.io.IOException exception) {
+                getLogger().log(Level.WARNING, "Cannot import page state from " + file, exception);
+                getServer().getScheduler().runTask(this, () -> sender.sendMessage(Component.text(
+                        "State import failed: " + exception.getMessage())));
+            }
+        });
+    }
+
+    /** Resolves an export name under the plugin data directory, rejecting path traversal. */
+    private java.nio.file.Path stateFile(String name) {
+        if (name == null || !name.matches("[A-Za-z0-9][A-Za-z0-9._-]*")
+                || name.contains("..")) {
+            return null;
+        }
+        String file = name.endsWith(".json") ? name : name + ".json";
+        return getDataFolder().toPath().resolve("exports").resolve(file);
     }
 
     /** @return true when the state was written; a failure leaves the session dirty */
