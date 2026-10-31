@@ -102,7 +102,10 @@ public final class TextureProxy implements AutoCloseable {
                 return thread;
             }, new ThreadPoolExecutor.AbortPolicy());
     private final HttpClient httpClient;
-    private final Map<String, TexturePut> memory = new ConcurrentHashMap<>();
+    private record Cached(TexturePut put, long storedAt) {
+    }
+
+    private final Map<String, Cached> memory = new ConcurrentHashMap<>();
     private final Map<String, CompletableFuture<TexturePut>> inFlight =
             new ConcurrentHashMap<>();
     private final Map<UUID, Map<String, Long>> requestTimes = new ConcurrentHashMap<>();
@@ -163,7 +166,14 @@ public final class TextureProxy implements AutoCloseable {
             logger.warning("Texture proxy rejected non-allowlisted URL for key " + key);
             return false;
         }
-        TexturePut cached = memory.get(key);
+        Cached memoryEntry = memory.get(key);
+        if (memoryEntry != null && settings.ttlSeconds() > 0
+                && System.currentTimeMillis() - memoryEntry.storedAt()
+                        > settings.ttlSeconds() * 1000L) {
+            memory.remove(key, memoryEntry);
+            memoryEntry = null;
+        }
+        TexturePut cached = memoryEntry == null ? null : memoryEntry.put();
         if (cached == null) {
             cached = readDisk(key, url);
         }
@@ -254,7 +264,7 @@ public final class TextureProxy implements AutoCloseable {
         try {
             byte[] body = download(url);
             TexturePut put = decode(key, body);
-            memory.put(key, put);
+            memory.put(key, new Cached(put, System.currentTimeMillis()));
             writeDisk(key, url, put);
             logger.info("Proxied texture " + key + " (" + body.length + " bytes, "
                     + put.width() + "x" + put.height() + ", frames=" + put.frameCount() + ")");
@@ -602,7 +612,7 @@ public final class TextureProxy implements AutoCloseable {
             byte[] data = Files.readAllBytes(png);
             TexturePut put = new TexturePut(key, width, height, format, crc32(data), data,
                     frameCount, loop, delays);
-            memory.put(key, put);
+            memory.put(key, new Cached(put, System.currentTimeMillis()));
             return put;
         } catch (Exception exception) {
             logger.log(Level.FINE, "Ignoring bad texture cache entry " + png, exception);
