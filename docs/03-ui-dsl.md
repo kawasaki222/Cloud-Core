@@ -340,8 +340,10 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
   speed: 1.0
 ```
 
-`fit` 尚未实现：图片总是拉伸到元素声明的 `width`/`height`（缺省按 64×64）。`tint`、`nine_slice`、
-`animated`/`loop`/`speed` 已实现。
+`fit` 取 `stretch`（默认，拉伸到 `width`/`height`，缺省 64×64）、`contain`（保持比例放进框内，
+居中留边）或 `cover`（保持比例填满框，超出部分按元素框裁剪）。声明了 `nine_slice` 的贴图始终拉伸，
+比例由九宫格本身保证。`tint`、`nine_slice`、`animated`/`loop`/`speed` 均可用。`fit` 只作用于基准
+贴图，`layers` 仍按各自几何拉伸。
 
 #### 图层叠加
 

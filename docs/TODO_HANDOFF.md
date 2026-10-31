@@ -206,7 +206,8 @@ docs/
 - [ ] Tooltip 剩余：`scroll_step`/`smooth_scroll`/`follow_cursor`/`sync_scroll` 未接线（步长固定 12）、
       滚动条贴图与 `draggable` 拖动未实现、`tooltip_scroll` 事件未回传服务端
 - [ ] `overlay` 元素只递归子元素，`modal`/`dim` 未实现
-- [ ] `label` 的 `wrap`/`max_lines`、`image` 的 `fit` 未实现（仅按给定宽高拉伸）
+- [x] `image.fit`：`stretch`/`contain`/`cover`（`RenderCommand.ImageProbe`，原生与 NanoVG 两个后端）
+- [ ] `label` 的 `wrap`/`max_lines` 未实现（仅按单行绘制）
 - [x] HUD / Tooltip / BossBar / Container 面板最小闭环
 - [x] HUD 三层（background/foreground/overlay）与锚点/偏移（真机验证）
 - [x] PlayerInventory 面板：持久皮肤、`CloudInventoryScreen`、`UI_CLOSE` 还原原版（真机截图验证）

@@ -21,6 +21,8 @@ public final class NativeBackend implements RenderBackend {
     private static final boolean DEBUG = Boolean.getBoolean("cloudcore.hud.debug");
 
     private FrameContext context;
+    /** Set by an {@link RenderCommand.ImageProbe}; consumed by the next matching Image. */
+    private RenderCommand.Image pendingFitted;
     private final java.util.ArrayList<int[]> clips = new java.util.ArrayList<>();
     private int[] activeClip;
 
@@ -69,7 +71,13 @@ public final class NativeBackend implements RenderBackend {
             case RenderCommand.Text text -> frame.graphics().drawString(
                     Minecraft.getInstance().font, text.text(), text.x(), text.y(),
                     text.argb(), text.shadow());
-            case RenderCommand.Image image -> drawImage(frame.graphics(), image);
+            case RenderCommand.Image image -> drawImage(frame.graphics(),
+                    pendingFitted != null && pendingFitted.texture().equals(image.texture())
+                            ? pendingFitted : image);
+            // GuiGraphics has no transform stack, so the fit is precomputed: the probe stores
+            // the fitted rectangle and the Image that follows draws into it.
+            case RenderCommand.ImageProbe probe -> pendingFitted = fitted(probe);
+            case RenderCommand.ShiftEnd ignored -> pendingFitted = null;
             case RenderCommand.ItemIcon icon -> drawItem(frame, icon);
             case RenderCommand.RichText rich -> drawRichText(frame, rich);
             case RenderCommand.ClipPush clip -> pushClip(frame, clip);
@@ -110,6 +118,32 @@ public final class NativeBackend implements RenderBackend {
         }
         drawImage(graphics, image);
         return true;
+    }
+
+    /**
+     * The rectangle a {@code fit: contain|cover} image would occupy: scaled by the smaller
+     * (contain) or larger (cover) ratio, centred on the box. The caller clips to the box with
+     * the usual clip commands, so cover's overflow is cut off. An unknown size keeps the box.
+     */
+    private static RenderCommand.Image fitted(RenderCommand.ImageProbe probe) {
+        int boxX = probe.x();
+        int boxY = probe.y();
+        int boxWidth = probe.width();
+        int boxHeight = probe.height();
+        int[] size = TextureReferences.pixelSize(probe.texture());
+        if (size != null && size[0] > 0 && size[1] > 0 && boxWidth > 0 && boxHeight > 0) {
+            double scale = probe.fit() == RenderCommand.Image.Fit.CONTAIN
+                    ? Math.min((double) boxWidth / size[0], (double) boxHeight / size[1])
+                    : Math.max((double) boxWidth / size[0], (double) boxHeight / size[1]);
+            int width = Math.max(1, (int) Math.round(size[0] * scale));
+            int height = Math.max(1, (int) Math.round(size[1] * scale));
+            boxX -= (width - boxWidth) / 2;
+            boxY -= (height - boxHeight) / 2;
+            boxWidth = width;
+            boxHeight = height;
+        }
+        return new RenderCommand.Image(probe.texture(), boxX, boxY, boxWidth, boxHeight,
+                null, RenderCommand.Image.Animation.DEFAULT, RenderCommand.Image.DEFAULT_TINT);
     }
 
     private static void drawImage(GuiGraphics graphics, RenderCommand.Image image) {

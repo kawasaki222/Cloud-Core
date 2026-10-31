@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 public final class LocalTextureRegistry {
     private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
     private static final Map<String, Identifier> CACHE = new HashMap<>();
+    private static final Map<String, int[]> SIZES = new HashMap<>();
     private static final Set<String> FAILED = new HashSet<>();
     private static final long MAX_FILE_BYTES = 16L * 1024L * 1024L;
 
@@ -61,12 +62,19 @@ public final class LocalTextureRegistry {
         FAILED.clear();
     }
 
+    /** Pixel size of a PNG without registering it; the header read is cached by byte array. */
+    public static int[] pixelSize(String relativePath) {
+        byte[] bytes = readBytes(relativePath);
+        return bytes == null ? null : ImageSizes.of(bytes);
+    }
+
     /**
      * Releases every texture loaded from the CloudCore folder and forgets both hits and
      * failures, so the next draw re-reads the files. Called by {@code F9}.
      */
     public static void reset() {
         var manager = Minecraft.getInstance().getTextureManager();
+        ImageSizes.clear();
         for (Identifier identifier : CACHE.values()) {
             manager.release(identifier);
         }

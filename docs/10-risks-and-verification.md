@@ -518,8 +518,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **占位符剩余**：一次性展开、页面/元素 `interval` 刷新、同步/异步、`refresh` 动作、
   `${placeholder:...}` 显式形式已真机验证；`interval` 预算打满后的顺延、`tick`/`event` 模式的
   真机行为、`async-namespaces` 白名单尚未验证/实现。
-- **控件/样式剩余**：文本 shaping、`label.wrap`/`max_lines`、`image.fit`、`overlay` 的
+- **控件/样式剩余**：文本 shaping、`label.wrap`/`max_lines`、`overlay` 的
   `modal`/`dim`、Tooltip 的 `scroll_step`/`smooth_scroll`/`draggable` 与 `tooltip_scroll` 回传。
+  `image.fit`（`stretch`/`contain`/`cover`）已在两个后端实现，但只在 Windows x64 上手工观察过形状，
+  未做像素级截图比对。
   多条 Boss 血条堆叠与间距、`pressed` 态、`text_field` 的 padding/光标色/选区色/清除按钮、
   `progress` 的九宫格/圆角/分段已实现（单测 + 真机验证，见上）。
 - **附属 API**：`SurfaceProvider`、`setState`/`getState`、四类事件监听与

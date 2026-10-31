@@ -170,6 +170,8 @@ public final class NanoVgBackend implements RenderBackend, RenderList.VectorText
                                 clip.height());
                     }
                     case RenderCommand.ClipPop ignored -> NanoVG.nvgRestore(context);
+                    case RenderCommand.ImageProbe probe -> probe(probe);
+                    case RenderCommand.ShiftEnd ignored -> NanoVG.nvgRestore(context);
                     case RenderCommand.Text text -> text(text);
                     case RenderCommand.RichText rich -> richText(rich);
                     case RenderCommand.ItemIcon ignored -> {
@@ -265,6 +267,48 @@ public final class NanoVgBackend implements RenderBackend, RenderList.VectorText
         NanoVG.nvgRect(context, rect.x(), rect.y(), rect.width(), rect.height());
         NanoVG.nvgFillColor(context, color);
         NanoVG.nvgFill(context);
+    }
+
+    /**
+     * Translates so the following image draws from its fitted top-left, which may sit outside
+     * the element box, and clips that box. Without a known texture size the fit falls back to
+     * stretching the box itself.
+     */
+    private void probe(RenderCommand.ImageProbe probe) {
+        int boxX = probe.x();
+        int boxY = probe.y();
+        int boxWidth = probe.width();
+        int boxHeight = probe.height();
+        Integer handle = imageHandle(probe.texture());
+        if (handle != null && handle != 0) {
+            int[] size = imageSize(handle, probe.texture());
+            if (size[0] > 0 && size[1] > 0 && boxWidth > 0 && boxHeight > 0) {
+                double scale = probe.fit() == RenderCommand.Image.Fit.CONTAIN
+                        ? Math.min((double) boxWidth / size[0], (double) boxHeight / size[1])
+                        : Math.max((double) boxWidth / size[0], (double) boxHeight / size[1]);
+                int width = Math.max(1, (int) Math.round(size[0] * scale));
+                int height = Math.max(1, (int) Math.round(size[1] * scale));
+                boxX -= Math.max(0, (width - boxWidth) / 2);
+                boxY -= Math.max(0, (height - boxHeight) / 2);
+            }
+        }
+        NanoVG.nvgSave(context);
+        NanoVG.nvgTranslate(context, boxX, boxY);
+        NanoVG.nvgScissor(context, -boxX, -boxY, boxWidth, boxHeight);
+    }
+
+    /** Size of an already-loaded image, cached for the life of the asset generation. */
+    private int[] imageSize(int handle, String reference) {
+        int[] cached = imageSizes.get(reference);
+        if (cached != null) {
+            return cached;
+        }
+        int[] width = new int[1];
+        int[] height = new int[1];
+        NanoVG.nvgImageSize(context, handle, width, height);
+        int[] size = new int[]{Math.max(0, width[0]), Math.max(0, height[0])};
+        imageSizes.put(reference, size);
+        return size;
     }
 
     private void image(RenderCommand.Image image) {

@@ -607,10 +607,13 @@ public final class DocumentRenderListBuilder {
     private static void addImageLayers(List<RenderCommand> commands, UiElement element,
             int x, int y, int width, int height) {
         Object base = attribute(element, "texture");
+        RenderCommand.Image.Fit fit = RenderCommand.Image.Fit.parse(
+                attribute(element, "fit") instanceof String text ? text : null);
         if (base instanceof String reference && isSupportedTexture(reference)) {
-            addImage(commands, reference, x, y, width, height,
+            addFittedImage(commands, reference, x, y, width, height,
                     intArray(attribute(element, "nine_slice")), animation(element),
-                    Colors.parse(attribute(element, "tint"), RenderCommand.Image.DEFAULT_TINT));
+                    Colors.parse(attribute(element, "tint"), RenderCommand.Image.DEFAULT_TINT),
+                    fit);
         }
         Object layers = attribute(element, "layers");
         if (!(layers instanceof List<?> list)) {
@@ -634,6 +637,30 @@ public final class DocumentRenderListBuilder {
                     intArray(layer.get("nine_slice")), animation(layer),
                     Colors.parse(layer.get("tint"), RenderCommand.Image.DEFAULT_TINT));
         }
+    }
+
+    /**
+     * {@code fit: contain|cover} needs the texture's pixel size to keep its aspect ratio, but
+     * that size is only known once the backend has loaded it. The render list is built before
+     * the frame is drawn, so a probe carries the decision into the backend, which holds the
+     * transform stack; {@code nine_slice} stays aspect-preserving on its own and is left to
+     * the plain stretch. Unknown sizes fall back to stretching.
+     */
+    private static void addFittedImage(List<RenderCommand> commands, String texture, int x,
+            int y, int width, int height, int[] nineSlice,
+            RenderCommand.Image.Animation animation, int tint, RenderCommand.Image.Fit fit) {
+        if (fit == RenderCommand.Image.Fit.NONE || (nineSlice != null && nineSlice.length == 4)
+                || width <= 0 || height <= 0) {
+            addImage(commands, texture, x, y, width, height, nineSlice, animation, tint);
+            return;
+        }
+        if (commands.size() + 2 >= MAX_COMMANDS) {
+            return;
+        }
+        commands.add(new RenderCommand.ImageProbe(texture, x, y, width, height, fit));
+        commands.add(new RenderCommand.Image(texture, x, y, width, height, nineSlice,
+                animation, tint));
+        commands.add(new RenderCommand.ShiftEnd());
     }
 
     private static void addImage(List<RenderCommand> commands, String texture, int x, int y,

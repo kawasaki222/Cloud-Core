@@ -46,6 +46,28 @@ public sealed interface RenderCommand {
         /** Opaque white keeps the source texture unchanged. */
         public static final int DEFAULT_TINT = 0xFFFFFFFF;
 
+        /**
+         * How the source keeps its aspect ratio inside the destination box. {@code NONE}
+         * stretches; {@code CONTAIN} fits the whole image, {@code COVER} fills the box and
+         * crops. Backends need the texture's pixel size to apply either, so an unresolved
+         * texture falls back to stretching.
+         */
+        public enum Fit {
+            NONE, CONTAIN, COVER;
+
+            /** Parses {@code fit:}; unknown values stretch, matching the pre-fit behaviour. */
+            public static Fit parse(String raw) {
+                if (raw == null) {
+                    return NONE;
+                }
+                return switch (raw.trim().toLowerCase(java.util.Locale.ROOT)) {
+                    case "contain" -> CONTAIN;
+                    case "cover" -> COVER;
+                    default -> NONE;
+                };
+            }
+        }
+
         public Image(String texture, int x, int y, int width, int height) {
             this(texture, x, y, width, height, null, Animation.DEFAULT, DEFAULT_TINT);
         }
@@ -111,6 +133,23 @@ public sealed interface RenderCommand {
 
     /** Ends the most recent {@link ClipPush}. */
     record ClipPop() implements RenderCommand {
+    }
+
+    /**
+     * Shifts the drawing origin so the image that follows can be drawn from its true top-left
+     * (needed by {@code fit: contain|cover}, which may place the box off the element); the
+     * matching {@link ShiftEnd} pops it. Backends without a transform stack ignore both.
+     */
+    record ImageProbe(String texture, int x, int y, int width, int height, Image.Fit fit)
+            implements RenderCommand {
+
+        public ImageProbe {
+            fit = fit == null ? Image.Fit.NONE : fit;
+        }
+    }
+
+    /** Pops the transform saved by {@link ImageProbe}. */
+    record ShiftEnd() implements RenderCommand {
     }
 
     /**

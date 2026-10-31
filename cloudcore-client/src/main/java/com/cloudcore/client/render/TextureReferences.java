@@ -26,6 +26,76 @@ public final class TextureReferences {
         return resolve(reference, RenderCommand.Image.Animation.DEFAULT);
     }
 
+    /**
+     * Pixel size {@code [width, height]} of the texture behind {@code reference}, or null when
+     * it cannot be resolved yet. Used by {@code fit: contain|cover}. Textures register while
+     * drawing, so the first frame of a new image reports no size and the next one picks it up.
+     */
+    public static int[] pixelSize(String reference) {
+        if (reference == null || reference.isBlank()) {
+            return null;
+        }
+        if (reference.startsWith("local:")) {
+            // Reads the PNG header only; the byte array is shared with the cache.
+            byte[] bytes = LocalTextureRegistry.readBytes(reference.substring("local:".length()));
+            return sizeOf(bytes);
+        }
+        if (reference.startsWith("pack:")) {
+            byte[] bytes = readBytes(reference);
+            return sizeOf(bytes);
+        }
+        Identifier identifier = resolve(reference, RenderCommand.Image.Animation.DEFAULT);
+        if (identifier == null) {
+            return null;
+        }
+        try {
+            var texture = Minecraft.getInstance().getTextureManager().getTexture(identifier);
+            if (texture == null) {
+                return null;
+            }
+            var image = texture.getTexture();
+            int width = image.getWidth(0);
+            int height = image.getHeight(0);
+            return width > 0 && height > 0 ? new int[]{width, height} : null;
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    /** Decodes just enough to learn the dimensions; animated GIFs report the first frame. */
+    private static int[] sizeOf(byte[] bytes) {
+        if (bytes == null || bytes.length == 0) {
+            return null;
+        }
+        try (var input = javax.imageio.ImageIO.createImageInputStream(
+                new java.io.ByteArrayInputStream(bytes))) {
+            if (input == null) {
+                return null;
+            }
+            var readers = javax.imageio.ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) {
+                return null;
+            }
+            javax.imageio.ImageReader reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                return width > 0 && height > 0 ? new int[]{width, height} : null;
+            } finally {
+                reader.dispose();
+            }
+        } catch (java.io.IOException | RuntimeException exception) {
+            return null;
+        }
+    }
+
+    /**
+     * The {@code inline:} textures registered by {@link #resolveInline} are built from
+     * {@code NativeImage}, whose reported size is exact; every other source falls through to
+     * {@link #pixelSize} once its texture is registered.
+     */
+
     public static Identifier resolve(String reference, RenderCommand.Image.Animation animation) {
         if (reference == null || reference.isBlank()) {
             return null;
