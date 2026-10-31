@@ -487,7 +487,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，344 个测试 / 67 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，353 个测试 / 68 个测试类，0 失败）。
 
 仍未验证：
 
@@ -518,10 +518,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **占位符剩余**：一次性展开、页面/元素 `interval` 刷新、同步/异步、`refresh` 动作、
   `${placeholder:...}` 显式形式已真机验证；`interval` 预算打满后的顺延、`tick`/`event` 模式的
   真机行为、`async-namespaces` 白名单尚未验证/实现。
-- **控件/样式剩余**：文本 shaping、`label.wrap`/`max_lines`、`overlay` 的
+- **控件/样式剩余**：文本 shaping、`overlay` 的
   `modal`/`dim`、Tooltip 的 `scroll_step`/`smooth_scroll`/`draggable` 与 `tooltip_scroll` 回传。
-  `image.fit`（`stretch`/`contain`/`cover`）已在两个后端实现，但只在 Windows x64 上手工观察过形状，
-  未做像素级截图比对。
+  `image.fit`（`stretch`/`contain`/`cover`）与 `label.wrap`/`max_lines` 已实现并有单测
+  （`TextWrapTest`），但只做过编译与单元验证，尚未在真机截图比对换行与裁剪。
   多条 Boss 血条堆叠与间距、`pressed` 态、`text_field` 的 padding/光标色/选区色/清除按钮、
   `progress` 的九宫格/圆角/分段已实现（单测 + 真机验证，见上）。
 - **附属 API**：`SurfaceProvider`、`setState`/`getState`、四类事件监听与

@@ -34,7 +34,7 @@ M8 占位符刷新的大部分也已落地。**
 - 协议：`ELEMENT_UPDATE`（元素/属性增量、revision 顺序、完整文档回退；自定义页真机验证）。
 - 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
   `cloudcore-api-testkit`。
-- 构建：`./gradlew build` 通过，344 个测试 / 67 个测试类，0 失败。
+- 构建：`./gradlew build` 通过，353 个测试 / 68 个测试类，0 失败。
 
 ## 已有内容
 
@@ -207,7 +207,7 @@ docs/
       滚动条贴图与 `draggable` 拖动未实现、`tooltip_scroll` 事件未回传服务端
 - [ ] `overlay` 元素只递归子元素，`modal`/`dim` 未实现
 - [x] `image.fit`：`stretch`/`contain`/`cover`（`RenderCommand.ImageProbe`，原生与 NanoVG 两个后端）
-- [ ] `label` 的 `wrap`/`max_lines` 未实现（仅按单行绘制）
+- [x] `label` 的 `wrap`/`max_lines`：贪心折行（拉丁按词、CJK 按字符），带度量注入（`TextWrapTest`）
 - [x] HUD / Tooltip / BossBar / Container 面板最小闭环
 - [x] HUD 三层（background/foreground/overlay）与锚点/偏移（真机验证）
 - [x] PlayerInventory 面板：持久皮肤、`CloudInventoryScreen`、`UI_CLOSE` 还原原版（真机截图验证）

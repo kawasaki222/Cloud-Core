@@ -39,6 +39,8 @@ public final class NativeBackend implements RenderBackend {
     @Override
     public void beginFrame(FrameContext context) {
         this.context = Objects.requireNonNull(context, "context");
+        // Wrapped labels measure with vanilla font metrics, which is what drawString uses.
+        TextWrap.install(TextWrap.vanillaMeasure());
     }
 
     @Override

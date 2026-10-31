@@ -212,13 +212,34 @@ public final class DocumentRenderListBuilder {
             }
             case "label" -> {
                 java.util.List<RenderCommand.RichText.Run> runs = runs(element);
-                if (runs != null) {
-                    addRichText(commands, runs, x, y, fontPath(element, fonts),
-                            fontSize(element));
+                boolean wrap = Boolean.TRUE.equals(attribute(element, "wrap"));
+                int maxLines = TextWrap.maxLines(element);
+                String font = fontPath(element, fonts);
+                float size = fontSize(element);
+                if (!wrap && maxLines <= 0) {
+                    if (runs != null) {
+                        addRichText(commands, runs, x, y, font, size);
+                    } else {
+                        addText(commands, text(element), x, y,
+                                color(attribute(element, "color"), DEFAULT_TEXT), font, size);
+                    }
                 } else {
-                    addText(commands, text(element), x, y,
-                            color(attribute(element, "color"), DEFAULT_TEXT),
-                            fontPath(element, fonts), fontSize(element));
+                    // Wrapped labels are one Text command per line; each line carries its own
+                    // colour so a rich run keeps its segments inside the wrapped line. max_lines
+                    // cuts the element box so a taller text block cannot overlap what follows.
+                    if (runs != null) {
+                        if (maxLines > 0) {
+                            commands.add(new RenderCommand.ClipPush(x, y, Math.max(1, width),
+                                    maxLines * TextWrap.lineHeight(font, size)));
+                        }
+                        addWrappedRuns(commands, runs, x, y, width, font, size, maxLines);
+                        if (maxLines > 0) {
+                            commands.add(new RenderCommand.ClipPop());
+                        }
+                    } else {
+                        addWrappedText(commands, text(element), x, y, width, font, size,
+                                color(attribute(element, "color"), DEFAULT_TEXT), maxLines);
+                    }
                 }
             }
             case "text_field" -> {
@@ -533,6 +554,47 @@ public final class DocumentRenderListBuilder {
         if (itemId != null) {
             int count = (int) Math.round(number(map.get("count"), 1.0));
             addItem(commands, itemId, count, false, x, y, size / 16.0f);
+        }
+    }
+
+    /** Applies {@link TextWrap} to plain text; one Text command per line. */
+    private static void addWrappedText(List<RenderCommand> commands, String text, int x, int y,
+            int width, String font, float size, int argb, int maxLines) {
+        int lineHeight = TextWrap.lineHeight(font, size);
+        int index = 0;
+        for (String line : TextWrap.wrap(text, width, maxLines)) {
+            addText(commands, line, x, y + index * lineHeight, argb, font, size);
+            index++;
+        }
+    }
+
+    /**
+     * Runs are measured against the same width, one segment at a time; a segment that does
+     * not fit on the current line starts a new one, so colour stays with its own text.
+     */
+    private static void addWrappedRuns(List<RenderCommand> commands,
+            java.util.List<RenderCommand.RichText.Run> runs, int x, int y, int width,
+            String font, float size, int maxLines) {
+        int lineHeight = TextWrap.lineHeight(font, size);
+        int line = 0;
+        int cursor = x;
+        for (RenderCommand.RichText.Run run : runs) {
+            if (maxLines > 0 && line >= maxLines) {
+                return;
+            }
+            int runWidth = TextWrap.width(run.text());
+            if (cursor + runWidth > x + width && cursor > x) {
+                line++;
+                cursor = x;
+            }
+            if (maxLines > 0 && line >= maxLines) {
+                return;
+            }
+            if (lineHeight <= 0) {
+                return;
+            }
+            addText(commands, run.text(), cursor, y + line * lineHeight, run.argb(), font, size);
+            cursor += runWidth;
         }
     }
 

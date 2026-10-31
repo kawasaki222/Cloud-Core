@@ -105,7 +105,7 @@
 
 | 类型 | 字段 |
 | --- | --- |
-| `label` | `text`(TextRuns)、`font`、`color`、`shadow`、`align`、`text_from`；`wrap`/`max_lines` 未实现 |
+| `label` | `text`(TextRuns)、`font`、`color`、`shadow`、`align`、`text_from`、`wrap`、`max_lines` |
 | `image` | `texture`、`fit`（`stretch`/`contain`/`cover`）、`tint`、`nine_slice`、`layers`、`animated`、`loop`、`speed` |
 | `button` | `text`(TextRuns)、`icon`（贴图引用或 `{item, count}`）、`style`、`events` |
 | `icon_button` | `icon`、`style`、`events` |

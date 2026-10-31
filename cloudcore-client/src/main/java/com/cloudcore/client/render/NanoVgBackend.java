@@ -33,6 +33,32 @@ public final class NanoVgBackend implements RenderBackend, RenderList.VectorText
 
     private final FboCompositor compositor = new FboCompositor();
     private final FontRegistry fonts = new FontRegistry();
+    /**
+     * Measures with NanoVG's current font face at {@link RenderCommand.Text#DEFAULT_SIZE},
+     * matching {@link #text}. The face is the first one that resolves (document font or the
+     * built-in default), which is what a label without an explicit font draws with anyway.
+     */
+    private final TextWrap.Measure nanovgMeasure = new TextWrap.Measure() {
+        @Override
+        public int width(String text) {
+            if (text == null || text.isEmpty()) {
+                return 0;
+            }
+            int fontId = fonts.resolve(null);
+            if (context == 0L || fontId < 0) {
+                return TextWrap.fallbackWidth(text);
+            }
+            NanoVG.nvgFontFaceId(context, fontId);
+            NanoVG.nvgFontSize(context, RenderCommand.Text.DEFAULT_SIZE);
+            return Math.max(1, Math.round(NanoVG.nvgTextBounds(context, 0.0f, 0.0f, text,
+                    textBounds)));
+        }
+
+        @Override
+        public int lineHeight() {
+            return Math.max(1, Math.round(RenderCommand.Text.DEFAULT_SIZE * (9.0f / 9.0f)));
+        }
+    };
     private final java.util.concurrent.atomic.AtomicBoolean textFailureLogged =
             new java.util.concurrent.atomic.AtomicBoolean();
     private final Map<String, Integer> imageHandles = new HashMap<>();
@@ -125,6 +151,9 @@ public final class NanoVgBackend implements RenderBackend, RenderList.VectorText
             NanoVG.nvgTranslate(this.context, 0.0f, context.height());
             NanoVG.nvgScale(this.context, 1.0f, -1.0f);
             syncAssets();
+            // Wrapped labels measure while the list is built, before draw(); install NanoVG's
+            // own metrics now so a TTF line breaks where it will actually end.
+            TextWrap.install(nanovgMeasure);
         } catch (RuntimeException exception) {
             fail("beginFrame failed: " + exception.getMessage());
         }
