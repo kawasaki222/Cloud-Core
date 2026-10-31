@@ -556,6 +556,35 @@ public final class CloudCoreClient implements ClientModInitializer {
         LOGGER.info("Received PING nonce=0x{}", Integer.toHexString(ping.nonce()));
     }
 
+    /**
+     * Cursor position in GUI pixels, for the tooltip scrollbar's hover state and thumb drag.
+     * Called from {@code MouseHandler#turnPlayer}, so it runs once per mouse move, not per
+     * frame.
+     */
+    public static void onMouseMove(double mouseX, double mouseY) {
+        com.cloudcore.client.surface.TooltipSurfaceAdapter.onMouseMove(mouseX, mouseY);
+    }
+
+    /**
+     * Press and release for the tooltip scrollbar. Only the left button is considered; a
+     * press on the bar starts a thumb drag and a release ends it. Clicks elsewhere are
+     * untouched, so screens and containers keep their normal behaviour.
+     */
+    public static void onMouseButton(int button, int action) {
+        if (button != 0) {
+            return;
+        }
+        Minecraft minecraft = Minecraft.getInstance();
+        // onButton already received window pixels; scale them the same way onMove does.
+        double mouseX = minecraft.mouseHandler.getScaledXPos(minecraft.getWindow());
+        double mouseY = minecraft.mouseHandler.getScaledYPos(minecraft.getWindow());
+        if (action == 1) {
+            com.cloudcore.client.surface.TooltipSurfaceAdapter.onMouseDown(mouseX, mouseY);
+        } else if (action == 0) {
+            com.cloudcore.client.surface.TooltipSurfaceAdapter.onMouseUp();
+        }
+    }
+
     public static void onScroll(double xOffset, double yOffset) {
         if (com.cloudcore.client.surface.TooltipSurfaceAdapter.onScroll(yOffset)) {
             return;

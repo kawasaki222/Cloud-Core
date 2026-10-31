@@ -110,16 +110,16 @@
   背景取文档里第一个带 `style.background` 的元素：贴图引用（可加 `style.nine_slice`）按提示框
   尺寸九宫格拉伸，颜色引用则直接填充；都没有时用默认深色。
   `tooltip_scroll` 事件回传服务端仍待动作引擎。
-- **滚动条样式**：已接线的是 `scrollbar.width`（或顶层 `scrollbar_width`）、`track_color`、
-  `thumb_color`。`gap`、贴图形式的 `track`/`thumb`/`thumb_hover`、`min_thumb`、`nine_slice`、
-  `draggable` 已定义但未实现。
+- **滚动条样式**：`scrollbar.width`（或顶层 `scrollbar_width`）、`track_color`、`thumb_color`、
+  `min_thumb`、贴图形式的 `track`/`thumb`/`thumb_hover`（带 `nine_slice`）、`draggable` 均已接线。
+  `gap` 仍未使用。
 - **滚动**：
   - 内容超过可见高度时进入滚动模式；
   - 固定提示框位置；
   - 滚轮按 `scroll_step`（默认 12）滚动，`smooth_scroll` 默认开；
   - 悬停物品变化时偏移归零；
   - 内容未超高时不消费滚轮。
-- **未实现**：拖动滑块（`draggable`）、滚动条贴图、`tooltip_scroll` 事件回传服务端。
+- **未实现**：`tooltip_scroll` 事件回传服务端；`follow_cursor`/`sync_scroll` 未接线。
 - **服务端逐行内容**：v1 不支持；可以通过物品 `lore` 组件追加。
 - **失败**：无法接管时原版提示；滚动失效时退回不滚动。
 - **兼容**：其他 Tooltip 模组、REI/EMI 的追加行应保留。

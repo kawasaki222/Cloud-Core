@@ -102,6 +102,12 @@ surface_options:
     scrollbar:
       mode: auto              # auto | always | never，默认 never
       width: 4
+      min_thumb: 12           # 滑块最小高度
+      draggable: true         # 允许拖动滑块
+      track: "local:公共/贴图/scroll_track.png"   # 贴图优先于颜色
+      thumb: "local:公共/贴图/scroll_thumb.png"
+      thumb_hover: "local:公共/贴图/scroll_thumb_hover.png"
+      nine_slice: [2, 2, 2, 2]
       track_color: "#70101828"
       thumb_color: "#FFFFD479"
   boss_bar:

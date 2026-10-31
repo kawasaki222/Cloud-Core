@@ -207,8 +207,9 @@ docs/
 - [x] Tooltip `name`/`lore` 独立 `x`/`y`/`font`/`line_gap`，`icon` 物品图标（取自悬停槽位）
 - [ ] M2 渲染剩余：文本 shaping（中文断行仍依赖原版字体度量）
 - [x] Tooltip 滚轮：`scroll_step` 与 `smooth_scroll` 接线（`TooltipScrollTest`）
-- [ ] Tooltip 剩余：`follow_cursor`/`sync_scroll` 未接线、滚动条贴图与 `draggable` 拖动未实现、
-      `tooltip_scroll` 事件未回传服务端
+- [x] Tooltip 滚动条：贴图轨道/滑块/悬停态 + `nine_slice` + `min_thumb` + `draggable` 拖动
+      （`MouseHandler#onMove`/`onButton` 混入）
+- [ ] Tooltip 剩余：`follow_cursor`/`sync_scroll` 未接线、`tooltip_scroll` 事件未回传服务端
 - [ ] `overlay` 元素只递归子元素，`modal`/`dim` 未实现
 - [x] `image.fit`：`stretch`/`contain`/`cover`（`RenderCommand.ImageProbe`，原生与 NanoVG 两个后端）
 - [x] `label` 的 `wrap`/`max_lines`：贪心折行（拉丁按词、CJK 按字符），带度量注入（`TextWrapTest`）

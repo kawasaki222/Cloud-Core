@@ -247,6 +247,99 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
     }
 
     /**
+     * Tracks whether the cursor is over the scrollbar, so the thumb can use its hover texture.
+     *
+     * @return true when a skinned tooltip is on screen and the cursor is inside the bar
+     */
+    public static boolean onMouseMove(double mouseX, double mouseY) {
+        if (DOCUMENT.get() == null
+                || System.currentTimeMillis() - lastRenderMs > SCROLL_WINDOW_MS) {
+            scrollbarHovered = false;
+            return false;
+        }
+        ScrollbarGeometry bar = lastScrollbar;
+        scrollbarHovered = bar.draggable && mouseX >= bar.x && mouseX <= bar.x + bar.width
+                && mouseY >= bar.y && mouseY <= bar.y + bar.viewport;
+        return scrollbarHovered;
+    }
+
+    /**
+     * Starts a thumb drag when the press lands on the bar and {@code draggable: true}.
+     *
+     * @return true when the press was consumed
+     */
+    public static boolean onMouseDown(double mouseX, double mouseY) {
+        if (DOCUMENT.get() == null
+                || System.currentTimeMillis() - lastRenderMs > SCROLL_WINDOW_MS) {
+            return false;
+        }
+        ScrollbarGeometry bar = lastScrollbar;
+        if (!bar.draggable || mouseX < bar.x || mouseX > bar.x + bar.width
+                || mouseY < bar.y || mouseY > bar.y + bar.viewport) {
+            return false;
+        }
+        draggingThumb = true;
+        dragGrabY = (int) Math.round(mouseY) - bar.thumbY;
+        return true;
+    }
+
+    /**
+     * Moves the thumb with the cursor while dragging.
+     *
+     * @return true when the drag is active and the offset changed
+     */
+    public static boolean onMouseDrag(double mouseX, double mouseY) {
+        if (!draggingThumb || DOCUMENT.get() == null) {
+            return false;
+        }
+        ScrollbarGeometry bar = lastScrollbar;
+        int maxOffset = Math.max(0, bar.contentHeight - bar.viewport);
+        int travel = Math.max(1, bar.viewport - bar.thumbHeight);
+        int thumbTop = (int) Math.round(mouseY) - dragGrabY;
+        float fraction = (float) (thumbTop - bar.y) / travel;
+        float target = clamp(fraction * maxOffset, 0.0f, maxOffset);
+        if (target == scrollOffset) {
+            return false;
+        }
+        scrollOffset = target;
+        scrollTarget = target;
+        return true;
+    }
+
+    /** Ends a thumb drag. */
+    public static boolean onMouseUp() {
+        boolean wasDragging = draggingThumb;
+        draggingThumb = false;
+        return wasDragging;
+    }
+
+    /** {@code scrollbar.draggable}: default on, since a bar that ignores the mouse is a lie. */
+    private static boolean draggable(UiDocument document) {
+        if (!(option(document, "scrollbar") instanceof Map<?, ?> bar)) {
+            return true;
+        }
+        Object value = bar.get("draggable");
+        return !(value instanceof Boolean enabled) || enabled;
+    }
+
+    private static String stringOption(Map<?, ?> map, String key) {
+        Object value = map.get(key);
+        return value instanceof String text && !text.isBlank() ? text : null;
+    }
+
+    private static int[] intArray(Object raw) {
+        if (!(raw instanceof java.util.List<?> list) || list.size() != 4) {
+            return null;
+        }
+        int[] values = new int[4];
+        for (int index = 0; index < 4; index++) {
+            Object entry = list.get(index);
+            values[index] = entry instanceof Number number ? Math.max(0, number.intValue()) : 0;
+        }
+        return values;
+    }
+
+    /**
      * Where a wheel notch takes the offset. A smooth scroll accumulates on the target, so a
      * fast spin still ends at the same place as stepped scrolling would.
      */
@@ -293,20 +386,78 @@ public final class TooltipSurfaceAdapter implements SurfaceAdapter {
         return !(value instanceof Boolean enabled) || enabled;
     }
 
+    /**
+     * Track, thumb and hover thumb: a texture reference when the document gives one, otherwise
+     * a colour fill. The bar geometry is published so a drag can map a cursor position back to
+     * an offset without recomputing the layout.
+     */
     private static void drawScrollbar(GuiGraphics graphics, UiDocument document, int x, int y,
             int width, int viewport, int contentHeight) {
+        Map<?, ?> bar = option(document, "scrollbar") instanceof Map<?, ?> map ? map : Map.of();
         int track = 0x60000000;
         int thumb = 0xFF9AD0FF;
-        if (option(document, "scrollbar") instanceof Map<?, ?> bar) {
-            track = com.cloudcore.client.render.Colors.parse(bar.get("track_color"), track);
-            thumb = com.cloudcore.client.render.Colors.parse(bar.get("thumb_color"), thumb);
+        track = com.cloudcore.client.render.Colors.parse(bar.get("track_color"), track);
+        thumb = com.cloudcore.client.render.Colors.parse(bar.get("thumb_color"), thumb);
+        int[] nineSlice = intArray(bar.get("nine_slice"));
+        String trackTexture = stringOption(bar, "track");
+        String thumbTexture = stringOption(bar, "thumb");
+        String hoverTexture = stringOption(bar, "thumb_hover");
+        int minThumb = Math.max(1, Math.min(viewport,
+                Math.max(1, intOption(bar, "min_thumb", 12))));
+
+        if (trackTexture != null) {
+            com.cloudcore.client.render.NativeBackend.drawTexture(graphics, trackTexture,
+                    x, y, width, viewport, nineSlice);
+        } else {
+            graphics.fill(x, y, x + width, y + viewport, track);
         }
-        graphics.fill(x, y, x + width, y + viewport, track);
-        int thumbHeight = Math.max(8, viewport * viewport / Math.max(1, contentHeight));
+        int thumbHeight = Math.max(minThumb, viewport * viewport / Math.max(1, contentHeight));
+        thumbHeight = Math.min(viewport, thumbHeight);
         int maxOffset = Math.max(1, contentHeight - viewport);
         int thumbY = y + Math.round((viewport - thumbHeight) * (scrollOffset / maxOffset));
-        graphics.fill(x, thumbY, x + width, thumbY + thumbHeight, thumb);
+        String texture = scrollbarHovered ? hoverTexture : null;
+        if (texture == null) {
+            texture = thumbTexture;
+        }
+        if (texture != null) {
+            com.cloudcore.client.render.NativeBackend.drawTexture(graphics, texture, x, thumbY,
+                    width, thumbHeight, nineSlice);
+        } else {
+            graphics.fill(x, thumbY, x + width, thumbY + thumbHeight, thumb);
+        }
+
+        lastScrollbar.set(x, y, width, viewport, thumbY, thumbHeight, contentHeight,
+                draggable(document));
     }
+
+    /** Where the last scrollbar was drawn; a drag reads this to map the cursor to an offset. */
+    private static final class ScrollbarGeometry {
+        private int x;
+        private int y;
+        private int width;
+        private int viewport;
+        private int thumbY;
+        private int thumbHeight;
+        private int contentHeight;
+        private boolean draggable;
+
+        private void set(int x, int y, int width, int viewport, int thumbY, int thumbHeight,
+                int contentHeight, boolean draggable) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.viewport = viewport;
+            this.thumbY = thumbY;
+            this.thumbHeight = thumbHeight;
+            this.contentHeight = contentHeight;
+            this.draggable = draggable;
+        }
+    }
+
+    private static final ScrollbarGeometry lastScrollbar = new ScrollbarGeometry();
+    private static volatile boolean scrollbarHovered;
+    private static volatile boolean draggingThumb;
+    private static volatile int dragGrabY;
 
     private enum ScrollMode {
         NEVER, AUTO, ALWAYS

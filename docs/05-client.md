@@ -342,10 +342,11 @@ public abstract class MouseHandlerMixin {
 - 不改变聊天、快捷栏、其他界面的滚轮行为。
 - 1.21.11 的全局入口是 `MouseHandler#onScroll(long, double, double)`；真实容器界面已验证
   混入能收到滚轮。`Screen#mouseScrolled` 可能被子类覆盖，不作为唯一钩子。
-- 滚动条样式来自文档 `surface_options.tooltip.scrollbar` 的 `width`/`track_color`/`thumb_color`；
-  贴图轨道/滑块、`nine_slice`、`min_thumb`、`thumb_hover` 与 `draggable` 拖动尚未实现。
-- 滚动条绘制在提示框内并裁剪到可见区域，只随滚轮偏移移动。
-- `tooltip_scroll` 事件尚未回传服务端；滚轮只改本地偏移。
+- 滚动条样式来自 `surface_options.tooltip.scrollbar`：`width`、`min_thumb`、
+  `track`/`thumb`/`thumb_hover` 贴图（带 `nine_slice`）、`track_color`/`thumb_color` 兜底配色。
+- `draggable: true`（默认）时拖动滑块与滚轮共享同一个偏移；拖动在 `MouseHandler` 的
+  `onMove`/`onButton` 混入里处理，只消费落在滚动条上的左键。
+- `tooltip_scroll` 事件尚未回传服务端；滚轮与拖动只改本地偏移。
 
 ## 11. Boss 血条
 
