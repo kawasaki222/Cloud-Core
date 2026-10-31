@@ -211,7 +211,7 @@ docs/
 - [ ] M2 渲染剩余：文本 shaping（中文断行仍依赖原版字体度量）
 - [x] Tooltip 滚轮：`scroll_step` 与 `smooth_scroll` 接线（`TooltipScrollTest`）
 - [x] Tooltip 滚动条：贴图轨道/滑块/悬停态 + `nine_slice` + `min_thumb` + `draggable` 拖动
-      （`MouseHandler#onMove`/`onButton` 混入）
+      （`MouseHandler#onMove`/`onButton` 混入；拖动已接线并有单测，真机观感待验）
 - [x] `tooltip_scroll` 回传：`sync_scroll: true` + 元素声明事件，100 ms 节流（`TooltipScrollReportTest`）
 - [x] `follow_cursor: false` 固定滚动中的提示框（`TooltipScrollReportTest`）
 - [x] `overlay` 的 `modal`/`dim`：遮罩 + 输入接管（`ModalOverlayTest`）

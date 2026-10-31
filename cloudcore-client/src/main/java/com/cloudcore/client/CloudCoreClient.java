@@ -584,6 +584,9 @@ public final class CloudCoreClient implements ClientModInitializer {
      */
     public static void onMouseMove(double mouseX, double mouseY) {
         com.cloudcore.client.surface.TooltipSurfaceAdapter.onMouseMove(mouseX, mouseY);
+        // Moving with the button held is a drag; MouseHandler#onMove sees every move, so the
+        // thumb follows the cursor without a screen claiming the input first.
+        com.cloudcore.client.surface.TooltipSurfaceAdapter.onMouseDrag(mouseX, mouseY);
     }
 
     /**
