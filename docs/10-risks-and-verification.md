@@ -487,7 +487,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，338 个测试 / 66 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，344 个测试 / 67 个测试类，0 失败）。
 
 仍未验证：
 
@@ -535,6 +535,10 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   会小幅增长；`/cloudcore-client reloadassets|dump` 复用同一实现，但未在聊天里逐条执行验证；
   `/cloudcore-client log <level>` 已实现（运行时改 `cloudcore` logger 级别）；`F3` 调试叠加层
   已真机截图验证；Linux/macOS 未验证。
+- **页面权限与动作冷却（2026-10-31，单元测试）**：页面 `permission:` 现在随 `CompiledPage`
+  传给服务端，`/cloudcore page`、API `open`、`open_page`、进服下发与刷新都会检查；
+  `ActionCooldown` 提供按玩家/页面/键隔离的冷却，页面用 `cooldown_ticks` 或 `cooldown` 动作声明。
+  `PageLoaderTest`（2 例）与 `ActionCooldownTest`（4 例）覆盖；尚未真机截图验证逐键行为。
 - **互操作与性能**：与 REI/EMI、其他 Tooltip/物品栏模组的共存矩阵未测；NanoVG FBO 的帧率与
   显存占用没有测量数据（只有功能正确性）。
 - **原生崩溃（未定位，帧不在本项目代码）**：开发客户端偶发

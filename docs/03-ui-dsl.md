@@ -988,7 +988,8 @@ on:
       value: "&a购买成功"
 ```
 
-每条动作支持 `permission`、`condition`、`delay`（tick，0..200）。
+每条动作支持 `permission`、`condition`、`delay`（tick，0..200）与 `cooldown_ticks`
+（正整数，同一元素上同一类型的动作在这么多 tick 内只执行一次；被挡下的点击按成功返回，不报错）。
 
 **已实现**的动作：`message`、`close_ui`（别名 `close`）、`set_state`、`if`/`then`/`else`、
 `delay`、`command`（默认关闭 + allowlist）、`open_page`、`sound`、`refresh`。
@@ -1011,10 +1012,11 @@ on:
 | `open_ui` | `id`、`surface`? | 打开另一个页面/面板 | 计划（`open_page` 已覆盖该用途） |
 | `set_element` | `id`、`property`、`value` | 直接覆盖属性 | 计划 |
 | `run_action` | `handler`、`args` | 调用注册的 `ActionHandler` | 计划（实际写法是直接 `action: <注册名>`） |
-| `cooldown` | `key`、`ticks` | 命名冷却 | 计划 |
+| `cooldown` | `key`、`ticks` | 命名冷却；冷却中整次点击 `REJECTED` | 已实现 |
 
-动作级 `permission:`、`condition:` 已实现；冷却（`cooldown` 与配置里的
-`per-element-cooldown-ms`）尚未实现。
+动作级 `permission:`、`condition:`、`delay`、`cooldown_ticks` 与 `cooldown` 动作均已实现；
+冷却按玩家、页面与键隔离，玩家退出时清空。配置里的 `per-element-cooldown-ms` 键不存在，
+冷却只由页面声明。
 
 动作列表只在服务端保存；下发文档只包含每个元素的 `events: {event: actionId}` 映射，不包含命令、
 动作体或权限。客户端点击后只发送 `(elementId, actionId)`。

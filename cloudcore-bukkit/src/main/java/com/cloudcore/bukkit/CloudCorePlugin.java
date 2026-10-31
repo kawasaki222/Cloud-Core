@@ -87,6 +87,8 @@ public final class CloudCorePlugin extends JavaPlugin
             compiledPages = new ConcurrentHashMap<>();
     private final com.cloudcore.server.surface.EventRateLimiter eventLimiter =
             new com.cloudcore.server.surface.EventRateLimiter();
+    private final com.cloudcore.server.action.ActionCooldown actionCooldowns =
+            new com.cloudcore.server.action.ActionCooldown();
     /** Addon actions registered through {@link com.cloudcore.bukkit.api.CloudCoreApi}. */
     private final Map<String, com.cloudcore.bukkit.api.ActionHandler> actionHandlers =
             new ConcurrentHashMap<>();
@@ -108,7 +110,7 @@ public final class CloudCorePlugin extends JavaPlugin
     private com.cloudcore.bukkit.texture.TextureProxy textureProxy;
     private static final Set<String> BUILT_IN_ACTIONS = Set.of(
             "message", "close_ui", "close", "set_state", "if", "delay", "command",
-            "open_page", "sound", "refresh");
+            "open_page", "sound", "refresh", "cooldown");
     private long playerRefreshBudget = 2_000_000L;
     private long globalRefreshBudget = 10_000_000L;
     private org.bukkit.scheduler.BukkitTask refreshTask;
@@ -301,8 +303,15 @@ public final class CloudCorePlugin extends JavaPlugin
                 + " actions=" + actions.size() + " player=" + player.getName());
         int status = com.cloudcore.protocol.EventResult.OK;
         for (com.cloudcore.api.page.PageLoader.PageAction action : actions) {
-            ActionOutcome outcome = executeAction(player, page, action, event.payload(),
-                    event.elementId());
+            // The cooldown gate wraps the whole action: a delay or if/then runs only once
+            // the key is free, and the key starts cooling down when the click is accepted.
+            String cooldownKey = cooldownKey(page, action, event.elementId());
+            ActionOutcome outcome = cooldownKey == null ? null : runWithCooldown(player, page,
+                    cooldownKey, action, event);
+            if (outcome == null) {
+                outcome = executeAction(player, page, action, event.payload(),
+                        event.elementId());
+            }
             if (outcome == ActionOutcome.DENIED) {
                 // A missing permission rejects the whole click, not just that one action.
                 status = com.cloudcore.protocol.EventResult.REJECTED;
@@ -347,6 +356,42 @@ public final class CloudCorePlugin extends JavaPlugin
     /** How one action finished; a denied permission aborts the rest of the click. */
     private enum ActionOutcome { OK, FAILED, DENIED }
 
+    /**
+     * The cooldown key for this action, or null when it has none. {@code cooldown_ticks} is
+     * the shorthand (key = page + element); the {@code cooldown} action carries its own
+     * key and length and is handled by {@link #executeAction}.
+     */
+    private String cooldownKey(com.cloudcore.api.page.PageLoader.CompiledPage page,
+            com.cloudcore.api.page.PageLoader.PageAction action, String elementId) {
+        if ("cooldown".equalsIgnoreCase(action.type())) {
+            return null;
+        }
+        if (!(action.params().get("cooldown_ticks") instanceof Number ticks) || ticks.longValue() <= 0) {
+            return null;
+        }
+        return page.document().id() + "/" + elementId + ":" + action.type();
+    }
+
+    /**
+     * Runs the action only if its key is free; a blocked action is logged and reported as OK so
+     * a fast clicker does not see an error for every extra click.
+     */
+    private ActionOutcome runWithCooldown(Player player,
+            com.cloudcore.api.page.PageLoader.CompiledPage page, String key,
+            com.cloudcore.api.page.PageLoader.PageAction action,
+            com.cloudcore.protocol.UiEvent event) {
+        Object raw = action.params().get("cooldown_ticks");
+        long ticks = raw instanceof Number number ? number.longValue() : 0L;
+        long millis = Math.min(ticks, 72_000L) * 50L;
+        if (!actionCooldowns.tryAcquire(player.getUniqueId(), key, millis)) {
+            getLogger().info("Action '" + action.type() + "' on cooldown for "
+                    + player.getName() + " on page " + page.document().id() + " ("
+                    + actionCooldowns.remainingMillis(player.getUniqueId(), key) + " ms left)");
+            return ActionOutcome.OK;
+        }
+        return executeAction(player, page, action, event.payload(), event.elementId());
+    }
+
     private ActionOutcome executeAction(Player player,
             com.cloudcore.api.page.PageLoader.CompiledPage page,
             com.cloudcore.api.page.PageLoader.PageAction action,
@@ -369,6 +414,32 @@ public final class CloudCorePlugin extends JavaPlugin
             return ActionOutcome.DENIED;
         }
         switch (action.type().toLowerCase(java.util.Locale.ROOT)) {
+            case "cooldown" -> {
+                // { action: cooldown, key: "buy", ticks: 40 }; the key is scoped to this page.
+                Object rawKey = action.params().get("key");
+                String keyName = rawKey == null ? null : String.valueOf(rawKey).trim();
+                if (keyName == null || keyName.isEmpty()) {
+                    getLogger().warning("cooldown without key in page " + page.document().id());
+                    return ActionOutcome.FAILED;
+                }
+                Object rawTicks = action.params().get("ticks");
+                long ticks = rawTicks instanceof Number number ? number.longValue() : 0L;
+                if (ticks <= 0) {
+                    getLogger().warning("cooldown needs positive ticks in page "
+                            + page.document().id());
+                    return ActionOutcome.FAILED;
+                }
+                String scoped = page.document().id() + "/" + resolveState(keyName, state, payload);
+                long millis = Math.min(ticks, 72_000L) * 50L;
+                if (actionCooldowns.tryAcquire(player.getUniqueId(), scoped, millis)) {
+                    return ActionOutcome.OK;
+                }
+                getLogger().info("Action 'cooldown' blocked for " + player.getName() + " on page "
+                        + page.document().id() + " key " + scoped + " ("
+                        + actionCooldowns.remainingMillis(player.getUniqueId(), scoped)
+                        + " ms left)");
+                return ActionOutcome.DENIED;
+            }
             case "close_ui", "close" -> sendClose(player);
             case "open_page" -> {
                 Object target = action.params().getOrDefault("page",
@@ -3066,6 +3137,7 @@ public final class CloudCorePlugin extends JavaPlugin
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         eventLimiter.forget(event.getPlayer().getUniqueId());
+        actionCooldowns.forget(event.getPlayer().getUniqueId());
         compiledPages.remove(event.getPlayer().getUniqueId());
         Session removed = sessions.remove(event.getPlayer().getUniqueId());
         if (removed != null) {

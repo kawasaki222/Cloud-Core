@@ -9,7 +9,7 @@
 
 **M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集已完成并在真机联调。**
 
-- 构建：`./gradlew build` 通过（JDK 21，338 个测试 / 66 个测试类，0 失败）。
+- 构建：`./gradlew build` 通过（JDK 21，344 个测试 / 67 个测试类，0 失败）。
 - 协议：信封、DEFLATE、分片/重组、HELLO/HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED、
   `EVENT`/`EVENT_RESULT`、`ELEMENT_UPDATE`、`TEXTURE_REF`、`TEXTURE_REQUEST`/`TEXTURE_PUT`、
   `DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
@@ -117,7 +117,7 @@ Mojang 映射，因此 26.1 的迁移成本更低。详见
 `config/cloudcore-client.json` 里写 `"renderer": "nanovg"` 或加 `-Dcloudcore.nanovg=true` 启用。
 输入框外观可由服务端换皮，输入逻辑、光标、选区与输入法保持原版；物品本体、
 数量/冷却/附魔光效和属性 tooltip 组件同样保持原版，只定制槽位外框与布局。动作引擎分两阶段：
-v1 线性动作（条件、权限、延迟，冷却未实现），v2 服务端图执行器（分支、循环、等待、并行、持久变量）；
+v1 线性动作（条件、权限、延迟、冷却），v2 服务端图执行器（分支、循环、等待、并行、持久变量）；
 两者都在服务端执行，与渲染后端无关。
 
 ## 模块
