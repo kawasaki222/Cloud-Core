@@ -15,26 +15,23 @@ cloud-core/
   cloudcore-api/
     src/main/java/com/cloudcore/api/
       document/        UiDocument、Element、Style、FontSpec
-      action/          ActionSpec、ActionHandler 接口
-      validation/      DocumentValidator、错误码
-      json/            Gson 适配器、schema 版本
+      action/          ActionNames、动作执行辅助
+      validation/      校验器（实际在 cloudcore-api 的 UiDocumentValidator）
+      json/            UiDocumentJson（实际在 cloudcore-api）
   cloudcore-protocol/
     src/main/java/com/cloudcore/protocol/
-      frame/           Frame、Opcode、编解码、分片
-      packet/          各报文的 read/write
-      surface/         SurfaceType、BindMode、RenderMode
-      value/           WireValue
-      Limits.java
+      Frame、FrameCodec、Opcode、Fragmenter/FragmentAssembler、Limits
+      UiCodec、EventCodec、ElementUpdateCodec、Texture*Codec、DiagnosticCodec 等逐报文编解码
+      WireValue/WireValueCodec/WireValues、ProtocolVersion、FeatureFlags
   cloudcore-server-core/
     src/main/java/com/cloudcore/server/
-      page/            PageStore、PageComposer、依赖图
-      compile/         DocumentCompiler、actionId 分配
-      session/         SessionRegistry、状态机、绑定
-      state/           StateModel、模板求值、repeat 展开
-      action/          ActionEngine、LinearActionEngine、内置处理器
-      placeholder/     PlaceholderResolver SPI
-      event/           AddonEventBus、监听器异常隔离
-      surface/         SurfaceProviderRegistry、SurfacePolicy
+      action/          ActionNames
+      event/           AddonEventBus
+      placeholder/     DocumentText、PlaceholderExpressions、PlaceholderToken
+      state/           PlayerStateStore、FilePlayerStateStore、SqlPlayerStateStore、
+                       StateJson、StateTransfer
+      surface/         ContainerClickPolicy、EventRateLimiter
+      update/          ElementDiffer（ELEMENT_UPDATE 增量）
   cloudcore-api-testkit/
     src/main/java/com/cloudcore/testkit/
       FakeCloudCoreApi  内存 API（open/state/reload 记录）
@@ -42,24 +39,24 @@ cloud-core/
       EventCapture      事件捕获
   cloudcore-bukkit/
     src/main/java/com/cloudcore/bukkit/
-      plugin/           CloudCorePlugin、配置
-      transport/        PluginMessageTransport、握手
-      listener/         Inventory、Player、Reload
-      inventory/        CloudHolder、点击策略、旧界面适配
-      placeholder/      PlaceholderAPI 适配
-      command/          命令与权限
+      CloudCorePlugin   生命周期、命令、动作执行、表面路由
+      CloudInventoryHolder、PageWatcher、Placeholders
+      api/              CloudCoreApi 实现、ActionHandler、PlaceholderResolver、
+                        PageProvider、OpenOptions、OpenResult
+      item/             EquipmentAssets（1.21.11 equipment 资产绑定）
+      slot/             SlotCatalog、SlotDefinition、AccessorySlots（slots.yml）
+      texture/          TextureProxy（TEXTURE_REQUEST/TEXTURE_PUT + 磁盘缓存）
   cloudcore-client/
     src/main/java/com/cloudcore/client/
-      CloudCoreClient
-      net/               payload、ClientTransport、分片
-      session/           ClientSessionTable、修订号
-      surface/           SurfaceRegistry、六个适配器
-      render/            RenderList、RenderBackend、NanoVgBackend、NativeBackend
-      render/fbo/        FboCompositor、FboTexture
-      render/native/     NativeBridge（物品/槽位/EditBox/Tooltip 文本）
-      font/              FontRegistry
-      layout/            LayoutEngine、SlotLayout
-      input/             InputRouter、命中测试
+      CloudCoreClient、ClientConfig、ClientDump、ClientHotkeys、ClientLogFile、ClientResources
+      mixin/            行为混入 + 只读 accessor
+      net/              CloudFramePayload 等 payload 与传输
+      surface/          SurfaceRegistry、六个适配器、DocumentUpdates、HudValues
+      screen/           CloudScreen、CloudContainerScreen、CloudInventoryScreen、
+                        CloudDebugOverlay、SlotLayout、EntityPortrait
+      render/           RenderList、NanoVgBackend、NativeBackend、FboCompositor、
+                        LocalTextureRegistry、LocalPageRegistry、RemoteTextureCache、
+                        TextureDiskCache、AnimatedTextures、BuiltinTextures、FontRegistry
       texture/           ImageCache、TextureManager、GIF
       mixin/             MinecraftMixin、TooltipMixin、ScreenScrollMixin、BossHealthOverlayMixin
       hud/               HudController
@@ -87,7 +84,7 @@ cloud-core/
 | Paper API | 1.21.11-R0.1-SNAPSHOT | compileOnly |
 | LWJGL NanoVG | 与 Minecraft 自带 LWJGL 对齐 | M0 确认，不要猜 |
 | Gson | 由运行环境提供 | Paper/Fabric 都自带 |
-| JUnit 5 / jqwik | 最新稳定 | 测试 |
+| JUnit 5 | 5.11.4 | 测试（未引入 jqwik；随机/模糊用例是手写循环） |
 
 规则：
 
@@ -98,7 +95,8 @@ cloud-core/
 
 ## 3. Gradle 配置要点
 
-- 根 `build.gradle.kts`：Java 21 toolchain、编译参数、测试、lint、`-Werror`。
+- 根 `build.gradle.kts`：Java 21 toolchain、UTF-8 编码、`--release 21`、JUnit 5。
+  目前**没有** `-Werror`、lint 插件或 `checkstyle`；新增前先加对应的 Gradle 配置与 CI 步骤。
 - `cloudcore-api` / `protocol` / `server-core`：`java-library`，无 Minecraft 依赖。
 - `cloudcore-bukkit`：`paper-api` 为 `compileOnly`，打包 `api` + `protocol` + `server-core`。
 - `cloudcore-client`：Fabric Loom、Mojang 映射、`implementation` NanoVG、`runtimeOnly` 三平台 natives。
@@ -124,7 +122,7 @@ cloud-core/
 1. JDK 21，`JAVA_HOME` 指向它。
 2. 克隆仓库，`./gradlew build`。
 3. 启动开发客户端：`./gradlew :cloudcore-client:runClient`。
-4. 启动测试服务端：`./gradlew :cloudcore-bukkit:runPaper`（或本地 Paper 目录）。
+4. 启动测试服务端：本地 Paper 1.21.11 目录（仓库不提供 `runPaper` 任务）。
 5. 客户端加入 `localhost`，服务端加载插件。
 6. 修改页面 YAML 后执行 `/cloudcore reload`；修改客户端代码需要重启客户端。
 7. 调试渲染：F3 叠加层显示后端、FBO、字体、会话、计数器；客户端配置 `renderer: native` 可切回退。
@@ -134,7 +132,8 @@ cloud-core/
 ### 6.1 新增报文
 
 1. 在 `Opcode` 分配号（S2C `0x00–0x7F`，C2S `0x80–0xFF`）。
-2. 在 `packet/` 实现 `read` / `write`，所有长度读取使用 `Limits`。
+2. 在 `cloudcore-protocol` 里新增该报文的 `record` 与 `XxxCodec`（与现有 `UiCodec`、
+   `EventCodec` 同一层，不分子包），所有长度读取使用 `Limits`。
 3. 更新 `02-protocol.md` 的操作码表和字段说明。
 4. 增加黄金向量与往返测试。
 5. 如果改变语义/字段顺序，提升协议次版本；主版本变化需迁移方案。

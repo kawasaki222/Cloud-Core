@@ -25,8 +25,10 @@ Paper 1.21.11 服务端
 
 1. Paper 1.21.11 + Java 21。
 2. 把 `cloudcore-bukkit-<version>.jar` 放入 `plugins/`。
-3. 启动一次，生成 `plugins/CloudCore/config.yml` 与 `pages/`（首次会写入六张示例页：
-   `example`、`shop`、`progress_demo`、`scroll_demo`、`actions_demo`、`papi_demo`，已存在的文件不覆盖）。
+3. 启动一次，生成 `plugins/CloudCore/config.yml` 与 `pages/`（首次会写入 12 张示例页：
+   `example`、`shop`、`progress_demo`、`scroll_demo`、`actions_demo`、`papi_demo`、
+   `papi_refresh`、`tooltip_rpg`、`rpg_hud`、`inventory_skin`、`slider_demo`、`boss_dnf`，
+   已存在的文件不覆盖）。
 4. 编辑配置与页面；`/cloudcore validate` 校验全部页面。
 5. `/cloudcore reload`（同时重读 `config.yml`）或重启。
 6. 确认通道注册成功：启动日志无 `ChannelNotRegisteredException`。
@@ -38,9 +40,13 @@ plugins/CloudCore/
   config.yml
   pages/              # YAML 页面；子目录（<名字>/page.yml）也可以
   state/<uuid>.json   # 每个玩家的会话状态（异步写、原子替换；state.persist: false 可关闭）
+  state.db            # state.backend: sqlite 时的数据库文件
+  exports/            # /cloudcore state-export 的输出目录
+  accessories/<uuid>.yml  # 自定义槽位页的内容，关闭时写入
+  texture-cache/      # 代理模式的图片磁盘缓存（按最旧文件淘汰，上限 textures.url.cache-mb）
+  slots.yml           # 自定义槽位定义（首次生成，可编辑）
   themes/             # 计划中
   fonts/              # 可选字体索引（NanoVG 后端）
-  cache/textures/     # 计划中：代理模式图片缓存
 ```
 
 `state/` 里的文件只包含文档用到的状态值（数字/布尔/字符串），删除某个文件等于把该玩家的页面状态
@@ -53,11 +59,11 @@ plugins/CloudCore/
 - 模组内置 NanoVG 三平台 natives；玩家不需要额外安装运行库。
 - 版本策略：协议主版本相同即可互操作；服务端支持落后一个次版本的客户端。
 - 客户端配置：`config/cloudcore-client.json`（首次启动自动写入）：
-  `{"renderer": "native", "debug": false}`。`renderer` 取 `native`（默认）或 `nanovg`；
-  启动参数 `-Dcloudcore.nanovg=true/false` 优先于文件，便于启动器/测试覆盖。
+  `{"renderer": "native", "debug": false, "remoteImages": true, "imageCacheMiB": 128}`。
+  `renderer` 取 `native`（默认）或 `nanovg`；启动参数 `-Dcloudcore.nanovg=true/false` 优先于文件。
   文件损坏或取值未知时按默认值启动并记 `CC-CFG-001/002`。
-- 客户端缓存：`.minecraft/cloudcore/image-cache/`（内容哈希）计划中；本地贴图缓存由
-  `LocalTextureRegistry` 直接读文件系统。
+- 客户端缓存：远端贴图磁盘缓存目录是 `config/cloudcore-textures/`（按内容哈希命名，
+  上限 `imageCacheMiB`）；本地贴图由 `LocalTextureRegistry` 直接读文件系统，不缓存。
 
 ## 4. 客户端本地资源
 
@@ -106,37 +112,37 @@ plugins/CloudCore/
 
 ## 6. 配置基线
 
-服务端关键项：
+服务端关键项（全部来自 `plugins/CloudCore/config.yml`，见 `04-server.md` 第 2 节）：
 
 | 键 | 建议 |
 | --- | --- |
-| `protocol.handshake-timeout-seconds` | 10 |
-| `ui.max-sessions-per-player` | 4 |
-| `surfaces.*.enabled` | 按需 |
-| `surfaces.container.legacy.skip` | 保留默认特殊容器 |
+| `pages.watch` | `true`（编辑页面即时生效）；生产也可关掉走 `/cloudcore reload` |
+| `apply-on-join.pages` | 留空 = 自动下发常驻页；需要白名单时列出文件名 |
 | `textures.url.mode` | `client`（默认）或 `proxy` |
-| `textures.url.allowlist` | 代理模式必须配置 |
-| `placeholders.per-player-budget-ms` | 2 |
+| `textures.url.allowlist` | 代理/auto 模式必须配置，否则代理请求全部拒绝 |
+| `textures.url.cache-mb` | 256；按最旧文件淘汰 |
+| `placeholders.player-budget-ms` | 2 |
 | `placeholders.global-budget-ms` | 10 |
-| `security.max-events-per-second` | 40 |
-| `security.max-definition-bytes` | 1048576 |
-| `storage.type` | `sqlite`（开发）/ `mysql`（生产） |
-| `storage.mysql.pool-size` | 8–16，按并发调整 |
-| `diagnostics.send-client-details` | 开发 true，生产按需 |
+| `state.persist` | `true` |
+| `state.backend` | `file`（零依赖）/ `sqlite`（单文件）/ `mysql`（生产、需自带驱动） |
+| `actions.commands.enabled` | `false`，确有必要才开并配 allowlist |
+| `inventory-probe` | `false`；只在排查容器时序时开 |
+| `debug` | `false`；排障时开单玩家报文头日志 |
+
+限流与文档限额当前硬编码（`EventRateLimiter` 20/s、突发 40；`PageLoader` 元素 512、
+`repeat` 实例 256、片段 64、include 深度 8、文件 256 KiB），配置里没有对应键。
 
 客户端关键项：
 
 | 键 | 建议 |
 | --- | --- |
-| `renderer` | `nanovg`，故障时 `native` |
-| `fboScale` | `2`（清晰度）或 `1`（性能） |
-| `fallbackToNative` | `true` |
-| `remoteImages` | `true`；隐私敏感用户可关 |
-| `imageCacheMiB` | 128 |
-| `textureCacheMiB` | 32 |
-| `animations` | 低端机可关 |
-| `debugOverlay` | 排障时开 |
-| `logLevel` | 默认 `info`，排障时 `debug` |
+| `renderer` | `nanovg`（需先在三平台验证），故障时 `native` |
+| `remoteImages` | `true`；隐私敏感用户可关，改走代理或磁盘缓存 |
+| `imageCacheMiB` | 128（范围 1–1024） |
+| `debug` | 排障时 `true` |
+
+`fboScale`、`fallbackToNative`、`textureCacheMiB`、`animations`、`debugOverlay`、`logLevel`
+等键尚未接线；FBO 像素比固定跟随 GUI 缩放，日志级别用 `/cloudcore-client log <level>`。
 | `logRedaction` | 生产必须 `true` |
 | `serverDetail` | 是否记录服务端诊断摘要 |
 
@@ -155,26 +161,26 @@ plugins/CloudCore/
 1. 备份 `plugins/CloudCore/`。
 2. 阅读发布说明的协议版本和最低客户端版本。
 3. 先升级服务端，再升级客户端；或先在测试服验证。
-4. 检查 `/cloudcore stats` 的 `surface_unsupported`、`rate_limited`、`crc_fail`。
+4. 检查服务端日志里的 `Rate limited EVENT`、`Unsupported action`、`CANCELLED click`
+   以及客户端日志里的 `CC-SURF-*`/`CC-UPDATE-*`（`/cloudcore stats` 尚未实现）。
 5. 26.1 迁移见 `10-risks-and-verification.md` 第 5 节。
 
 ## 8. 监控与诊断
 
 服务端：
 
-- `/cloudcore stats`：会话、报文、拒绝、贴图、绑定、遍历。
-- `/cloudcore surfaces <player>`：各面板 uiId、修订号、更新时间。
-- `/cloudcore validate <file>`：页面错误。
-- 日志：握手失败、版本不匹配、通道异常、动作异常、PAPI 超预算。
+- `/cloudcore validate`：全部页面编译结果（`[OK]` / `[FAIL] 名字: 原因`）。
+- 日志：握手失败、版本不匹配、通道异常、动作异常、PAPI 超预算、页面热重载。
+- 尚未实现：`/cloudcore stats`（会话/报文/拒绝计数器）与 `/cloudcore surfaces <player>`。
 
 客户端：
 
-- F3 叠加层：后端、FBO 尺寸、字体数、会话、报文、贴图缓存、Tooltip 偏移、Boss 绑定。
+- F3 叠加层：活动文档的 uiId/surface/revision 与文档数（不是后端/FBO 计数器）。
 - `renderer=native` 用于区分“内容问题”和“NanoVG/FBO 问题”。
-- 客户端错误通过 `CLIENT_ERROR` 上报，服务端计数。
 - 客户端日志：`logs/cloudcore-client.log`；排障时让玩家按 `F10` 导出 `cloudcore-dump-*.zip`，
-  里面包含日志、配置、系统信息、最近报文头，默认脱敏。
-- 服务端 `DIAGNOSTIC` 摘要也写入客户端日志；`/cloudcore diagnostics <player>` 可验证链路。
+  里面包含日志尾部、客户端配置、系统信息、最近报文头，默认脱敏。
+- 服务端 `DIAGNOSTIC` 摘要也写入客户端日志；`/cloudcore diagnostic <player>` 可验证链路。
+- `CLIENT_ERROR` 报文的操作码与字段已定义，但客户端尚未发送。
 
 建议告警：
 
@@ -207,26 +213,27 @@ plugins/CloudCore/
 | 界面打开但空白 | 文档未下发/绑定失败；看 `bind` 计数和客户端 `UI_READY` |
 | 箱子标题异常 | 标题哨兵兜底触发；检查预绑定顺序 |
 | 半透明黑边/白边 | FBO 预乘 alpha 混合；切 `renderer=native` 验证 |
-| 文字发虚 | FBO scale 过低或 GUI 缩放；调 `fboScale` |
+| 文字发虚 | FBO 像素比跟随 GUI 缩放；提高 GUI 缩放或换原生字体 |
 | 中文缺字 | 字体未覆盖 CJK；换字体或补字形 |
 | 图片不显示 | URL 不允许/超时/哈希不匹配；看客户端日志与 `TEXTURE_REQUEST` |
 | 光影包下界面异常 | FBO/管线冲突；配置回退原生 |
-| PAPI 变量不刷新 | `placeholders.mode`、预算、权限；看 `/cloudcore stats` |
+| PAPI 变量不刷新 | 页面 `placeholders.mode`、`interval_ticks`、预算；看服务端日志 `Updated page ... incrementally` |
 | Tooltip 不能滚 | 内容未超高、`scrollbar.mode`、其他模组接管 |
 
 ## 11. 性能调优
 
 服务端：
 
-- 降低 `max-sessions-per-player`、事件速率、PAPI 预算。
 - 页面拆分为片段便于局部重载，但不要过度嵌套。
-- 遍历实例上限按实际列表大小设置。
-- 代理模式图片缓存设上限并定期清理。
+- 遍历实例上限按实际列表大小设置（硬上限 256）。
+- 减少 `interval`/`tick` 刷新页面数量；`tick` 模式只给少量元素用。
+- 代理模式图片缓存设上限（`textures.url.cache-mb`）并定期清理。
+- 事件限流、PAPI 预算当前是硬编码，调不了；需要按目标规模重编译。
 
 客户端：
 
-- `fboScale: 1` 降低上传带宽；`2` 提升文字清晰度。
-- `textureCacheMiB`/`imageCacheMiB` 按显存调整。
+- `imageCacheMiB` 按磁盘与带宽调整。
+- NanoVG 后端未默认化；性能问题先用 `renderer=native` 做对照。
 - 关闭动画或降低动画帧率。
 - 静态层缓存、脏矩形、单层合并由实现负责；配置只做兜底。
 

@@ -66,7 +66,7 @@
 | 空间 | 单位 | 所在位置 |
 | --- | --- | --- |
 | **文档空间** | 逻辑 GUI 像素，原点在 UI 画布左上角 | YAML、编译后的文档 |
-| **FBO 空间** | 逻辑像素 × 整数倍（1x/2x） | NanoVG FBO |
+| **FBO 空间** | 逻辑像素 × GUI 缩放（整数倍） | NanoVG FBO |
 | **屏幕空间** | GUI 缩放后的像素，原点在窗口左上角 | 合成位置、原版槽位坐标 |
 | **帧缓冲空间** | 物理像素 | Minecraft 自己的 GUI 变换 |
 
@@ -138,7 +138,8 @@ fonts:
 - `nanovg_ttf`：读取 TTF/OTF 字节，`nvgCreateFontMem` 创建字体；字体创建在渲染线程。
 - `nanovg_bitmap`：v2；位图字体页转成 NanoVG 图像字体或字形 quad。
 - `native`：原版 `Font`，用于 Tooltip 内容、EditBox、部分 Boss 标题。
-- 文本测量用 `nvgTextBounds` / `nvgTextMetrics`；换行用 `nvgTextBreakLines`，CJK 按字符回退。
+- 文本测量用 `nvgTextBounds` / `nvgTextMetrics`。`nvgTextBreakLines`（文本 shaping / 自动换行）
+  **尚未实现**，当前中文断行依赖原版字体度量；`label` 的 `wrap`/`max_lines` 也未接线。
 - 行高 = 字体度量 + `line_gap`。
 - 中文、日文、韩文需要字体覆盖对应字形；缺字回退链要配置。
 - 原版文本和 NanoVG 文本是两套度量，不能混用。输入框文本与 Tooltip 内容由原版绘制。

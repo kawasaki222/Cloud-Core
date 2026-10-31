@@ -49,9 +49,10 @@ OpenResult result = api.open(player, "rpg_shop", options);
 
 - `open(Player, String pageId)` / `open(Player, String pageId, OpenOptions)`：打开已加载的页面。
 - 返回值：`OPENED`、`SCHEDULED`（非主线程，已排到下一 tick）、`NOT_MODDED`（客户端没完成
-  握手）、`UNKNOWN_PAGE`、`UNSUPPORTED_SURFACE`（v1 只打开自定义页面）、`FAILED`（页面编译失败）。
+  握手）、`UNKNOWN_PAGE`、`UNSUPPORTED_SURFACE`（API 的 `open` 只接受 `custom_screen`；
+  其他表面走 `/cloudcore page` 或页面自己声明）、`FAILED`（页面编译失败）。
 - 会话状态、revision 与贴图引用和 `/cloudcore page` 走同一条路径。
-- `open(Player, UiDocument, OpenOptions)`（代码构造页面）属于 PageBuilder，计划中。
+- 代码构造页面用 `open(Player, PageLoader.CompiledPage[, OpenOptions])`（见第 4 节）。
 
 ## 4. 代码构造页面
 

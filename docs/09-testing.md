@@ -16,30 +16,30 @@
 
 ### 2.1 往返
 
-每种报文构造→编码→解码→断言相等。jqwik 覆盖边界：`0`、`1`、`-1`、`Integer.MIN_VALUE`、
-最大字符串、空列表、最大深度 map。
+每种报文构造→编码→解码→断言相等。边界值（`0`、`1`、`-1`、`Integer.MIN_VALUE`、最大字符串、
+空列表、最大深度 map）写在 JUnit 用例里；项目**没有**引入 jqwik，属性化与模糊测试是手写随机循环
+（见 2.3）。
 
 ### 2.2 黄金向量
 
-`cloudcore-protocol/src/test/resources/vectors/1.1/<name>.hex`：
+黄金字节目前**内联在测试代码里**，没有 `vectors/1.1/<name>.hex` 资源目录：
 
-```
-# name: UI_OPEN_container
-# proto: 1.1
-43 43 01 00 10 ...
-```
+- `HandshakeCodecTest.helloMatchesProtocolDocumentGoldenVector` / `helloAckGoldenVectorIsStable`
+- `UiCodecTest.openGoldenVectorIsStable`
+- `ElementUpdateCodecTest.goldenBytes`（固定字节 `01750201016101060178`）
+- `FragmentCodecTest.fragmentEnvelopeGoldenVectorIsStable`
 
-向量变化意味着协议变化，必须做版本升级决策。特别覆盖：
+向量变化意味着协议变化，必须做版本升级决策。覆盖范围：
 
-- `UI_OPEN` 六种 surface × 四种 bindMode。
-- `UI_READY` 五种 state。
-- `ELEMENT_UPDATE` 每种属性。
-- `DIAGNOSTIC` 各 severity、超长 detail、去重键。
-- 分片、压缩、空 body。
+- `UI_OPEN` 的 surface / bindMode 组合（不是文档里写的全部 6×4 矩阵）。
+- `UI_READY` 各 state（`UiCodecTest`）。
+- `ELEMENT_UPDATE` 的每种属性（`WireValuesTest`）。
+- `DIAGNOSTIC`、分片、压缩、空 body。
 
 ### 2.3 模糊测试
 
-- 100 万随机字节数组走完整解码；无异常逃逸、无按声明长度分配、单输入耗时有限。
+- 20 万随机字节数组走完整解码（`ClientMessageFuzzTest`；文档里曾有"100 万"的记录是分批累计）；
+  无异常逃逸、无按声明长度分配、单输入耗时有限。
 - 结构化模糊：合法帧头 + 随机 body。
 - 解压炸弹：1 MiB 帧声称 1 GiB，必须在上限处拒绝。
 - 分片模糊：重复、缺失、乱序、255 片、count 0。
@@ -144,6 +144,11 @@
 - 异步：日志队列满时丢弃并计数，不阻塞渲染线程。
 
 ## 8. 手动矩阵
+
+> 这是**待执行**的完整手动矩阵。已经在真机上执行过的条目记录在
+> `10-risks-and-verification.md` 第 2.1 节（截至 2026-10-31 全部为 Windows 11 x64）。
+> 复选框保持未勾选，表示没有按本矩阵的完整维度（缩放 1–4 × 分辨率 × 窗口模式 × 网络）跑过一遍，
+> 而不是完全没验证。
 
 ### 8.1 环境
 
@@ -290,7 +295,7 @@
 ## 12. Minecraft 更新回归
 
 1. 重新验证 `10-risks-and-verification.md` 的未验证清单。
-2. 按新映射重建 `NanoVgBackend`、`FboCompositor`、`NativeBackend` 和四个混入。
+2. 按新映射重建 `NanoVgBackend`、`FboCompositor`、`NativeBackend` 和行为混入。
 3. 重跑完整手动矩阵。
 4. 重跑互操作。
 5. 更新 README 兼容性表。
@@ -299,19 +304,22 @@
 
 ## 13. CI 概览
 
+当前仓库里只有 `.github/workflows/build.yml`：`ubuntu-latest` 与 `windows-latest` 两个矩阵，
+JDK 21，执行 `./gradlew build`。下面其余 job 是目标形态，尚未配置。
+
 ```
-job build:
+job build（已配置）:
   - setup-java 21
-  - ./gradlew build
-job protocol:
-  - 黄金向量 + jqwik 10 万次
-job compose-repeat:
+  - ./gradlew build（Windows + Linux）
+job protocol（目标）:
+  - 黄金向量 + 手写随机模糊（当前 20 万次）
+job compose-repeat（目标）:
   - 组合、遍历、校验器测试
-job docs:
+job docs（目标）:
   - Markdown 本地链接检查
   - 黄金文档与 schema 校验
   - DSL/协议/schema 字段一致性检查
-job client-test（自托管 Windows）:
+job client-test（目标，自托管 Windows）:
   - runClient -Dcloudcore.test.scenario=surfaces -Dcloudcore.test.renderer=nanovg
   - runClient -Dcloudcore.test.scenario=surfaces -Dcloudcore.test.renderer=native
 ```

@@ -21,77 +21,61 @@
 
 ## 2. 配置
 
+下面是 `plugins/CloudCore/config.yml` 的**实际**键（插件只读这些；未列出的键即使写进文件也不会生效）：
+
 ```yaml
-protocol:
-  channel: "cloudcore:main"
-  min-client-version: "0.1.0"   # 模组版本；协议版本单独协商
-  handshake-timeout-seconds: 10
+# 为排查容器时序，打开后每个 InventoryOpenEvent 都会发一个 PING
+inventory-probe: false
 
-ui:
-  default-theme: dark
-  max-sessions-per-player: 4
-  close-on-world-change: true
-  close-on-death: true
+pages:
+  watch: true                   # WatchService 热重载（400ms 合并）
 
-# 进服自动下发的页面（按文件名，不含 .yml）。
-# 页面自己声明 surface，服务端据此决定打开方式，见第 7 节「表面路由」。
 apply-on-join:
-  pages: [rpg_hud, inventory_skin]
+  # 留空 = 自动下发 pages/ 下所有常驻类页面（hud / player_inventory / tooltip / boss_bar）
+  # 非空 = 只下发列出的页面（文件名，不含 .yml）
+  pages: []
 
 placeholders:
   enabled: true
-  player-budget-ms: 2
-  global-budget-ms: 10
-
-security:
-  max-events-per-second: 40
-  event-burst: 80
-  per-element-cooldown-ms: 50
-  max-definition-bytes: 1048576
-  max-text-length: 512
-  max-repeat-instances: 256
+  player-budget-ms: 2           # 每个玩家每次 tick 的软预算
+  global-budget-ms: 10          # 全局软预算
 
 textures:
-  inline-enabled: true
-  max-texture-bytes: 262144
-  max-texture-dimension: 512
-  max-client-cache-bytes: 33554432
   url:
-    enabled: true
-    mode: client            # client | proxy | auto
-    allowlist: ["https://cdn.example.com/"]   # proxy/auto 的服务端拉取白名单
+    mode: client                # client | proxy | auto
+    allowlist: []               # 仅 https；proxy/auto 的服务端拉取白名单，条目是 URL 前缀
     max-bytes: 8388608
     timeout-seconds: 10
-    ttl-seconds: 3600
-    cache-mb: 256
-    cache-dir: "texture-cache"
-  gif:
-    enabled: true
-    max-frames: 64
-    max-total-pixels: 4194304
-    min-frame-delay-ms: 50
+    ttl-seconds: 3600           # 0 = 按内容哈希永久缓存
+    cache-mb: 256               # 代理磁盘缓存上限，按最旧文件淘汰
 
-storage:
-  type: sqlite                   # sqlite | mysql
+state:
+  persist: true                 # false = 状态只在本次在线期间存在
+  backend: file                 # file | sqlite | mysql
   sqlite:
-    file: "cloudcore.db"
+    file: state.db
   mysql:
-    host: "127.0.0.1"
-    port: 3306
-    database: "cloudcore"
-    user: "cloudcore"
+    driver: com.mysql.cj.jdbc.Driver
+    url: ""
+    username: ""
     password: ""
-    ssl: true
-    pool-size: 8
 
-diagnostics:
-  send-client-details: true      # 生产可关；开发默认开
-  include-relative-paths: true   # 只发相对路径
-  max-detail-bytes: 4096
-  rate-limit-per-second: 10
+actions:
+  commands:
+    enabled: false              # command 动作总开关
+    allowlist: []               # 允许的命令首个词（不含前导斜杠，忽略大小写）
 
-debug: false
+debug: false                    # 单玩家报文头日志
 ```
+
+注意：`apply-on-join.pages` 留空时是"自动扫描常驻页"，单页可用
+`surface_options.on_join: false` 退出；只有非空时才是白名单。代理缓存的磁盘目录固定为
+`plugins/CloudCore/texture-cache/`，不由配置控制。
+
+以下是**设计基线**里出现、但尚未接线的配置段（写进 `config.yml` 不会生效）：
+`protocol.*`（通道名固定 `cloudcore:main`）、`ui.*`、`security.*`（限流硬编码为 20/s、突发 40，
+与 `docs/07-security.md` 一致）、`textures.inline-enabled`/`max-texture-*`/`gif.*`、
+`storage.*`（实际键是 `state.*`）、`diagnostics.*`。新增这些键前需要先实现读取与校验。
 
 说明：
 
@@ -107,44 +91,62 @@ debug: false
 /cloudcore ping [player]                发送 PING 并报告 RTT（控制台可指定玩家）
 /cloudcore demo [player]                发送最小自绘演示页，验证传输与渲染链路
 /cloudcore demo-big [player]            发送 >24 KiB 文档，验证真机分片与重组
+/cloudcore demo-huge [player]           发送约 830 KB 文档，验证多分片重组
+/cloudcore demo-assets [player]         贴图与物品图标演示（local:/pack:/builtin:/item_icon/GIF）
+/cloudcore demo-layout [player]         row/column/grid 布局演示
+/cloudcore demo-scroll [player]         滚动容器与裁剪演示
 /cloudcore demo-hud [player]            发送持久 HUD 文档，验证 HudElementRegistry 绘制
+/cloudcore demo-hud-rpg [player]        下发 rpg_hud 页面（替换原版血条/饱食度/经验/快捷栏）
+/cloudcore demo-hud-bg [player]         下发背景层 HUD 文档
 /cloudcore demo-tooltip [player]        发送 Tooltip 皮肤文档，验证原生文本+自定义背景
 /cloudcore demo-container [player]      发送容器文档并打开测试箱子，验证容器换皮
 /cloudcore demo-readonly [player]       readonly 容器，验证点击/拖拽全部取消
 /cloudcore demo-readonly-allow [player] readonly + allow_player_inventory，验证玩家背包可操作
-/cloudcore demo-inventory [player]      发送背包皮肤文档，按 E 打开背包验证
+/cloudcore demo-passthrough [player]    passthrough 容器，验证点击不被取消
+/cloudcore demo-inventory [player]      下发背包皮肤；按 E 打开背包验证
+/cloudcore demo-inventory-vanilla [player] 撤下背包皮肤，验证回到原版界面
+/cloudcore demo-boss-multi [player]     下发 3 条哨兵 BossBar（spacing 2、max_bars 16），验证堆叠
 /cloudcore probe [player]               打开测试箱子，验证 InventoryOpenEvent 时序（需配置）
 /cloudcore boss [player]                发送带哨兵的测试 BossBar，验证客户端匹配
 /cloudcore close [player]               关闭最近发送的测试 UI，验证服务端主动关闭
 /cloudcore diagnostic [player]          下发一条测试 DIAGNOSTIC，验证客户端日志链路
-/cloudcore reload                       重载主题、字体索引与页面
+/cloudcore page <名字> [player]         从 pages/ 加载 YAML 并下发
+/cloudcore validate                     编译并校验全部页面，输出 [OK]/[FAIL]
+/cloudcore reload                       重读 config.yml、重载页面并推送更新
 /cloudcore state-export <file.json>     导出全部玩家页面状态到 plugins/CloudCore/exports/
 /cloudcore state-import <file.json>     从导出文件导入；在线玩家保持内存状态，重进后生效
-/cloudcore open <player> <page>         为玩家打开页面（计划）
-/cloudcore close <player> [surface]     关闭某个面板或全部面板（计划）
-/cloudcore list                         列出已加载页面、面板类型与修订号（计划）
-/cloudcore validate <file>              编译并校验单个 YAML（计划）
-/cloudcore stats                        计数器（计划）
-/cloudcore debug <player> [on|off]      单玩家报文日志（计划）
-/cloudcore texture push <player> <key> <file.png>（计划）
-/cloudcore surfaces <player>            查看该玩家各面板的绑定状态（计划）
-/cloudcore diagnostics <player>         发送一条测试诊断（计划）
+/cloudcore accessories [player]         打开 slots.yml 定义的自定义槽位页
+/cloudcore equipment <asset> [player]   把装备资产写进主手物品的 equippable.model
+/cloudcore equipment-stand <asset> [player] 生成穿戴该资产的盔甲架，便于预览
 ```
 
-当前已实现 `ping` / `demo`，使用 `cloudcore.admin`；其余为后续里程碑命令。
+以上全部已实现，统一使用 `cloudcore.admin`；`/cloudcore` 带 Tab 补全（子命令、页面名、
+`state-import` 的导出文件、玩家名）。
+
+计划中的命令（尚未实现）：
+
+```
+/cloudcore list                         列出已加载页面、面板类型与修订号
+/cloudcore stats                        计数器
+/cloudcore debug <player> [on|off]      单玩家报文日志
+/cloudcore texture push <player> <key> <file.png>
+/cloudcore surfaces <player>            查看该玩家各面板的绑定状态
+```
 
 | 权限 | 默认 | 用途 |
 | --- | --- | --- |
-| `cloudcore.admin` | op | 当前 `ping` / `demo` 及后续基础命令 |
+| `cloudcore.admin` | op | 当前全部命令（`plugin.yml` 里唯一声明的权限） |
 | `cloudcore.command` | op | 基础命令（计划拆分） |
 | `cloudcore.open` | op | 打开任意页面 |
 | `cloudcore.page.<id>` | op | 打开指定页面 |
 | `cloudcore.surface.<name>` | op | 使用指定面板 |
 | `cloudcore.reload` | op | 重载 |
 | `cloudcore.debug` | op | 调试输出 |
+| `cloudcore.slot.<名字>` | op | `slots.yml` 里槽位声明的 `permission` |
 
-页面级权限是 `cloudcore.page.<页面 id>`，除非页面显式设置 `permission:`。打开时检查一次，并每 5 秒
-对活动会话复查。
+页面级权限 `cloudcore.page.<页面 id>` 与页面 `permission:` 目前只解析进 `CompiledPage`，
+**尚未在打开/复查时强制检查**；已强制的是动作级 `permission:`（缺权限整次点击 `REJECTED`）。
+这是当前实现与设计基线的已知差距。
 
 ## 4. 传输与握手
 
@@ -260,10 +262,12 @@ revision 的文档更新；会话状态保留（每个玩家按页面名保存�
 `/cloudcore state-export` / `state-import`：在当前 `file`/`sqlite`/`mysql` 后端之间导出、导入同一份
 `{version,players}` JSON；导入按玩家整体替换，不做字段合并。两者都在异步线程执行。
 `/cloudcore page <名字> [玩家]`：从 `plugins/CloudCore/pages/<名字>/page.yml`（或 `<名字>.yml`）
-加载 YAML，经 `PageLoader` 组合与展开后下发 `UI_OPEN` + `UI_DEFINITION`。当前只接受
-`surface: custom_screen`；容器/HUD/Tooltip/Boss 仍走各自的演示与后续策略实现。
-插件首次启动会把示例页写到 `pages/`（`example`、`shop`、`progress_demo`、`scroll_demo`、
-`actions_demo`、`papi_demo`），已存在的文件不会被覆盖。
+加载 YAML，经 `PageLoader` 组合与展开后下发 `UI_OPEN` + `UI_DEFINITION`。页面按自己声明的
+`surface` 走第 7 节的表面路由，所以同一命令也能下发 HUD / Tooltip / Boss 血条 / 背包皮肤；
+容器类页面由打开容器触发。
+插件首次启动会把 12 张示例页写到 `pages/`（`example`、`shop`、`progress_demo`、`scroll_demo`、
+`actions_demo`、`papi_demo`、`papi_refresh`、`tooltip_rpg`、`rpg_hud`、`inventory_skin`、
+`slider_demo`、`boss_dnf`），已存在的文件不会被覆盖。
 
 ### 6.6 会话状态持久化
 
@@ -317,11 +321,12 @@ revision 的文档更新；会话状态保留（每个玩家按页面名保存�
 ### 7.1 容器面板
 
 ```java
-Inventory inv = Bukkit.createInventory(new CloudHolder(session), rows * 9, title);
+Inventory inv = Bukkit.createInventory(new CloudInventoryHolder(playerId, uiId, interaction,
+        declaredSlots), rows * 9, title);
 player.openInventory(inv);
 ```
 
-`CloudHolder` 实现 `InventoryHolder`，`getInventory()` 必须返回实际物品栏，不能返回 `null`。
+`CloudInventoryHolder` 实现 `InventoryHolder`，`getInventory()` 返回实际物品栏，不能返回 `null`。
 
 点击策略（`InventoryClickEvent`，`LOWEST`，`ignoreCancelled = true`）：
 
@@ -369,8 +374,8 @@ transport.send(player, UiPackets.openPersistent(session, SurfaceType.HUD, layerN
 transport.send(player, UiPackets.definition(session));
 ```
 
-HUD 文档不允许声明槽位。状态更新与普通会话一致：重编译并下发更高 revision 的完整文档
-（`ELEMENT_UPDATE` 增量计划中）。
+HUD 文档不允许声明槽位。状态更新与普通会话一致：重编译后优先发 `ELEMENT_UPDATE` 差异，
+结构/几何变化才回退完整文档。
 
 ### 7.4 Tooltip 面板
 
@@ -405,10 +410,11 @@ transport.send(player, UiPackets.definition(session));
 - 进度、颜色、样式仍由原版 `BossEvent` 同步；Cloud 文档只负责外观。
 - 外框、填充、覆盖层贴图、九宫格、填充缩进、文字颜色/阴影/对齐、是否按事件颜色染色，定义在
   `surface_options.boss_bar.bar`。名称画在血条内部，哨兵会被剥掉。
-- **多层血条是同一根条，不是多根**：哨兵可带层号 `\u0000CCB:<token>:<层>/<总层数>\u0000<名称>`，
-  客户端拿同一条 `BossBar` 按当前层换颜色/贴图/标签。当前层在框内打空后，同一个框重新填满并换成
-  下一层的样式；总层数 >1 时血条内右侧显示 `2/3` 之类的计数。阶段切换时服务端只改哨兵层号与
-  `setProgress`，不要为每层另建 `BossBar`（那会变成屏幕上并排的多根条）。
+- **多层血条是同一根条，不是多根**：哨兵带每层剩余强度
+  `\u0000CCB:<token>:<p1>,<p2>,...\u0000<名称>`（每个 `p` 是该层剩余强度，千分比 0..1000）。
+  客户端拿同一条 `BossBar` 由内向外逐层绘制：外层打空后露出内层，整条打空后才继续下一阶段。
+  服务端阶段切换时只改哨兵里的数值与 `setProgress`，不要为每层另建 `BossBar`
+  （那会变成屏幕上并排的多根条）。
 - 每层的外观写在 `surface_options.boss_bar.bar.layers`，只写与 `bar` 不同的键（`tint` / `fill` /
   `name` / `text`），其余继承。`tint` 优先于 `BossEvent` 颜色。
 - 预览：页面 `surface_options.boss_bar.demo_layers` 列出每层名称/进度/颜色，`demo_name` 给 Boss 名；
@@ -460,14 +466,31 @@ slots:
 - 页面贴图默认使用内置 `builtin:slot` + `builtin:slot_glow` 图层，服务器不需要额外资源包；
   想换皮时在 `slots.yml` 之外替换页面生成器或使用自定义客户端资源即可。
 
+### 7.7 装备资产
+
+1.21.11 的盔甲外观可由数据驱动 `equipment` 资产描述（`assets/<namespace>/equipment/<path>.json`），
+无需客户端混入。Cloud Core 只负责把资产 id 写进物品的 `equippable.model` 组件：
+
+```text
+/cloudcore equipment cloudcore:valkyrie [player]        # 写到主手物品
+/cloudcore equipment-stand cloudcore:valkyrie [player]  # 生成穿戴该资产的盔甲架
+```
+
+- 资产 id 必须是命名空间形式（`cloudcore:valkyrie`）；非盔甲/不可穿戴物品返回 false 并回提示。
+- 模组内置一个最小示例 `assets/cloudcore/equipment/valkyrie.json` 与两张贴图，仅用于回退演示；
+  正式素材放资源包。
+- 槽位按材料推断（头盔 → `HEAD`、胸甲/鞘翅 → `CHEST`、护腿 → `LEGS`、靴子 → `FEET`）。
+
 ## 8. 状态、遍历与差异
 
 - 会话状态是 `Map<String, Object>`，值只允许 `String`、`Boolean`、`Integer`、`Long`、`Double`、
   `List`、`Map`。
 - 模板求值时先展开 `repeat`：根据 `source` 列表生成实例，再对每个实例求值。
 - 每个元素的已渲染属性保存在 `Map<String, Map<Property, WireValue>>`。
-- 当前实现：变化后整页重编译，下发更高 revision 的完整文档；等值写入不发送（`set_state` 保护）。
-- 计划：每 tick 收集变化合并成一个 `ELEMENT_UPDATE`，空差异不发。
+- 当前实现：变化后整页重编译，再用 `ElementDiffer` 与上一份已发送文档比较：
+  文本/可见/启用/进度/物品等属性变化走 `ELEMENT_UPDATE`（更高 revision，空差异不发）；
+  结构、几何、事件、字体或主题变化回退整份 `UI_DEFINITION`。等值写入不发送（`set_state` 保护）。
+- `ELEMENT_UPDATE` 只对 `custom_screen` 与 `hud` 启用，其余表面整文档重发。
 - 实例数量变化时，v1 提升修订号并下发完整文档；后续动作引擎版本改为增量增删元素。
 - 客户端发送缓冲拥塞时丢弃更新；下一 tick 从权威状态重算，自动恢复。
 
@@ -542,7 +565,7 @@ v1 的 `LinearActionEngine` 实现 `submit` 时立即执行，`tick` 只处理 `
 @EventHandler(priority = EventPriority.LOW, ignoreCancelled = true)
 public void onInventoryOpen(InventoryOpenEvent event) {
     if (!(event.getPlayer() instanceof Player player)) return;
-    if (event.getInventory().getHolder() instanceof CloudHolder) return;
+    if (event.getInventory().getHolder() instanceof CloudInventoryHolder) return;
     PlayerProfile profile = handshake.profile(player);
     if (profile == null || !profile.modded()) return;
     if (!config.legacyEnabled()) return;
@@ -614,15 +637,20 @@ public void onInventoryOpen(InventoryOpenEvent event) {
 - 开关 `placeholders.enabled`（默认 `true`）。没装 PlaceholderAPI 时页面照常工作，`%token%` 原样显示，
   日志写 `PlaceholderAPI not installed; %placeholders% stay as text`。
 - 未知令牌保持原样；扩展抛异常只记一次警告，文本按未展开发送。颜色/尺寸/贴图引用不会被改写。
-- 每次发送/刷新各解析一次（无周期刷新）；`${placeholder:...}` 形式尚未接入，先用 `%token%`。
+- 页面/元素可配 `placeholders.mode`（`static`/`interval`/`tick`/`event`/`manual`）做周期刷新，
+  刷新时同样展开一次，再用 `ELEMENT_UPDATE` 只发差异。当前只对 `custom_screen` 与 `hud` 启用
+  周期/事件刷新。
+- `%token%` 与 `${placeholder:token}` 两种写法等价（`PlaceholderExpressions`）；后者支持附件插件
+  注册的自定义命名空间。
 
 ## 13. 公共 Java API
 
-已实现：`open(Player, String pageId[, OpenOptions])`、`registerActionHandler`、
-`unregisterActionHandler`、`registerPlaceholderResolver`、`registerPageProvider`、
+已实现：`open(Player, String pageId[, OpenOptions])`、`open(Player, CompiledPage[, OpenOptions])`、
+`registerActionHandler` / `unregisterActionHandler`、`registerPlaceholderResolver` /
+`unregisterPlaceholderResolver`、`registerPageProvider` / `unregisterPageProvider`、
 `setState`/`getState`、`registerSurfaceProvider`/`unregisterSurfaceProvider`、
 `addEventListener`/`removeEventListener`、`isModded`（详见 `19-addon-api.md`）。
-下面其余方法为计划形态。
+下面代码块里其余方法（`close`、`session`、`pushTexture`、`sendDiagnostic`、`reload`）是计划形态。
 
 ```java
 public interface CloudCoreApi {
@@ -652,24 +680,26 @@ public interface CloudCoreApi {
 附属插件 API 的完整合同见 `19-addon-api.md`：代码构造页面、动作/占位符/页面提供器、事件监听、
 线程与兼容策略。
 
-`OpenOptions`：`surface`、`bindMode`、`renderMode`、`interaction`、`theme`、`state` 初始值、
-`closeExisting`。
+`OpenOptions` 当前只有两个字段：`surface`、`bindMode`（`CloudCoreApi#open` 只接受
+`custom_screen`，其他表面返回 `UNSUPPORTED_SURFACE`）。设计基线里的 `theme`、`state` 初始值、
+`closeExisting` 尚未实现。
 
 规则：
 
 - `open` 从非主线程调用时返回 `OpenResult.SCHEDULED`，实际工作放到下一 tick。
 - 玩家没装模组时返回 `OpenResult.NOT_MODDED`，不抛异常。
-- `pushTexture` 发送前校验尺寸和大小，按 `(key, crc32)` 缓存。
+- 页面级 `permission:` 解析进 `CompiledPage`，但 API `open` 与 `/cloudcore page` 目前都不检查它。
 
 ## 14. 调度与 Folia
 
 - 所有状态在主线程。
 - ticker 是单个重复任务；每会话工作量有上限。
-- `BukkitSchedulerBridge` 是唯一提到调度器的地方；Folia 移植只替换这个类。
+- 调度直接调用 `getServer().getScheduler()`（`runTask`/`runTaskLater`/`runTaskTimer`/
+  `runTaskAsynchronously`），没有单独的桥接类；Folia 移植需要先把这些调用收敛到一个接缝。
 
 ## 15. 诊断
 
-`/cloudcore stats`：
+**尚未实现**：`/cloudcore stats` 与 `/cloudcore surfaces <player>`。设计中的输出形态：
 
 ```
 sessions active=7 ephemeral=2 persistent=5
@@ -682,16 +712,17 @@ bind pre=40 legacy=15 timeout=0
 repeat expanded=128 max=64
 ```
 
-`/cloudcore surfaces <player>` 列出每个持久面板的 uiId、修订号和最后更新时间。
-调试模式记录帧头，不记录 body，也不记录输入框内容。
+当前可用的排障信息：服务端日志（`Rate limited EVENT`、`CANCELLED click ...`、`Unsupported action ...`、
+`Updated page ... incrementally`、页面编译失败）、`/cloudcore validate`、客户端 `F3` 叠加层与
+`logs/cloudcore-client.log`。调试模式记录帧头，不记录 body，也不记录输入框内容。
 
 ### 15.1 客户端诊断下发
 
 - 页面编译失败、打开失败、动作异常、版本不匹配时发送 `DIAGNOSTIC`。
 - 启动阶段没有客户端连接，错误只写服务端日志；玩家打开受影响页面时补发。
-- `detail` 使用相对路径（`pages/shop/page.yml:12`），截断到 `max-detail-bytes`，去重限流。
+- `detail` 使用相对路径（`pages/shop/page.yml:12`），截断并去重限流。
 - 客户端把诊断写入 `logs/cloudcore-client.log`，格式与客户端自身错误一致。
 - 服务端日志保留完整信息；客户端日志是排障副本。
-- `diagnostics.send-client-details: false` 时只写服务端日志，不下发细节。
+- 没有 `diagnostics.send-client-details` 开关（该配置段尚未接线），当前总会下发。
 - `/cloudcore diagnostics <player>` 可发一条测试诊断，验证链路。
 - 审计和隐私规则见 `18-diagnostics.md`。

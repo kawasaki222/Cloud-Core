@@ -21,12 +21,14 @@
   `${state.x}`/`${item.field}`/`${i}`，最后走同一套 `UiDocumentValidator`。
 - 片段不得声明 `id`/`surface`/`container`/`size`/`scale`/`title`/`permission`/`theme`，否则报错。
 - `UiDocumentJson.write` 把编译结果写回线上下发的 JSON；已做往返测试。
-- Paper 插件启动时创建 `plugins/CloudCore/pages/` 并写入示例页；`/cloudcore page <名字> [玩家]`
-  加载并下发（当前只处理 `custom_screen`）。
+- Paper 插件启动时创建 `plugins/CloudCore/pages/` 并写入 12 张示例页；`/cloudcore page <名字> [玩家]`
+  加载并下发，按页面自己声明的 `surface` 走表面路由（`custom_screen`/`hud`/`tooltip`/`boss_bar`/
+  `player_inventory` 都可以）。
 - 已实现：`PageWatcher` 监听 `pages/`（含子目录，`pages.watch` 默认开），`.yml`/`.yaml` 变化 400ms
   合并后回调主线程重载并推送更新；`/cloudcore validate`、`/cloudcore reload`、动作绑定（actionId +
   服务端动作表）。
-- 尚未实现：依赖图增量编译（当前变化即全量重载）、内容哈希去重。
+- 尚未实现：依赖图增量编译（当前任何页面变化都全量重载所有页面）、内容哈希去重
+  （`PageWatcher` 只按文件事件与时间窗合并，不比较内容）。
 
 ## 2. 目录结构
 
@@ -144,7 +146,7 @@ page.yml
 
 ## 7. 重载与依赖图
 
-`PageStore` 为每个页面记录其传递依赖的片段集合。
+**目标形态**：`PageStore` 为每个页面记录其传递依赖的片段集合。
 
 - `WatchService` 检测文件变化，按内容哈希去重。
 - 一个片段变化 → 重编译所有传递依赖它的页面。
@@ -152,6 +154,10 @@ page.yml
 - 页面清单自身变化 → 重新计算依赖图。
 - 删除片段 → 依赖它的页面编译失败，保留旧版本并在 `/cloudcore validate` 中报告。
 - `/cloudcore reload` 全量重载，但仍走同一套校验。
+
+**当前实现**：`PageWatcher` 只在 400ms 静默窗后触发一次全量 `reloadPages`，
+没有依赖图、没有内容哈希；重编译失败时保留旧修订号并写服务端日志。
+依赖图增量编译仍是待办。
 
 依赖图示例：
 

@@ -9,32 +9,45 @@
 
 **M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集已完成并在真机联调。**
 
-- 构建：`./gradlew build` 通过（JDK 21，221 个测试 / 45 个测试类，0 失败）。
+- 构建：`./gradlew build` 通过（JDK 21，338 个测试 / 66 个测试类，0 失败）。
 - 协议：信封、DEFLATE、分片/重组、HELLO/HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED、
-  `EVENT`/`EVENT_RESULT`、`TEXTURE_REF`、`DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
+  `EVENT`/`EVENT_RESULT`、`ELEMENT_UPDATE`、`TEXTURE_REF`、`TEXTURE_REQUEST`/`TEXTURE_PUT`、
+  `DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
   真机验证：830 KB 文档拆成 27 片重组、断线/重连清理、1,000,000 随机帧解码。
 - 附属插件 API：`CloudCoreApi`（`open`/`registerActionHandler`/`isModded`，经 `ServicesManager`），
   第二个插件注册自定义动作、占位符解析器、页面提供器与代码页，权限校验与错误返回已在真机验证；`PageBuilder` 可在代码里构造页面
   再 `open`，动作表与 YAML 页面走同一条发送路径。
-- 文本里的 `%占位符%` 在发送/刷新时由 PlaceholderAPI 展开（软依赖，可关闭）。
-- 会话状态按玩家持久化（`plugins/CloudCore/state/<uuid>.json`，异步写、原子替换），重进后页面沿用上次的值。
-- 服务端：Paper 插件（自包含 jar）、`managed`/`readonly`/`passthrough` 点击策略、
-  `inventory_grid` 槽位重排、事件限流、`command` 动作闸门、
-  `/cloudcore validate|reload|page|demo-*`；WatchService 热重载。
+- 文本里的 `%占位符%` 与 `${placeholder:...}` 在发送/刷新时展开：PlaceholderAPI（软依赖，可关闭）
+  与附属插件注册的自定义解析器；页面/元素可配 `static`/`interval`/`tick`/`event`/`manual` 刷新策略，
+  同步受预算约束，`async: true` 走工作线程。
+- 会话状态按玩家持久化，后端可选 `file`（默认，`plugins/CloudCore/state/<uuid>.json`）、
+  `sqlite`（驱动随插件打包）与 `mysql`（服务端自带 JDBC 驱动）；异步写、原子替换，
+  `/cloudcore state-export` / `state-import` 在三个后端之间迁移。
+- 服务端：Paper 插件（自包含 jar）、`managed`/`readonly`/`passthrough` 点击策略与
+  `allow_player_inventory`、`inventory_grid` 槽位重排、事件限流、`command` 动作闸门、
+  代理贴图（`textures.url.mode: client|proxy|auto`，磁盘缓存按最旧淘汰）、
+  数据驱动饰品槽位（`slots.yml` + `/cloudcore accessories`）、装备资产绑定、
+  `/cloudcore validate|reload|page|state-export|state-import|equipment|demo-*`（含 Tab 补全）；
+  WatchService 热重载。
 - 页面：YAML 单文件或 `includes` 组合、`repeat`（含嵌套）、`${...}` 模板、动作编译成 actionId；
   动作引擎子集（`message`/`close_ui`/`set_state`/`if`/`delay`/`command`/`open_page`/`sound`）与表达式求值；
   `set_state` 触发重编译并推送更高 revision 的文档更新。
 - 客户端：六类面板（自定义页面、容器、玩家背包、HUD 三层带锚点、Tooltip 裁剪与滚轮、Boss 血条）；
   RenderList 支持文字/富文本、图片（`local:`/`pack:`/`builtin:`/`inline:`）、九宫格、背景贴图、
-  裁剪/滚动（回传 `scroll` 绝对偏移）、悬停样式与 `hover_enter`/`hover_leave` 事件、`item_icon`、
-  滑块、复选框、文本输入框（原版 `EditBox` 换皮：背景/九宫格、normal/invalid/focused 边框、
-  `filter`、`sensitive` 掩码）；键盘导航（`Tab` 焦点 + `Enter` 激活）；
-  GIF 逐帧播放；`url:` 贴图客户端直连下载（https/限额/sha256）；
+  图片图层叠加、裁剪/滚动（回传 `scroll` 绝对偏移）、悬停样式与 `hover_enter`/`hover_leave` 事件、
+  `item_icon`、滑块（拖动 + `min`/`max`/`step`/`live`）、复选框、文本输入框（原版 `EditBox` 换皮：
+  背景/九宫格、normal/invalid/focused 边框、`filter`、`sensitive` 掩码、`padding`、光标色/选区色/清除按钮）；
+  键盘导航（`Tab` 焦点 + `Enter` 激活）；`disabled`/`pressed`/`right_click` 状态；
+  GIF 逐帧播放；`url:` 贴图客户端直连下载（https/限额/sha256）与磁盘缓存；
+  Tooltip 附属栏（`attachments`）、物品图标、`name`/`lore` 独立字体；Boss 血条多层逐层绘制与堆叠间距；
+  玩家背包的实时玩家模型与状态效果图标、配方书 `hide`/`vanilla`；
+  F3 调试叠加层显示活动文档；
   NanoVG 后端（`-PcloudcoreNanoVg=true`，填充/图片/自定义字体 + 原生叠层）与 FBO 合成已通过；
   客户端日志 `logs/cloudcore-client.log` 带 `CC-*` 码。
-- 尚未验证/未实现：Linux/macOS 运行、NanoVG 默认化与设备分辨率清晰文字、代理贴图
-  （`TEXTURE_REQUEST`/`TEXTURE_PUT`）、远端 GIF 真机、`ELEMENT_UPDATE`、配方书、
-  SQLite/MySQL 持久化实现（当前是 JSON 文件存储）、滑块拖动与 `min`/`max`/`step`、文本 shaping。
+- 尚未验证/未实现：Linux/macOS 运行、NanoVG 默认化（当前默认仍是原生后端）、
+  配方书 `skinned`/`custom`（当前回退 `vanilla`）、文本 shaping、Tooltip 滚动条拖动与
+  `tooltip_scroll` 回传、`placeholders.async-namespaces` 白名单、SQL 后端连接池、
+  依赖图增量编译/内容哈希去重、与 REI/EMI 等模组的互操作矩阵。
   详见 `docs/TODO_HANDOFF.md` 与 `docs/10-risks-and-verification.md`。
 
 ## 示例页面
@@ -50,6 +63,15 @@
 | `scroll_demo` | 滚动容器与 `scroll` 事件回传、`hover_enter`/`hover_leave`、数字过滤与 `sensitive` 掩码 |
 | `actions_demo` | `open_page` / `sound` / `close_ui`、`enabled: false` 禁用态、`right_click` |
 | `papi_demo` | PlaceholderAPI 展开与未安装扩展时令牌原样显示 |
+| `papi_refresh` | `interval` 周期刷新（同步/异步各一页）、`${placeholder:...}`、`refresh` 动作 |
+| `slider_demo` | 滑块 `min`/`max`/`step`/`live`、负区间与步进吸附 |
+| `tooltip_rpg` | Tooltip 皮肤：金边框、`name`/`lore` 字体、物品图标、`attachments` 套装栏 |
+| `rpg_hud` | 中世纪 HUD：`replace: [health, food, xp, hotbar]`、`value_from`/`text_from` 实时数值 |
+| `inventory_skin` | 玩家背包皮肤：`inventory_grid` 重排、玩家模型、状态效果、配方书 |
+| `boss_dnf` | 多层 Boss 血条：一条 `BossBar` 逐层刷新、`bar.layers`、`demo_layers` |
+
+`/cloudcore page <名字>` 打开自定义页面；`player_inventory` / `hud` / `tooltip` / `boss_bar`
+这类常驻页在握手完成后自动下发，单页可用 `surface_options.on_join: false` 退出。
 
 ## 目标技术栈
 | 组件 | 版本 / 说明 |
@@ -84,15 +106,18 @@ Mojang 映射，因此 26.1 的迁移成本更低。详见
 
 其他能力：Tooltip 滚动条和 Boss 血条的贴图、九宫格、颜色全部由文档定义；`url:` 图片默认**客户端
 直连**（服务端只发引用，图片字节不占游戏连接），可切换服务端代理模式；GIF 直连时客户端解码、代理时
-服务端解码为垂直精灵表；PlaceholderAPI 变量支持 `static` / `interval` / `tick` / `manual` 刷新，
-默认主线程同步，异步仅限白名单。所有配置、协议、文档、资源、渲染和动作错误都写入客户端
+服务端解码为垂直精灵表；PlaceholderAPI 变量支持 `static` / `interval` / `tick` / `event` / `manual` 刷新，
+默认主线程同步并受预算约束，`async: true` 走工作线程（`async-namespaces` 白名单尚未实现）。所有配置、
+协议、文档、资源、渲染和动作错误都写入客户端
 `logs/cloudcore-client.log`（已实现 10 MiB × 5 轮转，只收 `cloudcore` logger），带 `CC-*` 错误码和上下文，
-并可导出诊断包。绘制默认使用
+并可导出诊断包。绘制目标为
 **NanoVG 离屏渲染 + 原生合成**：面板、静态文本、图片、
 九宫格、圆角、渐变和特效由 NanoVG 画；物品、槽位、tooltip 内容和输入法仍由原版绘制；原生
-`GuiGraphics` 后端作为回退。输入框外观可由服务端换皮，输入逻辑、光标、选区与输入法保持原版；物品本体、
+`GuiGraphics` 后端作为回退。**当前默认仍是原生后端**，NanoVG 需在
+`config/cloudcore-client.json` 里写 `"renderer": "nanovg"` 或加 `-Dcloudcore.nanovg=true` 启用。
+输入框外观可由服务端换皮，输入逻辑、光标、选区与输入法保持原版；物品本体、
 数量/冷却/附魔光效和属性 tooltip 组件同样保持原版，只定制槽位外框与布局。动作引擎分两阶段：
-v1 线性动作（条件、权限、冷却、延迟），v2 服务端图执行器（分支、循环、等待、并行、持久变量）；
+v1 线性动作（条件、权限、延迟，冷却未实现），v2 服务端图执行器（分支、循环、等待、并行、持久变量）；
 两者都在服务端执行，与渲染后端无关。
 
 ## 模块
@@ -102,7 +127,8 @@ v1 线性动作（条件、权限、冷却、延迟），v2 服务端图执行�
 | `cloudcore-api` | 普通 jar | Gson（由运行环境提供） | UI 文档模型、元素类型、样式令牌、动作模型、校验规则 |
 | `cloudcore-protocol` | 普通 jar | — | 二进制信封、报文类型、分片、限额、编解码测试 |
 | `cloudcore-server-core` | 普通 jar | api、protocol | 页面组合、YAML 载入、编译、会话、状态、动作执行、占位符 SPI |
-| `cloudcore-bukkit` | Paper 插件 jar | server-core | Bukkit 传输、容器适配、面板策略、命令、权限、PlaceholderAPI |
+| `cloudcore-api-testkit` | 普通 jar | api | 附属插件测试工具包：`FakeCloudCoreApi`、`DocumentAssert`、`EventCapture` |
+| `cloudcore-bukkit` | Paper 插件 jar | server-core | Bukkit 传输、容器适配、面板策略、饰品槽位、装备资产、代理贴图、命令、权限、PlaceholderAPI |
 | `cloudcore-client` | Fabric 模组 jar | api、protocol | 网络、面板适配器、界面替换、布局、渲染、输入、HUD、贴图 |
 
 `cloudcore-api`、`cloudcore-protocol` 和 `cloudcore-server-core` 中**不得出现任何 Minecraft 类**。

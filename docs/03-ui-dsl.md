@@ -66,8 +66,14 @@ includes: []                # 片段列表，见 12-page-composition.md
 
 ```yaml
 surface_options:
+  on_join: true              # false = 进服时不下发这一页（只对常驻类表面有效）
   hud:
     layer: foreground        # background | foreground | overlay
+    anchor: bottom_center    # 默认 top_left
+    offset_x: 0
+    offset_y: 0
+    priority: 0              # 同一层多份文档时的绘制优先级
+    replace: [health, food, xp, hotbar]   # 取消对应的原版 HUD 绘制
   player_inventory:
     recipe_book: hide        # hide | vanilla | skinned | custom（skinned/custom 暂回退 vanilla）
     show_effects: true       # 复用原版效果图标
@@ -75,6 +81,7 @@ surface_options:
   tooltip:
     max_height: 300           # auto/always 的裁剪高度；never 只受屏幕高度限制
     padding: 14               # 文本与外框的距离
+    scroll: never             # never | auto | always（也可用 scrollable: true/false）
     name:                     # 物品名相对内容原点的位置与字体
       x: 36
       y: 10
@@ -89,16 +96,17 @@ surface_options:
       x: 10
       y: 8
       size: 20
+    attachments: []           # 附属栏，见 11.1
     scrollbar:
       mode: auto              # auto | always | never，默认 never
       width: 4
       track_color: "#70101828"
       thumb_color: "#FFFFD479"
   boss_bar:
-    position: top_center
-    spacing: 19
-    max_bars: 3
-    title_renderer: native      # native | nanovg
+    position: top_center      # 目前只按屏幕宽度居中，该字段尚未接线
+    spacing: 19               # 相邻哨兵血条垂直间距；0 = 沿用原版
+    max_bars: 3               # 最多绘制几条哨兵血条；0 = 不限制
+    title_renderer: native    # native | nanovg（nanovg 尚未接线）
     bar:
       width: 182
       height: 12
@@ -107,13 +115,34 @@ surface_options:
       overlay: "tx:boss_overlay"
       nine_slice: [2, 2, 2, 2]
       tint_from_event: true
-      direction: left_to_right
+      direction: left_to_right   # 目前固定从左到右，该字段尚未接线
       show_name: true
       text:
         font: "tx:font.body"
         color: "#FFFFFFFF"
         shadow: true
         align: center
+```
+
+`container` 段还接受两个容器专用开关（`docs/16` §10）：
+
+```yaml
+container:
+  rows: 6
+  interaction: managed          # managed | readonly | passthrough
+  hide_player_inventory: false  # true = 不绘制下方玩家背包槽位
+  allow_player_inventory: false # readonly 时允许操作玩家自己的槽位
+```
+
+`hotbar` 元素的实时数值由客户端按 `value_from`/`text_from` 读取，不需要服务端每帧下发：
+
+```yaml
+- type: progress
+  id: hp_bar
+  value_from: health        # health | food | xp | air | armor | level | health_full | food_full
+- type: label
+  id: hp_text
+  text_from: health         # 同上，另加 name
 ```
 
 ## 3. 坐标系
@@ -216,6 +245,9 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
   children: []
 ```
 
+**当前实现**：`overlay` 作为普通容器递归绘制子元素，`modal`/`dim` 未实现（没有遮罩、没有输入
+捕获）；子元素的坐标与父容器一致。
+
 ### 4.6 `repeat` —— 遍历
 
 根据服务端状态中的列表展开多个实例。展开发生在服务端，客户端只接收展开后的元素树。
@@ -289,6 +321,8 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
 ```
 
 颜色接受 `#RRGGBB` 或 `#AARRGGBB`。`%placeholder%` 在服务端解析；`&` 格式码在服务端翻译成文本段。
+`wrap` 与 `max_lines` 尚未实现（文本按单行绘制，超长会溢出元素框）；富文本 `runs` 的
+`bold`/`italic` 也还没有映射。
 
 ### 5.2 `image`
 
@@ -305,6 +339,9 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
   loop: true
   speed: 1.0
 ```
+
+`fit` 尚未实现：图片总是拉伸到元素声明的 `width`/`height`（缺省按 64×64）。`tint`、`nine_slice`、
+`animated`/`loop`/`speed` 已实现。
 
 #### 图层叠加
 
@@ -363,9 +400,11 @@ v1 已实现：子元素按 `scroll_x`/`scroll_y` 偏移，并裁剪到滚动框
 
 - 默认客户端直连：服务端只发 URL、SHA-256 和尺寸提示，图片流量不经过游戏连接。
 - 服务端代理模式可选（`textures.url.mode=proxy`），用于隐私、受限网络或直连失败兜底。
-- 只允许 `https://`；客户端拒绝私网、回环、链路本地、保留地址和非标准端口。
-- 大小 ≤ 1 MiB、尺寸 ≤ 512×512、超时 3 秒、最多 2 次重定向。
-- PNG/JPEG 解码为 PNG；GIF 在客户端本地解码（直连）或服务端解码（代理）。
+- 只允许 `https://`；客户端拒绝私网、回环、链路本地、保留地址、带用户信息的 URL 和非 443 端口，
+  不跟随重定向。
+- 大小 ≤ 8 MiB、超时 10 秒（尺寸提示由 `TEXTURE_REF` 携带，解码失败即丢弃）。
+- PNG 直接使用（`NativeImage`）；GIF 在客户端本地解码（直连）或服务端解码为精灵表（代理）。
+  当前不支持 JPEG。
 - 按内容哈希缓存；同一 URL 只下载一次。
 - 隐私：直连时图片主机能看到玩家 IP；需要隐私的服务器使用代理模式，或客户端设置
   `remoteImages=false` 后请求代理/显示占位。
@@ -754,6 +793,10 @@ style:
 `tx:<name>` 是主题令牌；服务端编译时校验令牌存在，客户端按 `THEME_SET` 下发的内容解析。
 下发文档保留令牌引用，因此换主题不需要重发整份文档。
 
+**当前实现**：`tx:` 令牌只在颜色解析处识别（`Colors.parse` 对无法解析的令牌回退默认值），
+服务端没有令牌表、也没有存在性校验；`THEME_SET` 只有操作码定义，收发两端均未接线。
+文档里的 `theme:` 字段会原样下发并参与 diff 比较，但客户端目前不消费它。
+
 ### 6.2 主题
 
 ```yaml
@@ -925,7 +968,8 @@ elements:
 `hover_enter`/`hover_leave` 只在元素声明了对应事件时上报（页面作者显式选择，没有声明就没有流量），
 每次跨过元素边界各一次，受服务端事件限流约束。`scroll` 的载荷是滚动后的**绝对**偏移
 （文档像素）；服务端通常 `set_state` 保存它，文档再用 `scroll_y: "${state.offset}"` 渲染回去。
-`tooltip_scroll` 默认不上报，Tooltip 的滚轮只改本地偏移。
+`tooltip_scroll` 默认不上报，Tooltip 的滚轮只改本地偏移（该事件尚未接线）；
+`select` 与 `drag_end` 已定义但客户端尚未发送（滑块拖动沿用 `change`）。
 
 `right_click` 已实现：右键优先找声明了 `right_click` 的元素，没有就回退到同一个元素的 `click`
 （载荷 `button=1`），所以一个按钮可以同时有主/次动作。
@@ -946,21 +990,31 @@ on:
 
 每条动作支持 `permission`、`condition`、`delay`（tick，0..200）。
 
-| 类型 | 字段 | 效果 |
-| --- | --- | --- |
-| `player_command` | `value` | 以玩家身份执行 |
-| `console_command` | `value` | 以控制台身份执行 |
-| `message` | `value` | 聊天消息 |
-| `actionbar` | `value` | 动作栏消息 |
-| `title` | `title`、`subtitle`、`fade_in`、`stay`、`fade_out` | 标题 |
-| `sound` | `id`、`volume`、`pitch` | 声音 |
-| `open_ui` | `id`、`surface`? | 打开另一个页面/面板 |
-| `close_ui` | `reason`? | 关闭当前会话 |
-| `set_state` | `key`、`value` | 修改会话状态 |
-| `set_element` | `id`、`property`、`value` | 直接覆盖属性 |
-| `refresh` | — | 重新求值并推送差异 |
-| `run_action` | `handler`、`args` | 调用注册的 `ActionHandler` |
-| `cooldown` | `key`、`ticks` | 命名冷却 |
+**已实现**的动作：`message`、`close_ui`（别名 `close`）、`set_state`、`if`/`then`/`else`、
+`delay`、`command`（默认关闭 + allowlist）、`open_page`、`sound`、`refresh`。
+
+| 类型 | 字段 | 效果 | 状态 |
+| --- | --- | --- | --- |
+| `message` | `value` | 聊天消息 | 已实现 |
+| `sound` | `id`/`sound`、`volume`、`pitch` | 声音 | 已实现 |
+| `open_page` | `page`、`surface`? | 关闭当前页并打开目标页 | 已实现 |
+| `close_ui` | — | 关闭当前会话 | 已实现 |
+| `set_state` | `key`、`value` | 修改会话状态 | 已实现 |
+| `refresh` | — | 重新求值并推送差异 | 已实现 |
+| `if` | `condition`、`then`、`else` | 条件分支 | 已实现 |
+| `delay` | `ticks`、`then` | 延迟执行 | 已实现 |
+| `command` | `command`、`as` | 以玩家/控制台身份执行，受闸门限制 | 已实现 |
+| `player_command` | `value` | 以玩家身份执行 | 计划 |
+| `console_command` | `value` | 以控制台身份执行 | 计划 |
+| `actionbar` | `value` | 动作栏消息 | 计划 |
+| `title` | `title`、`subtitle`、`fade_in`、`stay`、`fade_out` | 标题 | 计划 |
+| `open_ui` | `id`、`surface`? | 打开另一个页面/面板 | 计划（`open_page` 已覆盖该用途） |
+| `set_element` | `id`、`property`、`value` | 直接覆盖属性 | 计划 |
+| `run_action` | `handler`、`args` | 调用注册的 `ActionHandler` | 计划（实际写法是直接 `action: <注册名>`） |
+| `cooldown` | `key`、`ticks` | 命名冷却 | 计划 |
+
+动作级 `permission:`、`condition:` 已实现；冷却（`cooldown` 与配置里的
+`per-element-cooldown-ms`）尚未实现。
 
 动作列表只在服务端保存；下发文档只包含每个元素的 `events: {event: actionId}` 映射，不包含命令、
 动作体或权限。客户端点击后只发送 `(elementId, actionId)`。
@@ -999,6 +1053,12 @@ on:
 - `repeat` 的 `max > 64`（性能提醒）。
 - `refresh.mode: tick` 用于超过 16 个元素（性能提醒）。
 - 页面引用 `url:` 贴图但没有配置允许列表（将在加载期失败，提前提示）。
+
+**当前实现的实际校验**：`PageLoader` 强制元素 ≤ 512、片段 ≤ 64、include 深度 ≤ 8、
+`repeat` 实例 ≤ 256、文件 ≤ 256 KiB；`UiDocumentValidator`（客户端侧）用更宽的 10,000 元素 /
+64 层作为防御上限。第 7、11、12、14、15、17 条（主题令牌、`scroll` 同轴嵌套、`modal`、
+`url:`/GIF 限额、滚动条字段）中，只有 `CC-DOC-022..025` 的属性警告、`refresh.mode` 解析和
+`repeat`/`include` 限额真正生效；其余是目标规则。
 
 ## 10. 完整示例：商店（容器面板）
 
@@ -1205,24 +1265,25 @@ elements: []
 ```
 
 `bar` 存在时，客户端绘制内置血条：填充按 `BossEvent#getProgress()` 裁剪，事件标题画在血条内部
-（`show_name` / `text.color` / `text.shadow` / `text.align`，原版字体），血条按屏幕宽度自动居中，
-自定义宽度不会偏向右侧。
+（`show_name` / `text.color` / `text.shadow` / `text.align` / `text.show_layer_count` /
+`text.counter_color`，原版字体），血条按屏幕宽度自动居中，自定义宽度不会偏向右侧。
+`text.font`、`position`、`direction` 与 `title_renderer` 尚未接线（固定原版字体、屏幕居中、从左到右）。
 
 - `fill_inset: [l, t, r, b]`：填充缩进到边框以内，避免盖住 `background` 的边框；纹理背景通常
   取与 `nine_slice` 相同的值。
 - `fill` 为贴图且 `tint_from_event: true` 时，先画中性贴图，再叠一层 `tint_alpha`（默认 0.62）
   的事件颜色：一张银灰填充图即可对应红/黄/蓝多条血条。
 - `overlay` 最后整条绘制（不裁剪），用于高光或透明中心的框；`nine_slice` 同时作用于背景与 overlay。
-- **多层血条 = 同一根条逐层刷新**，不是多根条并排：哨兵带层号
-  `\u0000CCB:<token>:<层>/<总层数>\u0000<名称>`，客户端拿这一条 `BossBar` 按当前层换样式。
-  当前层打空后同一个框重新填满、换成下一层，层数 >1 时血条内右侧显示 `2/3`。
+- **多层血条 = 同一根条逐层刷新**，不是多根条并排：哨兵带每层剩余强度
+  `\u0000CCB:<token>:<p1>,<p2>,...\u0000<名称>`（千分比 0..1000），客户端拿这一条 `BossBar`
+  由内向外逐层绘制，外层打空后露出内层；层数 >1 时血条内可显示 `2/3` 计数。
   每层外观写 `bar.layers`，只写与 `bar` 不同的键（`tint` / `fill` / `name` / `text`），
   `tint` 优先于 `BossEvent` 颜色；文字块与 `bar.text` 合并而不是整体覆盖。
   想要屏幕上并排多根条，那是服务端建多个 `BossBar` 的另一种做法，与本机制无关。
 
-`demo_layers` 只用于预览：服务端创建一条带层号哨兵的 `BossBar`，在 `demo_duration` 内把各层
+`demo_layers` 只用于预览：服务端创建一条带分层哨兵的 `BossBar`，在 `demo_duration` 内把各层
 依次打空后移除；`demo_name` 指定 Boss 名称。生产页面应删掉这一段，由 Boss 插件在自己切阶段时
-改哨兵层号。完整可运行的例子见
+改哨兵里的数值。完整可运行的例子见
 `cloudcore-bukkit/src/main/resources/pages/boss_dnf.yml`。
 
 ## 13. YAML 兼容别名

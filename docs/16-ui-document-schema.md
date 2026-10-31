@@ -99,22 +99,23 @@
 | `row` / `column` | `gap`、`align`、`justify`、`children` |
 | `grid` | `columns`、`cell`、`gap`、`children` |
 | `scroll` | `axis`、`scrollbar`、`children` |
-| `overlay` | `modal`、`dim`、`children` |
+| `overlay` | `modal`、`dim`、`children`（当前只递归子元素，`modal`/`dim` 未实现） |
 
 ### 5.2 内容元素
 
 | 类型 | 字段 |
 | --- | --- |
-| `label` | `text`(TextRuns)、`font`、`color`、`shadow`、`align`、`wrap`、`max_lines` |
-| `image` | `texture`、`fit`、`tint`、`nine_slice`、`animated`、`loop`、`speed` |
+| `label` | `text`(TextRuns)、`font`、`color`、`shadow`、`align`、`text_from`；`wrap`/`max_lines` 未实现 |
+| `image` | `texture`、`tint`、`nine_slice`、`layers`、`animated`、`loop`、`speed`；`fit` 未实现（按给定宽高拉伸） |
 | `button` | `text`(TextRuns)、`icon`（贴图引用或 `{item, count}`）、`style`、`events` |
 | `icon_button` | `icon`、`style`、`events` |
 | `text_field` | `placeholder`、`max_length`、`filter`、`sensitive`、`invalid`、`style`（含 `padding`、`cursor_color`、`selection_color`、`clear_button`）、`events` |
 | `checkbox` | `text`(TextRuns)、`checked`、`events` |
-| `slider` | `value`（`0..1`，已实现）、`min`/`max`/`step`/`live`（计划）、`events` |
-| `progress` | `value`、`texture_bg`、`texture_fill`、`direction`（left/right/up/down）、`style` |
+| `slider` | `value`、`min`/`max`/`step`/`live`、`events` |
+| `progress` | `value`、`value_from`、`texture_bg`、`texture_fill`、`direction`（left/right/up/down）、`style` |
 | `inventory_grid` | `slots`、`origin`、`cell`、`gap`、`columns`、`render_slots`、`render_items` |
 | `item_icon` | `item`（id/count/components）、`scale`、`show_count`、`show_durability` |
+| `hotbar` | 公共字段；由 HUD 适配器用玩家实时物品绘制，渲染列表本身不产出 |
 | `spacer` | 公共字段 |
 
 `repeat` 不是下发元素类型：服务端展开后生成 `<repeatId>[index].<childId>` 的普通元素。
@@ -174,7 +175,7 @@
 
 | 形式 | 含义 |
 | --- | --- |
-| `local:path` | `.minecraft/resourcepacks/CloudCore/<path>`，可含业务分类目录；客户端已实现 PNG/JPEG 加载与 `DynamicTexture` 绘制 |
+| `local:path` | `.minecraft/resourcepacks/CloudCore/<path>`，可含业务分类目录；客户端已实现 PNG（`NativeImage`）加载与 `DynamicTexture` 绘制，GIF 由动画解码器处理，JPEG 不支持 |
 | `inline:key` | 服务端通过 `TEXTURE_PUT` / `TEXTURE_REF` 关联的贴图 |
 | `pack:namespace:path` | 资源包贴图 |
 | `builtin:name` | 模组 jar 内置，仅最小回退 |
@@ -185,20 +186,40 @@
 ## 9. SurfaceOptions
 
 `surface_options` 里的贴图字段也可以使用 `tx:` 主题令牌，解析规则与 Style 相同。
-
-
+**当前 `tx:` 只在客户端颜色解析处识别，无法解析的令牌回退默认值；服务端不做令牌校验，
+`THEME_SET` 未接线。**
 
 ### 9.1 HUD
 
 ```json
-{ "layer": "background" }
+{
+  "layer": "background",
+  "anchor": "bottom_center",
+  "offset_x": 0,
+  "offset_y": -4,
+  "priority": 0,
+  "replace": ["health", "food", "xp", "hotbar"]
+}
 ```
+
+`replace` 取值：`health`（心/护甲/氧气）、`food`（饥饿）、`xp`（经验条）、`hotbar`（快捷栏，
+连带选中物品名与攻击指示器）。
 
 ### 9.2 玩家背包
 
 ```json
-{ "recipe_book": "skinned", "show_effects": true, "show_player_model": true }
+{
+  "recipe_book": "hide",
+  "show_effects": true,
+  "show_player_model": true,
+  "player_model_x": 50,
+  "player_model_y": 78,
+  "player_model_scale": 30
+}
 ```
+
+`recipe_book` 取 `hide`（默认）/`vanilla`/`skinned`/`custom`；`skinned` 与 `custom` 当前回退到
+`vanilla`。`player_model_*` 是相对面板左上角的文档像素坐标，`scale` 范围约 8..120。
 
 ### 9.3 Tooltip
 
@@ -226,6 +247,12 @@
 }
 ```
 
+当前客户端只读取 `mode`（或顶层 `scroll`/`scrollable`）、`width`、`track_color`、`thumb_color`；
+`gap`、贴图形式的 `track`/`thumb`/`thumb_hover`、`min_thumb`、`nine_slice`、`draggable`
+已定义但未接线。另有两个未接线的顶层字段 `scroll_step`（固定 12 px）、`smooth_scroll`。
+`scroll` 顶层开关与 `backdrop_color`、`padding`、`name`/`lore`/`icon`、`attachments`
+均已接线（见 `03-ui-dsl.md` 第 11 节）。
+
 ### 9.4 Boss 血条
 
 ```json
@@ -251,39 +278,51 @@
 }
 ```
 
+`position`、`title_renderer`、`direction` 已定义但未接线（当前固定屏幕居中、原版字体、
+从左到右）。`text` 还支持 `show_layer_count` 与 `counter_color`（多层血条的 `2/3` 计数）。
+
 ## 10. ContainerSpec
 
 ```json
-{ "rows": 6, "interaction": "managed" }
+{
+  "rows": 6,
+  "interaction": "managed",
+  "hide_player_inventory": false,
+  "allow_player_inventory": false
+}
 ```
 
-`rows` 1..6；`interaction` 为 `managed` / `readonly` / `passthrough`。
+`rows` 1..6；`interaction` 为 `managed` / `readonly` / `passthrough`；
+`hide_player_inventory` 让容器页不绘制下方玩家背包槽位；`allow_player_inventory`
+让 `readonly` 容器放行玩家自己槽位上的点击与拖拽。
 
 ## 11. 限额
 
-| 项目 | 上限 |
-| --- | --- |
-| 文档 JSON | 1 MiB |
-| 元素数 | 512 |
-| 树深 | 32 |
-| 单标签文本段 | 64 |
-| `repeat` 实例 | 256/单 repeat，512/文档 |
-| `inventory_grid` 槽位 | 容器大小 |
-| 字体数/文档 | 16 |
-| 纹理引用数/文档 | 256 |
+| 项目 | 上限 | 强制点 |
+| --- | --- | --- |
+| 文档 JSON | 1 MiB | 协议 `Limits`（S2C 帧 1 MiB） |
+| 页面文件 | 256 KiB | `PageLoader.MAX_FILE_BYTES` |
+| 元素数 | 512 | `PageLoader.MAX_ELEMENTS`（客户端校验器用 10,000 作为防御上限） |
+| 树深 | 32 | 目标值；客户端校验器当前用 64 |
+| `repeat` 实例 | 256/单 repeat | `PageLoader.MAX_REPEAT_INSTANCES` |
+| 片段文件 | 64 | `PageLoader.MAX_FRAGMENT_FILES` |
+| include 深度 | 8 | `PageLoader.MAX_INCLUDE_DEPTH` |
+| `inventory_grid` 槽位 | 容器大小 | 校验器 |
+| 字体数/文档 | 16 | 目标值，未强制 |
+| 纹理引用数/文档 | 256 | 目标值，未强制 |
 
 超过限额：服务端拒绝编译或拒绝更新；客户端防御性拒绝。
 
 ## 12. 校验
 
-- 同一 schema 主版本内，未知字段**忽略**（支持次版本追加）；未知元素类型、未知枚举值拒绝。
+- 同一 schema 主版本内，未知字段**忽略**（支持次版本追加）；未知元素类型保留并告警
+  （前向兼容），未知枚举值拒绝。
 - 类型、范围、限额严格校验；不允许用未知字段绕过上限。
-- 字段类型、范围、枚举值。
 - 元素 id 唯一；事件 → actionId 存在。
-- 槽位映射完整、不重叠（`managed`）。
-- 主题令牌存在；字体定义合法。
 - 面板与文档类型匹配：HUD/Tooltip/Boss 不允许槽位；容器必须有 `container`。
 - 客户端再次校验，但只做防御性检查，不替代服务端。
+- 尚未强制（设计基线）：槽位映射完整/不重叠、主题令牌存在、字体 provider 合法性、
+  字体数与纹理引用数上限。
 - 元素属性警告（不拒绝文档，`/cloudcore validate` 会逐条列出）：
   - `CC-DOC-022` `progress.direction` 不是 left/right/up/down（按 left 绘制）；
   - `CC-DOC-023` `slider.value` 超出 `min..max`（默认 `0..1`；客户端钳制，占位符不在此检查）；

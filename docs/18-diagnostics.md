@@ -156,23 +156,16 @@ string detail     # 可选，≤ 4 KiB
 
 ## 8. 客户端配置
 
-```json
-{
-  "logLevel": "info",
-  "logFile": "logs/cloudcore-client.log",
-  "logMaxSizeMiB": 10,
-  "logRotate": 5,
-  "logRedaction": true,
-  "serverDetail": true,
-  "diagnosticRingSize": 500,
-  "packetHeaderRingSize": 200
-}
-```
+日志与诊断**不是**由 `config/cloudcore-client.json` 控制的（该文件只有 `renderer`、`debug`、
+`remoteImages`、`imageCacheMiB` 四个键）。当前实现：
 
-- `logLevel`：`error|warn|info|debug|trace`。
-- `logRedaction`：默认 `true`；关闭仅用于本地开发。
-- `serverDetail`：是否记录服务端下发的 `detail`。
-- 环形缓冲用于 `/cloudcore-client dump`。
+- 日志文件固定为 `logs/cloudcore-client.log`，10 MiB × 5 轮转，只挂 `cloudcore` logger。
+- 日志级别运行时用 `/cloudcore-client log <level>` 改。
+- 脱敏与限流默认开启，没有关闭开关。
+- 报文头环形缓冲 64 条（`FrameLog`），用于 `F10`/`dump`。
+
+设计基线里计划的键（尚未接线）：`logLevel`、`logFile`、`logMaxSizeMiB`、`logRotate`、
+`logRedaction`、`serverDetail`、`diagnosticRingSize`、`packetHeaderRingSize`。
 
 ## 9. 诊断包
 
@@ -180,13 +173,11 @@ string detail     # 可选，≤ 4 KiB
 
 ```
 logs/cloudcore-dump-20261026-123456.zip
-  client.log
-  client-config.json
-  system.txt          # OS、Java、MC、Fabric、NanoVG、GPU 驱动
-  renderer.txt        # 后端、FBO、字体、缓存、最近回退
-  packets.txt         # 最近 200 条报文头（操作码/长度/方向，不含 body）
-  recent.log          # 最近 500 条结构化日志
-  assets.txt          # 资源根目录、缺失文件清单（相对路径）
+  system.txt           # Java/OS/CPU/内存 + 会话状态
+  cloudcore-client.log      # 当前日志尾部（脱敏）
+  cloudcore-client-1.log    # 上一份轮转（若存在）
+  config.json          # 客户端配置
+  frames.txt           # 最近 64 条报文头（操作码/长度/方向，不含 body）
 ```
 
 - 默认脱敏；不包含输入框内容、令牌、完整 URL、IP、绝对路径。
@@ -197,9 +188,9 @@ logs/cloudcore-dump-20261026-123456.zip
 
 - `/cloudcore-client dump`：生成诊断包。
 - `/cloudcore-client reloadassets`：重载本地 `CloudCore` 资源目录（等同 F9）。
-- `/cloudcore-client log <level>`：计划中；当前用 log4j 配置或启动参数调整级别。
+- `/cloudcore-client log <level>`：运行时改 `cloudcore` logger 级别（`trace`/`debug`/`info`/`warn`/
+  `error`/`off`），不动 root；未知级别会回复可用值列表。
 - 快捷键默认：`F9` 重载资源，`F10` 生成诊断包；在“选项 → 控制 → Cloud Core”里可改键或解绑。
-- 若 Fabric 客户端命令 API 不可用，退化为纯快捷键 + 配置文件。
 
 ## 11. 脱敏规则
 

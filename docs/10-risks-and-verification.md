@@ -192,10 +192,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **HUD 面板已核实**：`/cloudcore demo-hud` 通过 Fabric `HudElementRegistry` 注册的 HUD 元素
   实际显示 panel/label；`UI_CLOSE` 后清除文档，HUD 消失。当前使用原生 RenderList，不支持 HUD 输入。
 - **Tooltip 面板已核实**：`/cloudcore demo-tooltip` 后悬停石头，`TooltipSurfaceAdapter` 用文档
-  背景色绘制自定义提示框，原生文本仍由 `ClientTooltipComponent` 输出；滚动/九宫格尚未实现。
+  背景色绘制自定义提示框，原生文本仍由 `ClientTooltipComponent` 输出。
+  （滚动/九宫格/附属栏后来已补齐，见本节后段条目。）
 - **BossBar 面板已核实**：`/cloudcore boss` 发送 UI_OPEN + 文档后，`BossBarSurfaceAdapter` 用
   `BossEvent` 进度/颜色绘制自定义条，`@WrapOperation` 跳过原版 `drawBar`；`@Redirect` 去除哨兵，
-  标题实际显示为 `Cloud Core Boss`。九宫格/样式数据化尚未实现。
+  标题实际显示为 `Cloud Core Boss`。（九宫格/样式数据化后来已补齐，见本节后段条目。）
 - **Container 面板已核实**：`/cloudcore demo-container` 先发 UI_OPEN/文档，再打开 27 格箱子；
   `Minecraft#setScreen` 的 `@ModifyVariable` 替换为 `CloudContainerScreen`，自定义背景下仍显示
   3 行容器槽位与玩家背包槽位。
@@ -203,13 +204,13 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   已声明槽位。`managed` 模式下点击 0 号槽取出钻石、点击 13 号槽被取消并写
   `CANCELLED click ... slot=13`；`/cloudcore demo-readonly` 的 `readonly` 模式点击 0 号槽同样被取消。
   另测 `/cloudcore demo-passthrough`：点 0 号槽直接取走物品、无 `CANCELLED` 日志。
-  未验证：`allow_player_inventory: true`、拖拽（`InventoryDragEvent`）真机。
+  `allow_player_inventory: true` 与拖拽（`InventoryDragEvent`）后来已补真机验证，见本节后段条目。
 - **PlayerInventory 面板已核实**：`/cloudcore demo-inventory` 下发持久皮肤后按 `E`，
   `Minecraft#setScreen` 的 `@ModifyVariable` 把原版 `InventoryScreen` 换成
-  `CloudInventoryScreen`（`AbstractContainerScreen<InventoryMenu>`，复用 `player.inventoryMenu`）。
+  `CloudInventoryScreen`（`AbstractRecipeBookScreen<InventoryMenu>`，复用 `player.inventoryMenu`）。
   截图确认 176×166 皮肤面板、文档底色、槽框、护甲/副手空槽图标与文档文字同时显示；
   关闭再打开仍是皮肤（`PERSISTENT`），`/cloudcore close` 后再按 `E` 回到原版带配方书的背包。
-  配方书与玩家模型在皮肤里不绘制（v1 `hide`）。截图：
+  玩家模型、状态效果与配方书开关后来已补齐，见本节后段条目。截图：
   `inventory-print6.png`、`inventory-reopen.png`、`inventory-closed.png`。
 - **本地贴图已核实**：`LocalTextureRegistry` 从
   `resourcepacks/CloudCore/test/red.png` 读取 PNG、注册 `DynamicTexture`，demo 页面实际显示图片；
@@ -382,8 +383,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `EVENT ... element=right_click_demo`（走 `right_click`）；对只声明了 `click` 的商店“购买”按钮
   右键同样触发 `EVENT ... element=goods[0].line.buy`（回退到 `click`，载荷 `button=1`）。
 - **首次安装与缩放已核实**：删掉 `plugins/CloudCore/` 后重启，插件重新生成 `config.yml` 并写出
-  六张示例页（`example`、`shop`、`progress_demo`、`scroll_demo`、`actions_demo`、`papi_demo`，
-  日志逐条 `Wrote demo page ...`），状态持久化目录同时创建。商店页在 GUI 缩放 2（854×480 窗口）
+  示例页（当时 6 张：`example`、`shop`、`progress_demo`、`scroll_demo`、`actions_demo`、`papi_demo`；
+  当前版本是 12 张），日志逐条 `Wrote demo page ...`，状态持久化目录同时创建。商店页在 GUI 缩放 2（854×480 窗口）
   与自动缩放 5（2884×1336 全屏）下都能正确命中购买按钮：缩放 5 点击后
   `EVENT ... element=goods[0].line.buy`、`state={balance=180.0}`，余额条从满格缩到 60%
   （`scale5-buy2.png`）——命中测试与渲染共用同一套布局，不依赖缩放值。
@@ -486,7 +487,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `HandshakeCodecTest`、`UiCodecTest`。
 - 文档模型与校验器、服务端 SurfaceProvider 注册表、客户端 SurfaceRegistry：
   对应 JUnit 测试。
-- `./gradlew build` 通过（JDK 21，316 个测试 / 61 个测试类，0 失败）。
+- `./gradlew build` 通过（JDK 21，338 个测试 / 66 个测试类，0 失败）。
 
 仍未验证：
 
@@ -495,11 +496,13 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   未验证的是默认化（设备分辨率 FBO 的清晰文字）、U31 状态隔离与 Linux/macOS 的运行。
 - **文本整形（shaping）**：未实现，中文断行依赖原版字体度量。
 - **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto` 已实现（静态 PNG 与
-  GIF 精灵表；代理缓存目前只落盘静态图）；
-  客户端直连只验证了成功路径，失败注入（超时、非 https、sha256 不匹配、超大图）只有单测/代码路径。
+  GIF 精灵表）；代理内存缓存有 TTL，磁盘缓存按最旧淘汰（`cache-mb`），客户端 `remoteImages: false`
+  时改走同一份磁盘缓存（`imageCacheMiB` 可配）。代理下载的并发/队列上限压测与远端静态图失败占位
+  文案尚未做；客户端直连只验证了成功路径，失败注入（超时、非 https、sha256 不匹配、超大图）
+  只有单测/代码路径。
 - **远端 GIF**：本地 GIF 已验证；`url:` 指向 GIF 的真机播放未验证。
 - **`ELEMENT_UPDATE` 剩余**：自定义页面已真机验证；HUD 增量、`text_field` 回退、revision
-  gap 后等待完整文档的恢复路径只有单测/代码覆盖。占位符周期刷新尚未接上该通道。
+  gap 后等待完整文档的恢复路径只有单测/代码覆盖。占位符周期刷新已走该通道（真机验证 `entries=1`）。
 - **多玩家并发**：编译页已按玩家隔离并单机复测；两个客户端同时看同一张含 `repeat` 的页面未真机验证。
 - **容器拖拽与 `allow_player_inventory` 已核实（2026-10-31）**：`/cloudcore demo-readonly-allow`
   打开的 readonly 容器里，从下层玩家背包槽位拖到另一槽位成功（物品从 slot 1 移到 slot 2）；
@@ -507,15 +510,18 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   `/cloudcore demo-readonly`（`allow_player_inventory: false`）后，同样的下层拖拽被取消
   （`CANCELLED click ... top=false slot=28`）。`ContainerClickPolicyTest` 覆盖策略分支，
   `UiDocumentJsonTest` 覆盖两个新字段的解析。
-- **玩家背包 v2**：配方书（`skinned`/`custom`）、玩家模型与状态效果未实现。
-- **存储**：JSON 文件与 SQLite 实现已通过单元测试；MySQL 走 JDBC、需服务端提供驱动；连接池、
-  schema 迁移版本表和跨后端导出仍未实现。
-- **占位符剩余**：一次性展开、页面/元素 `interval` 刷新、同步/异步、`refresh` 动作已真机验证；
-  `interval` 预算打满、`tick`/`event` 模式、`${placeholder:...}` 的自定义命名空间与
-  `async-namespaces` 白名单尚未验证/实现。
-- **控件/样式剩余**：文本 shaping、多条 Boss 血条堆叠与间距、`tooltip_scroll` 回传。
-  `pressed` 态、`text_field` 的 padding/光标色/选区色/清除按钮、`progress` 的九宫格/圆角/分段
-  已实现（单测 + 真机验证，见上）。
+- **玩家背包 v2**：玩家模型、状态效果图标、配方书 `hide`/`vanilla` 已真机验证；
+  仍缺配方书 `skinned`/`custom`（当前回退 `vanilla`）。
+- **存储**：JSON 文件与 SQLite 实现已通过单元测试；MySQL 走 JDBC、需服务端提供驱动；
+  schema 版本表（`cloudcore_schema`）与跨后端导出/导入（`/cloudcore state-export|state-import`）
+  已实现；连接池仍未实现。
+- **占位符剩余**：一次性展开、页面/元素 `interval` 刷新、同步/异步、`refresh` 动作、
+  `${placeholder:...}` 显式形式已真机验证；`interval` 预算打满后的顺延、`tick`/`event` 模式的
+  真机行为、`async-namespaces` 白名单尚未验证/实现。
+- **控件/样式剩余**：文本 shaping、`label.wrap`/`max_lines`、`image.fit`、`overlay` 的
+  `modal`/`dim`、Tooltip 的 `scroll_step`/`smooth_scroll`/`draggable` 与 `tooltip_scroll` 回传。
+  多条 Boss 血条堆叠与间距、`pressed` 态、`text_field` 的 padding/光标色/选区色/清除按钮、
+  `progress` 的九宫格/圆角/分段已实现（单测 + 真机验证，见上）。
 - **附属 API**：`SurfaceProvider`、`setState`/`getState`、四类事件监听与
   `cloudcore-api-testkit` 已实现（单测）；`registerSurfaceProvider` 的服务端生命周期尚未用
   第二个插件真机验证。剩余：独立示例 addon 工程。
@@ -527,7 +533,8 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   最近 64 条报文头），聊天栏给出相对文件名；`ClientDumpTest`、`FrameLogTest` 覆盖脱敏与环形缓冲。
   遗留：每次 `F9` 重新 `nvgCreateFontMem`，旧字体对象要等 NanoVG context 删除才释放，连续重载
   会小幅增长；`/cloudcore-client reloadassets|dump` 复用同一实现，但未在聊天里逐条执行验证；
-  `/cloudcore-client log <level>` 与 `F3` 调试叠加层未实现；Linux/macOS 未验证。
+  `/cloudcore-client log <level>` 已实现（运行时改 `cloudcore` logger 级别）；`F3` 调试叠加层
+  已真机截图验证；Linux/macOS 未验证。
 - **互操作与性能**：与 REI/EMI、其他 Tooltip/物品栏模组的共存矩阵未测；NanoVG FBO 的帧率与
   显存占用没有测量数据（只有功能正确性）。
 - **原生崩溃（未定位，帧不在本项目代码）**：开发客户端偶发

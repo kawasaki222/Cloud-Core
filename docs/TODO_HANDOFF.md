@@ -1,31 +1,40 @@
 # 待办 / 交接
 
-最后更新：2026-10-29。
+最后更新：2026-10-31。
 
 ## 当前状态
 
 **M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集均已完成真机联调；
-附属插件 API、键盘导航、状态持久化已落地。**
+附属插件 API、键盘导航、状态持久化已落地。M4 页面组合、M6 Tooltip/Boss、M7 元素与字体、
+M8 占位符刷新的大部分也已落地。**
 
 - 协议：信封/DEFLATE/分片重组/握手/PING-PONG/UI_OPEN-READY-CLOSE-CLOSED/EVENT-EVENT_RESULT/
-  TEXTURE_REF/DIAGNOSTIC 全部实现并有测试；未知 surface 与 bind/render 模式前向兼容。
-- 服务端：Paper 插件自包含；容器三种点击策略、`inventory_grid` 槽位重排、事件限流（20/s 突发 40）、
+  ELEMENT_UPDATE/TEXTURE_REF/TEXTURE_REQUEST/TEXTURE_PUT/DIAGNOSTIC 全部实现并有测试；
+  未知 surface 与 bind/render 模式前向兼容。
+- 服务端：Paper 插件自包含；容器三种点击策略 + `allow_player_inventory` 与拖拽判定、
+  `inventory_grid` 槽位重排、事件限流（20/s 突发 40）、
   `command` 动作闸门、`open_page`/`sound`/`refresh` 动作、PlaceholderAPI 展开（软依赖）、
   页面/元素级周期刷新（`interval`/`tick`/`event`/`manual`，同步或异步）、
-  会话状态持久化（`state/<uuid>.json`，异步写）、`/cloudcore validate|reload|page|demo-*`。
+  会话状态持久化（`file`/`sqlite`/`mysql` 三个后端 + 跨后端导出/导入，异步写）、
+  代理贴图（`client`/`proxy`/`auto` + allowlist + 磁盘缓存淘汰）、
+  数据驱动饰品槽位（`slots.yml`）、装备资产绑定、
+  `/cloudcore validate|reload|page|state-export|state-import|equipment|accessories|demo-*`
+  并带 Tab 补全。
 - 附属 API：`CloudCoreApi` 的 `open`（YAML 或代码页）、`registerActionHandler`、
   `registerPlaceholderResolver`、`registerPageProvider`、`isModded`；`PageBuilder` 在 `cloudcore-api`。
 - 页面：YAML 单文件/`includes`/`repeat`（含嵌套）/模板；动作编译成 actionId 并只留在服务端；
   `set_state` 重编译后推送更高 revision（等值写入不推送）。
-- 客户端：六类面板 + RenderList（文字/富文本/图片/九宫格/背景贴图/裁剪/滚动/悬停/物品图标/GIF/URL 贴图/
-  滑块/复选框/输入框状态含光标色、选区色与清除按钮/进度条四方向含圆角分段/图标按钮/键盘焦点/pressed 态/
-  输入框 padding）；
-  NanoVG 后端与 FBO 合成（opt-in）；多层 Boss 血条；客户端本地面板（`match` 接管容器/血条）；
-  客户端日志与诊断码。
+- 客户端：六类面板 + RenderList（文字/富文本/图片/图层叠加/九宫格/背景贴图/裁剪/滚动/悬停/物品图标/
+  GIF/URL 贴图/滑块含拖动与 min-max-step-live/复选框/输入框状态含光标色、选区色、清除按钮、padding/
+  进度条四方向含圆角分段/图标按钮/键盘焦点/pressed 态/disabled 态）；
+  NanoVG 后端与 FBO 合成（opt-in）；多层 Boss 血条与堆叠间距；客户端本地面板（`match` 接管容器/血条）；
+  Tooltip 附属栏（`attachments`）、物品图标、`name`/`lore` 独立字体；
+  玩家背包的实时玩家模型、状态效果、配方书 `hide`/`vanilla`；
+  F3 调试叠加层；客户端日志与诊断码。
 - 协议：`ELEMENT_UPDATE`（元素/属性增量、revision 顺序、完整文档回退；自定义页真机验证）。
 - 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
   `cloudcore-api-testkit`。
-- 构建：`./gradlew build` 通过，316 个测试 / 61 个测试类，0 失败。
+- 构建：`./gradlew build` 通过，338 个测试 / 66 个测试类，0 失败。
 
 ## 已有内容
 
@@ -105,10 +114,12 @@ docs/
 - [x] 键盘导航：`Tab`/方向键循环焦点、`Enter`/`Space` 触发 `click`、两色焦点框（真机验证）
 - [x] 会话状态持久化：`PlayerStateStore` 接口 + `state/<uuid>.json`、异步 flush、加入时加载（真机验证）
 - [x] 持久化后端：SQLite（驱动随插件打包）与 MySQL（服务端提供驱动）；JSON 文件仍为默认
-- [ ] 持久化剩余：连接池、schema 迁移版本表、跨后端导出/导入
+- [x] 持久化：schema 版本表（`cloudcore_schema`，`SCHEMA_VERSION = 1`，拒绝更新版本）与
+      跨后端导出/导入（`/cloudcore state-export|state-import`，`{version,players}` JSON）
+- [ ] 持久化剩余：连接池（当前每次操作开一条连接，单写线程串行）
 - [x] `EVENT_RESULT` 下发（OK/UNKNOWN_ELEMENT/REJECTED，固定枚举名）
 - [x] `command` 动作 + 配置闸门（默认拒绝，按首个词 allowlist；单测）
-- [ ] M3 剩余：依赖图增量编译/内容哈希去重、条件、表达式
+- [ ] M3 剩余：依赖图增量编译/内容哈希去重（WatchService 已有 400ms 合并，但未按依赖只重编译）
 - [x] M2 最小原生渲染：panel/label/button/text_field/checkbox/progress 的 RenderList（真机截图验证）
 - [x] `image` 的 `local:`/`pack:`/`builtin:` 贴图，以及 `item_icon`（原生物品、数量、缩放）（真机截图验证）
 - [x] HUD 面板：Fabric `HudElementRegistry` + 持久文档 + UI_CLOSE 清除（真机截图验证）
@@ -121,7 +132,7 @@ docs/
 - [x] Boss 血条样式：`boss_bar.bar` 的宽高/边框/背景（贴图+九宫格）/填充（贴图裁剪或颜色）/
       `tint_from_event`（真机验证）
 - [x] Boss 标题字体/阴影/对齐与层数计数：`bar.text` 的 `font`/`shadow`/`align`/
-      `show_layer_count`（`BossBarSurfaceAdapter`）
+      `show_layer_count`（`BossBarSurfaceAdapter`）；`font` 与 `title_renderer` 目前只接受原版字体
 - [x] 多层血条：同一根条逐层绘制，哨兵携带每层剩余强度
       `\0CCB:<token>:<p1>,<p2>,...\0<名称>`；`bar.layers` 逐层样式，外层打空露出内层；
       `demo_layers` 用于 `/cloudcore page` 预览（真机截图验证）
@@ -155,7 +166,11 @@ docs/
       按下时文字/图标下移 1px，松开或拖离即恢复（单测覆盖）
 - [x] PlaceholderAPI（软依赖）：发送/刷新时展开 `text`/`placeholder`/富文本/标题里的 `%token%`
       （真机验证 + `DocumentTextTest`），`placeholders.enabled` 开关
-- [ ] 占位符剩余：`interval`/`tick`/`event` 周期刷新、预算与异步白名单、`${placeholder:...}` 形式
+- [x] 占位符周期刷新：`static`/`interval`/`tick`/`event`/`manual`，页面级默认 + 元素级覆盖、
+      软预算（2 ms/玩家、10 ms 全局）、`async: true` 工作线程编译 + 回主线程 diff、
+      `${placeholder:...}` 显式形式（`PlaceholderExpressions`）；真机验证同步/异步两种
+- [ ] 占位符剩余：`placeholders.async-namespaces` 白名单（当前异步路径要求页面作者自行保证线程安全）、
+      预算打满后的顺延行为只有代码路径
 - [x] `slider`：`value` 填充 + 点击比例 `change{amount}` → `set_state` 往返（真机验证）
 - [x] `slider` 拖动、`min`/`max`/`step`、`live` 连续上报；越界值在 API 层被钳制（单测 `SlidersTest`）
 - [x] 附属插件 API：`CloudCoreApi.open/registerActionHandler/unregister/isModded` 经
@@ -179,7 +194,15 @@ docs/
 - [x] GIF 动画：本地与直连图片逐帧播放（3 帧测试图真机验证）
 - [x] 动画选项：`animated: off` 真机像素对比；`loop`/`speed` 解析层单测
 - [x] 远端 GIF 真机验证（400×400/22 帧 PNG 精灵表；超 1 MiB 自动减帧/降采样）
-- [ ] M2 渲染剩余：文本 shaping
+- [x] 代理贴图收尾：服务端内存缓存 TTL、磁盘缓存按最旧淘汰（`cache-mb`）、
+      客户端 `remoteImages: false` 时改走磁盘缓存，`imageCacheMiB` 可配
+- [x] Tooltip 附属栏 `attachments`：`left`/`right`/`top`/`bottom`、`match`、背景/九宫格/边框/标题/行文本
+- [x] Tooltip `name`/`lore` 独立 `x`/`y`/`font`/`line_gap`，`icon` 物品图标（取自悬停槽位）
+- [ ] M2 渲染剩余：文本 shaping（中文断行仍依赖原版字体度量）
+- [ ] Tooltip 剩余：`scroll_step`/`smooth_scroll`/`follow_cursor`/`sync_scroll` 未接线（步长固定 12）、
+      滚动条贴图与 `draggable` 拖动未实现、`tooltip_scroll` 事件未回传服务端
+- [ ] `overlay` 元素只递归子元素，`modal`/`dim` 未实现
+- [ ] `label` 的 `wrap`/`max_lines`、`image` 的 `fit` 未实现（仅按给定宽高拉伸）
 - [x] HUD / Tooltip / BossBar / Container 面板最小闭环
 - [x] HUD 三层（background/foreground/overlay）与锚点/偏移（真机验证）
 - [x] PlayerInventory 面板：持久皮肤、`CloudInventoryScreen`、`UI_CLOSE` 还原原版（真机截图验证）
@@ -204,26 +227,29 @@ docs/
 - [x] U30 预乘 alpha：合成改用 `GUI_TEXTURED_PREMULTIPLIED_ALPHA`
 - [ ] NanoVG 默认化：设备分辨率 FBO（清晰文字）、U31 状态隔离、Linux/macOS 验证
 - [ ] M0 渲染：预乘 alpha/Linux/macOS 运行验证
+- [x] 数据驱动饰品槽位：`slots.yml` 规则（`lore-contains`/`materials`/`permission`）、
+      独立 9×N 容器页、关闭时写入 `accessories/<uuid>.yml`
+- [x] 装备资产：`EquipmentAssets` 把 1.21.11 数据驱动 `equipment` 资产写进物品
+      `equippable.model`；`/cloudcore equipment` 与 `equipment-stand` 命令
 
 剩余的是实现前的验证项和待决问题，不是文档缺口。
 
 ## 下一步动作（按顺序）
 
-1. **贴图代理收尾**：代理下载的并发/队列上限压测；远端静态图失败占位文案。
-2. **持久化收尾**：连接池、schema 迁移版本表、SQLite→MySQL 导出/导入。
-3. **NanoVG 默认化**：设备分辨率 FBO（清晰文字）、U31 状态隔离、失败整帧回退、Linux/macOS 验证。
-4. **玩家背包 v2**：配方书四档（`skinned`/`custom`）、玩家模型与状态效果；`allow_player_inventory`
-   与 `InventoryDragEvent` 的真机验证顺带补上。
-5. **渲染与交互剩余**：文本 shaping、多条 Boss 血条堆叠与间距、
+1. **NanoVG 默认化**：设备分辨率 FBO（清晰文字）、U31 状态隔离、失败整帧回退、Linux/macOS 验证。
+2. **玩家背包 v2**：配方书 `skinned`/`custom`（当前 `hide`/`vanilla` 已实现）。
+3. **渲染与交互剩余**：文本 shaping、`label.wrap`/`max_lines`、`image.fit`、`overlay` 的 `modal`/`dim`、
    滚动容器内元素的焦点/输入框定位（当前按未滚动位置计算）。
-6. 之后按 `08-roadmap.md` 的 M4–M10 推进（动作引擎 v2、加固与发布）。
+4. **Tooltip 收尾**：`scroll_step`/`smooth_scroll` 接线、滚动条贴图与拖动、`tooltip_scroll` 回传。
+5. **持久化收尾**：SQL 连接池；依赖图增量编译。
+6. 之后按 `08-roadmap.md` 的 M9–M10 推进（动作引擎 v2、加固与发布）。
 
 ## 环境搭建
 
 - JDK 21。
 - Gradle wrapper 在脚手架阶段固定。
 - IntelliJ IDEA + Minecraft Development 插件（混入支持）。
-- 本地 Paper 1.21.11 服务端目录（`run-paper`）。
+- 本地 Paper 1.21.11 服务端目录（`run-paper`；仓库不提供 Gradle 任务）。
 - `./gradlew :cloudcore-client:runClient` 启动开发客户端。
 - 需要显示器；客户端集成测试可在本地 Windows 或 Xvfb + 软件 GL 上跑。
 
@@ -233,8 +259,10 @@ docs/
 - 1.21.11 中 `ResourceLocation` 已改名为 `Identifier`；文档与代码统一用 `Identifier`。
 - `cloudcore-api`、`cloudcore-protocol`、`cloudcore-server-core` 不得 import Minecraft 或 Bukkit。
 - 协议服务端接收上限 32,767 字节；C2S 报文不得随文档大小增长。
-- 四个混入：`Minecraft#setScreen`、`GuiGraphics#renderTooltip`、`MouseHandler#onScroll`、
-  `BossHealthOverlay#render`。新增混入需要兼容性评审。
+- 混入共 10 个：4 个行为混入（`Minecraft#setScreen`、`GuiGraphics#renderTooltip` 与延迟绘制入口
+  `method_71277`、`MouseHandler#onScroll`、`BossHealthOverlay#render`）+ `Gui#renderPlayerHealth`/
+  `renderHotbarAndDecorations`（HUD `replace`）+ 5 个只读 accessor（`Minecraft`、`FontManager`、
+  `AbstractContainerScreen`、`RecipeBook`、`RecipeBookComponent`）。新增行为混入需要兼容性评审。
 - 遍历在服务端展开；客户端不执行模板或遍历逻辑。
 - 页面组合在加载期完成；客户端只接收单一文档。
 - 正式素材放客户端 `.minecraft/resourcepacks/CloudCore/`，可按 `副本/`、`签到/`、`公共/` 分类；
@@ -247,15 +275,19 @@ docs/
 - FBO 按逻辑分辨率整数倍分配，单层显存上限 8 MiB，窗口/GUI 缩放变化才重建。
 - URL 贴图只允许 https；直连模式由客户端执行私网/回环/大小/超时策略，代理模式由服务端执行允许列表。
 - GIF 直连模式客户端解码，代理模式服务端解码；两侧都有帧数/像素/延迟上限。
-- PlaceholderAPI 默认主线程同步解析；异步仅限 `async-namespaces` 白名单。
-- Tooltip 滚动条与 Boss 样式字段都有范围校验和默认值。
+- PlaceholderAPI 默认主线程同步解析；`async: true` 的页面要求扩展线程安全，
+  `async-namespaces` 白名单尚未实现。
+- Tooltip 滚动条与 Boss 样式字段都有范围校验和默认值；其中 `scroll_step`/`smooth_scroll`、
+  滚动条贴图与 `draggable` 拖动尚未接线。
+- 状态存储后端 `file`/`sqlite`/`mysql` 共用同一份 JSON 文档，可互相导出导入；
+  SQL 后端每次操作开一条连接，尚未引入连接池。
 
 ## 待决策事项
 
-见 `10-risks-and-verification.md` 第 6 节。会阻塞 M2/M6 的是：
+见 `10-risks-and-verification.md` 第 6 节。仍待定的是：
 
 - 内置字体的字形覆盖范围（拉丁 + CJK 子集）与体积。
-- 玩家背包 v1 是否接受隐藏配方书。
+- 配方书 `skinned`/`custom` 的实现深度与 REI/EMI 冲突时的让位规则（`hide`/`vanilla` 已落地）。
 - Boss 血条只接管 Paper BossBar，还是也支持第三方 Boss 事件。
 - Tooltip 是否需要服务端逐行追加内容。
 - 多面板同时需要输入时的焦点规则。

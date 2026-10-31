@@ -36,7 +36,9 @@
   `ExpressionEvaluator` 求值（`set_state`/`message`/`if` 的条件都走它，整数值不显示 `.0`）。
 - `if`：`condition` + `then`/`else` 动作列表；`delay`：`ticks` + `then` 延迟执行。
   表达式变量 = 文档默认 state 叠加玩家状态，再叠加事件载荷（`value`/`checked`/`index` 等）。
-- 尚未支持：`wait`/超时、动作预算与串联限制、`EVENT_RESULT` 之外的执行报告。
+- 尚未支持：`wait`/超时、动作预算与串联限制、`EVENT_RESULT` 之外的执行报告、动作冷却
+  （`cooldown` 动作与配置里的 `per-element-cooldown-ms` 都还没有实现）、
+  `ActionEngine` 接口接缝与 `GraphActionEngine`（动作直接在 `CloudCorePlugin` 里执行）。
 
 ## 1. 目标与非目标
 

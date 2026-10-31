@@ -62,7 +62,7 @@
   - 快捷栏 36–44
   - 副手 45
 - **配方书**：`recipe_book` 四档：
-  - `hide`（默认）：隐藏配方书与右上角按钮；`E` 打开的背包没有配方书入口；
+  - `hide`（默认）：组件 `setVisible(false)`，并移除原版右上角按钮；`E` 打开的背包没有配方书入口；
   - `vanilla`：保留原版配方书组件、搜索/标签页/滚动和按钮，点击按钮正常展开；
   - `skinned`（当前回退到 `vanilla`）：原版列表/搜索/标签页/滚动，后续用 NanoVG 替换外框、按钮、
     标签、滚动条、字体；
@@ -86,9 +86,14 @@
   `HudElementRegistry.addFirst`（背景，排在原版元素之前）与 `addLast`（前景、覆盖层，依次在前一个之后）。
 - **锚点**：`surface_options.anchor`（`top_left`/`top_center`/`top_right`/`center*`/`bottom*`，
   默认 `top_left`）加 `offset_x`/`offset_y`；文档声明自己的尺寸，锚点是相对该尺寸计算。
+- **替换原版**：`surface_options.replace: [health, food, xp, hotbar]` 让 `GuiMixin` 取消对应原版绘制，
+  文档自己画。`hotbar` 元素由 HUD 适配器用玩家实时物品绘制（框贴图 + 物品图标 + 数量 + 选中槽）。
+- **实时数值**：元素上的 `value_from`/`text_from` 每帧读取玩家血量/饥饿/经验/氧气/护甲/等级，
+  数值不变时不重建文档（`HudValues`）。
 - **限制**：只读；无槽位、无输入、无 Tooltip 滚动。
-- **绘制**：整层由 NanoVG 渲染到 FBO 后合成；物品图标由原生桥绘制。
-- **更新**：状态变化时服务端重编译并下发更高 revision 的完整文档（`ELEMENT_UPDATE` 增量尚未实现）；
+- **绘制**：整层由 NanoVG 渲染到 FBO 后合成（NanoVG 启用时；当前默认是原生后端）；
+  物品图标由原生桥绘制。
+- **更新**：状态变化时服务端重编译并下发更高 revision 的完整文档（HUD 支持 `ELEMENT_UPDATE` 增量）；
   没有可见元素时不重绘 FBO。
 - **失败**：文档无效时移除该层，其他层继续。
 
@@ -105,15 +110,16 @@
   背景取文档里第一个带 `style.background` 的元素：贴图引用（可加 `style.nine_slice`）按提示框
   尺寸九宫格拉伸，颜色引用则直接填充；都没有时用默认深色。
   `tooltip_scroll` 事件回传服务端仍待动作引擎。
-- **滚动条样式**：轨道、滑块、悬停态贴图、九宫格、宽度、间距、最小滑块高度、颜色、是否可拖动，
-  全部来自 `surface_options.tooltip.scrollbar`。
+- **滚动条样式**：已接线的是 `scrollbar.width`（或顶层 `scrollbar_width`）、`track_color`、
+  `thumb_color`。`gap`、贴图形式的 `track`/`thumb`/`thumb_hover`、`min_thumb`、`nine_slice`、
+  `draggable` 已定义但未实现。
 - **滚动**：
   - 内容超过可见高度时进入滚动模式；
   - 固定提示框位置；
-  - 滚轮按 `scroll_step` 滚动，可选 100 ms 平滑；
-  - 可拖动滑块，与滚轮共享偏移；
+  - 滚轮按固定 12 px 滚动（`scroll_step` 与 `smooth_scroll` 未接线）；
   - 悬停物品变化时偏移归零；
   - 内容未超高时不消费滚轮。
+- **未实现**：拖动滑块（`draggable`）、`tooltip_scroll` 事件回传服务端。
 - **服务端逐行内容**：v1 不支持；可以通过物品 `lore` 组件追加。
 - **失败**：无法接管时原版提示；滚动失效时退回不滚动。
 - **兼容**：其他 Tooltip 模组、REI/EMI 的追加行应保留。
@@ -127,12 +133,15 @@
 - **数据**：进度与颜色来自 `BossEvent`；文档只负责外观。
 - **外观**（已实现）：`surface_options.boss_bar.bar` 支持 `width`（默认 182）、`height`（默认 5）、
   `border`（1px 外框颜色）、`background`（颜色，或贴图引用 + `nine_slice`）、`fill`
-  （贴图引用按进度裁剪，或颜色）、`tint_from_event`（默认 `true`；`false` 时用 `fill` 颜色或默认蓝）。
-  标题由适配器画在条内，原版名称通过 `@Redirect` 剥离。
+  （贴图引用按进度裁剪，或颜色）、`fill_inset`、`overlay`、`tint_from_event`（默认 `true`；
+  `false` 时用 `fill` 颜色或默认蓝）、`tint_alpha`（默认 0.62）、`show_name`、
+  `text.color`/`shadow`/`align`/`show_layer_count`/`counter_color`。
+  标题由适配器画在条内（原版字体），原版名称通过 `@Redirect` 剥离。
 - **堆叠**（已实现）：`surface_options.boss_bar.spacing` 控制相邻哨兵血条的垂直间距
   （默认 `0` 沿用原版），`max_bars` 限制最多绘制多少条（默认 `0` 不限制）；只影响哨兵血条，
   不改变原版血条的位置。真机验证：3 条哨兵、`max_bars: 2`、`spacing: 16` 时只显示前两条。
-- 计划：字体/阴影/对齐、按 `z` 排序的多条血条。
+- 未接线：`position`（固定屏幕居中）、`title_renderer: nanovg`（固定原版字体）、
+  `direction`（固定从左到右）。
 - **原版客户端**：不使用哨兵，看到普通标题。
 - **失败**：匹配失败时原版绘制；文档无效时原版绘制。
 - **未来**：自绘、脱离原版 `BossEvent` 的血条（v2）。

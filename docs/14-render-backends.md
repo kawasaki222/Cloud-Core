@@ -19,15 +19,15 @@ public interface RenderBackend {
 
 | 后端 | 用途 | 实现 |
 | --- | --- | --- |
-| `NanoVgBackend` | 默认 UI 绘制 | NVGContext + FontRegistry + FBO |
-| `NativeBackend` | 回退/兼容 | `GuiGraphics` + `RenderPipelines.GUI_TEXTURED` |
-| `SdfBackend` | 可选实验 | 自定义 `RenderPipeline` + SDF quad |
+| `NativeBackend` | **当前默认** | `GuiGraphics` + `RenderPipelines.GUI_TEXTURED` |
+| `NanoVgBackend` | 目标默认（opt-in） | NVGContext + FontRegistry + FBO |
+| `SdfBackend` | 可选实验，**未实现** | 自定义 `RenderPipeline` + SDF quad |
 
 - 布局、命中测试、输入、状态更新完全独立于后端。
 - `RenderList` 是后端无关的绘制指令：矩形、九宫格、文本、图片、裁剪、变换。
 - 服务端和协议不感知后端；文档只声明效果，客户端不支持时降级。
 
-## 2. 默认：NanoVG 离屏
+## 2. 默认：NanoVG 离屏（目标；当前默认是原生）
 
 ```
 RenderList
@@ -37,7 +37,8 @@ RenderList
 ```
 
 - NanoVG 画面板、静态文本、图片、九宫格、圆角、渐变、阴影、裁剪、变换。
-- FBO 按逻辑分辨率乘整数倍（1x/2x）分配，窗口/GUI 缩放变化时重建。
+- FBO 按逻辑分辨率 × GUI 缩放（`pixelRatio = max(1, guiScale)`）分配，窗口/GUI 缩放变化时重建；
+  目前没有独立的 1x/2x 配置项。
 - `FboCompositor` 把 FBO 颜色纹理包装成 `AbstractTexture`，用
   `GuiGraphics#blit(RenderPipelines.GUI_TEXTURED, id, x, y, 0f, 0f, w, h, texW, texH)` 合成；
   必须显式传入贴图像素尺寸，旧的规范化 UV 重载对 FBO/`DynamicTexture` 不显示（已实测，见 `10` §1.6）。

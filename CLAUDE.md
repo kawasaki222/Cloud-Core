@@ -35,13 +35,14 @@ Cloud Core 是面向 **Minecraft 1.21.11** 的服务端权威自定义 UI 框架
 
 ```
 cloudcore-api          纯 Java 模型/API，无 Minecraft/Bukkit
+cloudcore-api-testkit  附属插件测试工具包（纯 Java），依赖 api
 cloudcore-protocol     二进制协议；依赖 api
 cloudcore-server-core  页面/会话/状态/动作；依赖 api + protocol，无 Bukkit
 cloudcore-bukkit       Paper 插件；依赖 server-core
 cloudcore-client       Fabric 模组；依赖 api + protocol
 ```
 
-- `api`、`protocol`、`server-core` 不得 import `net.minecraft.*`、`org.bukkit.*`。
+- `api`、`protocol`、`server-core`、`api-testkit` 不得 import `net.minecraft.*`、`org.bukkit.*`。
 - 服务端状态只在主线程改；客户端渲染状态只在渲染线程改。
 - 新增报文必须同步更新 `Limits`、黄金向量、协议测试和 `docs/02-protocol.md`。
 - 新增页面字段必须同步更新 `docs/03-ui-dsl.md`、`docs/16-ui-document-schema.md` 和校验器。
@@ -103,8 +104,16 @@ Windows 用 `gradlew.bat`。如果 `JAVA_HOME` 不是 21，设置为本机 JDK 2
 ## 9. 当前状态
 
 - M0/M1/M2 完成并在真实 Paper + Fabric 开发客户端联调；M3 页面加载、动作引擎子集、
-  附属插件 API、键盘导航、状态持久化（JSON 文件实现）已落地。详见 `README.md`
-  「当前状态」、`docs/10-risks-and-verification.md` 第 2.1 节与 `docs/TODO_HANDOFF.md`。
-- 后续：NanoVG 默认化与设备分辨率清晰文字、`ELEMENT_UPDATE` 增量更新、贴图代理
-  （`TEXTURE_REQUEST`/`TEXTURE_PUT`）、玩家背包配方书、SQLite/MySQL 存储实现、Linux/macOS 验证。
+  附属插件 API、键盘导航、状态持久化已落地。M4 页面组合、M5 玩家背包/HUD、M6 Tooltip/Boss、
+  M7 元素与字体、M8 占位符刷新的大部分也已落地。详见 `README.md`「当前状态」、
+  `docs/10-risks-and-verification.md` 第 2.1 节与 `docs/TODO_HANDOFF.md`。
+- 已实现：`ELEMENT_UPDATE` 增量、贴图代理（`TEXTURE_REQUEST`/`TEXTURE_PUT` + 磁盘缓存）、
+  `file`/`sqlite`/`mysql` 状态持久化与跨后端导出导入、玩家背包皮肤（玩家模型/状态效果/
+  配方书 `hide`/`vanilla`）、Tooltip 附属栏、Boss 多层血条与堆叠。
+- 后续：NanoVG 默认化与设备分辨率清晰文字、配方书 `skinned`/`custom`、文本 shaping、
+  Tooltip 滚动条拖动与 `tooltip_scroll` 回传、`async-namespaces` 白名单、SQL 连接池、
+  依赖图增量编译、Linux/macOS 与 REI/EMI 互操作验证。
+- 注意：`tx:` 主题令牌与 `THEME_SET`、`NOTIFICATION`/`SERVER_CONFIG`/`METRICS`/`CLIENT_ERROR`/
+  `SCREEN_PROBE`、动作冷却、`/cloudcore stats|surfaces|list|debug`、页面级权限强制都还没有实现；
+  代码与文档不一致时以代码为准，并同步修文档。
 - 每次改动仍按第 0 节：构建 → 提交 → 推送；验证结论写进 `docs/10`。

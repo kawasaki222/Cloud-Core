@@ -4,7 +4,12 @@
 
 1.1 相对 1.0 的变化：`UI_OPEN` 增加面板类型与 `surfaceKey`；新增 `PERSISTENT` 绑定模式；
 新增面板相关特性位与限额；明确 Tooltip / Boss 血条的数据来源；新增 `TEXTURE_REF`、动画贴图字段。
-1.1 目前是**设计期版本，尚未实现**，M1 落地前允许调整字段。
+1.1 已实现并在真实 Paper + Fabric 客户端联调；次版本内只追加字段，不改变既有语义。
+
+`ELEMENT_UPDATE`（`0x14`）、`TEXTURE_REQUEST`（`0x84`）、`TEXTURE_PUT`（`0x28`）是 1.1 内的追加报文，
+客户端与服务端都已实现；`NOTIFICATION`（`0x16`）、`THEME_SET`（`0x2A`）、`SERVER_CONFIG`（`0x31`）、
+`CLIENT_ERROR`（`0x86`）、`METRICS`（`0x87`）、`SCREEN_PROBE`（`0x88`）只有操作码与字段定义，
+收发两端均未接线。
 
 ## 1. 传输
 
@@ -42,9 +47,9 @@ cloudcore:main
 | Tooltip 行数 | — | 256 |
 | 动画贴图帧数 | — | 64 |
 | 动画贴图解码后总大小 | — | 16 MiB |
-| URL 贴图（客户端直连或服务端代理） | — | 1 MiB，512×512，3 秒超时，不跟随重定向 |
-| 客户端图片缓存 | — | 磁盘 128 MiB，解码后内存 32 MiB |
-| 占位符解析预算 | — | 每玩家 2 ms/tick，全局 10 ms/tick |
+| URL 贴图（客户端直连或服务端代理） | — | 8 MiB，10 秒超时，不跟随重定向；仅 https/443 |
+| 客户端图片缓存 | — | 磁盘 128 MiB（`imageCacheMiB`，可配 1–1024） |
+| 占位符解析预算 | — | 每玩家 2 ms/tick，全局 10 ms/tick（软预算，超出的页面顺延） |
 | `DIAGNOSTIC.detail` | — | 4 KiB，10 条/秒，10 秒去重 |
 
 客户端发送的一切都必须小：事件和确认只有几十字节。大块数据永远走 S2C。
@@ -206,14 +211,14 @@ state=4)` 中回传；`cloudcore-api` 内部用 `SurfaceType.UNKNOWN` 表示，�
 | `0x12` | `UI_DEFINITION` | `string uiId, varint revision, u8 encoding, bytes data` |
 | `0x14` | `ELEMENT_UPDATE` | `string uiId, varint revision, varint count, entry[count]`（已实现，`ElementUpdateCodec`） |
 | `0x15` | `EVENT_RESULT` | `varint requestId, u8 status, string message`（已实现，`EventResultCodec`） |
-| `0x16` | `NOTIFICATION` | `u8 kind, string title, string body, varint durationMs` |
-| `0x17` | `DIAGNOSTIC` | `u8 severity, string code, u32 traceId, string scope, string message, string detail` |
-| `0x28` | `TEXTURE_PUT` | `string key, u16 width, u16 height, u8 format, u32 crc32, bytes data, u16 frameCount, u8 loop, u16[] frameDelaysMs` |
-| `0x29` | `TEXTURE_RELEASE` | `string key` |
-| `0x2A` | `THEME_SET` | `string themeId, u8 encoding, bytes json` |
+| `0x16` | `NOTIFICATION` | `u8 kind, string title, string body, varint durationMs`（未实现） |
+| `0x17` | `DIAGNOSTIC` | `u8 severity, string code, u32 traceId, string scope, string message, string detail`（已实现，`DiagnosticCodec`） |
+| `0x28` | `TEXTURE_PUT` | `string key, u16 width, u16 height, u8 format, u32 crc32, bytes data, u16 frameCount, u8 loop, u16[] frameDelaysMs`（已实现，`TexturePutCodec`） |
+| `0x29` | `TEXTURE_RELEASE` | `string key`（未实现） |
+| `0x2A` | `THEME_SET` | `string themeId, u8 encoding, bytes json`（未实现） |
 | `0x2B` | `TEXTURE_REF` | `string key, string url, string sha256, u16 width, u16 height, u8 flags, u32 maxBytes, u16 ttlSeconds`（已实现，`TextureRefCodec`） |
 | `0x30` | `PING` | `u32 nonce, u64 serverTimeMs` |
-| `0x31` | `SERVER_CONFIG` | `u8 flags, u8 debugLevel, string language` |
+| `0x31` | `SERVER_CONFIG` | `u8 flags, u8 debugLevel, string language`（未实现） |
 
 `NOTIFICATION.kind`：`0` 信息，`1` 成功，`2` 警告，`3` 错误。
 
@@ -378,11 +383,11 @@ u16    ttlSeconds   # 0 表示按内容哈希永久缓存
 | `0x81` | `UI_READY` | `string uiId, varint revision, u32 token, u8 surface, u8 state, string detail` |
 | `0x82` | `EVENT` | `varint requestId, string uiId, string elementId, u16 actionId, varint payloadLen, WireValue payload`（已实现，`EventCodec`） |
 | `0x83` | `UI_CLOSED` | `string uiId, u8 reason` |
-| `0x84` | `TEXTURE_REQUEST` | `string key`（请求服务端代理或重发内联贴图） |
+| `0x84` | `TEXTURE_REQUEST` | `string key`（请求服务端代理或重发内联贴图）（已实现，`TextureRequestCodec`） |
 | `0x85` | `PONG` | `u32 nonce, u64 clientTimeMs` |
-| `0x86` | `CLIENT_ERROR` | `u16 code, string uiId, string detail` |
-| `0x87` | `METRICS` | `u16 fps, u16 avgFrameMicros, varint elementCount, varint packetCount` |
-| `0x88` | `SCREEN_PROBE` | `string screenClass, i32 menuId, string title, i32 slotCount` |
+| `0x86` | `CLIENT_ERROR` | `u16 code, string uiId, string detail`（未实现） |
+| `0x87` | `METRICS` | `u16 fps, u16 avgFrameMicros, varint elementCount, varint packetCount`（未实现） |
+| `0x88` | `SCREEN_PROBE` | `string screenClass, i32 menuId, string title, i32 slotCount`（未实现） |
 
 `UI_READY.state`：`0` 正常，`1` 文档缺失，`2` 文档无效，`3` 绑定失败，
 `4` 面板类型不支持。
@@ -501,4 +506,5 @@ Tooltip 的滚轮事件默认**不**上报服务端；只有文档显式声明 `
   客户端刚在 `JOIN` 回调里发出 `HELLO`，其 S2C 接收器尚未完全就绪，ACK 会丢失；延迟 1 tick
   后稳定送达。这是传输实现约束，不改变线上格式。
 - 计数器（`unknown_opcode`、`bad_fragment`、`crc_fail`、`rate_limited`、`surface_unsupported`）
-  通过 `/cloudcore stats` 和客户端 F3 叠加层暴露。
+  目前只有客户端侧的部分（未知操作码日志、`Rate limited EVENT` 服务端日志、`UI_READY(state=4)`）；
+  `/cloudcore stats` 尚未实现，客户端 F3 叠加层显示活动文档而非计数器。

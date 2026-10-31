@@ -63,42 +63,45 @@ public interface ByteSource  { int readByte(); int readVarInt(); byte[] readByte
 
 ### `cloudcore-bukkit` —— 平台绑定
 
-- `CloudCorePlugin`：生命周期、配置、命令注册、通道注册。
-- `PluginMessageTransport`：`Messenger`、`PluginMessageListener`、大小检查、发送队列。
-- `HandshakeService`：跟踪装了模组的玩家、协议版本、能力位。
-- `ContainerSurfaceProvider`：打开带 `InventoryHolder` 的后备物品栏，按交互模式放行或取消点击。
-- `LegacyMenuAdapter`：监听 `InventoryOpenEvent`，为第三方容器合成文档，预绑定会话。
-- `PlayerInventorySurface`：玩家加入时推送背包皮肤；服务端不负责打开该界面。
-- `HudSurfaceProvider`、`TooltipSurfaceProvider`、`BossBarSurfaceProvider`。
-- `PlaceholderApiResolver`、`BukkitPlayerContext`、`CommandHandler`。
-- `DiagnosticService`：把页面编译/打开/动作错误以 `DIAGNOSTIC` 下发客户端，同时写服务端日志。
-- `BukkitSchedulerBridge`：把工作切回主线程的唯一接缝。
+实现全部集中在 `CloudCorePlugin` 与几个协作类里，没有按职责拆成 `transport/`、`listener/` 等子包：
+
+- `CloudCorePlugin`：生命周期、配置、通道注册、命令与 Tab 补全、动作执行、表面路由、
+  页面热重载、状态持久化调度。
+- `CloudInventoryHolder`：容器持有者（玩家、`uiId`、交互模式、已声明槽位）。
+- `PageWatcher`：`pages/` 的 WatchService 监听（400ms 合并）。
+- `Placeholders`：PlaceholderAPI 与附属解析器展开。
+- `api/`：`CloudCoreApi` 实现（`ActionHandler`、`PlaceholderResolver`、`PageProvider`、
+  `OpenOptions`、`OpenResult`、`ActionContext`）。
+- `item/EquipmentAssets`：把 1.21.11 数据驱动 `equipment` 资产写进物品的 `equippable.model`。
+- `slot/`：`SlotCatalog`、`SlotDefinition`、`AccessorySlots`（`slots.yml` 驱动的独立槽位页）。
+- `texture/TextureProxy`：`TEXTURE_REQUEST`/`TEXTURE_PUT` 的下载、校验、磁盘缓存。
+
+调度统一走 `getServer().getScheduler()`；没有单独的 `BukkitSchedulerBridge` 抽象，
+Folia 移植时这一处需要重新抽出来。
 
 ### `cloudcore-client` —— 表现层（Mojang 映射）
 
-- `CloudCoreClient`：模组初始化、配置、通道注册。
-- `ClientTransport`：payload 编解码注册、分片、限流计数。
-- `ClientSessionTable`：uiId → 会话、修订号检查、文档缓存。
-- `SurfaceRegistry`：`SurfaceType` → `SurfaceAdapter`。
-- 六类适配器：
-  - `CustomScreenAdapter` —— 独立界面，`Minecraft#setScreen`。
-  - `ContainerSurfaceAdapter` —— 箱子/容器，`Minecraft#setScreen` + `AbstractContainerScreen`。
-  - `PlayerInventoryAdapter` —— 玩家背包，替换 `InventoryScreen`。
-  - `HudSurfaceAdapter` —— `HudElementRegistry`。
-  - `TooltipSurfaceAdapter` —— `GuiGraphics#renderTooltip` 钩子 + `MouseHandler#onScroll`。
-  - `BossBarSurfaceAdapter` —— `BossHealthOverlay#render` 钩子。
-- `LayoutEngine`：锚点、百分比、弹性布局、滚动、裁剪、遍历实例布局。
-- `RenderList`：后端无关的绘制指令（矩形、九宫格、文本、图片、裁剪、变换）。
-- `RenderBackend`：`NanoVgBackend`（默认）与 `NativeBackend`（回退）。
+- `CloudCoreClient`：模组初始化、配置、通道注册、会话状态。
+- `mixin/`：4 个行为混入（`Minecraft`、`GuiGraphics`、`MouseHandler`、`BossHealthOverlay`）
+  + `GuiMixin`（HUD `replace`）+ 5 个只读 accessor。
+- `surface/`：`SurfaceRegistry`、六个适配器、`DocumentUpdates`、`HudValues`。
+- `screen/`：`CloudScreen`、`CloudContainerScreen`、`CloudInventoryScreen`、
+  `CloudDebugOverlay`、`SlotLayout`、`EntityPortrait`。
+- `render/`：`DocumentRenderListBuilder`（布局 + RenderList）、`NanoVgBackend`、`NativeBackend`、
+  `FboCompositor`、`LocalTextureRegistry`、`LocalPageRegistry`、`RemoteTextureCache`、
+  `TextureDiskCache`、`AnimatedTextures`、`BuiltinTextures`、`FontRegistry`。
+- 布局、命中测试与滚动偏移共用 `DocumentRenderListBuilder` 的几何计算，没有独立的 `LayoutEngine`。
+- `RenderBackend`：`NativeBackend`（当前默认）与 `NanoVgBackend`（opt-in，目标默认）。
 - `NanoVgBackend`：NVGContext、字体图集、离屏 FBO、背景/前景两个绘制阶段。
 - `FboCompositor`：把 FBO 通过 `GuiGraphics` 贴回屏幕，处理预乘 alpha、缩放和 GL 状态恢复。
-- `NativeBridge`：物品、槽位、tooltip 内容、输入法文本、原生 tooltip 组件的绘制。
+- 原生物品/槽位/提示文本的绘制直接由各适配器调用 `GuiGraphics`，没有独立的 `NativeBridge` 类。
 - `FontRegistry`：从本地 CloudCore 目录、资源包或模组 jar 回退加载 TTF/OTF，创建 NanoVG 字体。
-- `InputRouter`：命中测试、焦点、悬停、点击/拖拽/滚轮/键盘。
-- `TextureManager` / `ImageCache`：NanoVG image handle 与原生回退的 `DynamicTexture` 上传、解码、LRU。
-- `Diagnostics`：F3 叠加层、报文计数、布局边界、后端状态、FBO 尺寸。
-- `ClientLog` / `LogRedactor` / `DiagnosticBundle`：结构化日志、脱敏、诊断包导出。
-- `LocalAssetSource`：读取 `.minecraft/resourcepacks/CloudCore/`，支持业务分类和 `F9` 重载。
+- 输入路由在 `CloudScreen`/各适配器里（命中测试 `ElementHitTester`、焦点、悬停、滚轮、键盘）。
+- 贴图管理在 `LocalTextureRegistry`/`BuiltinTextures`/`RemoteTextureCache`/`TextureDiskCache`/
+  `AnimatedTextures`，负责 `DynamicTexture` 上传、解码与磁盘缓存。
+- `CloudDebugOverlay`：F3 叠加层，显示活动文档的 uiId/surface/revision 与文档数。
+- `ClientLogFile` / `ClientDump` / `FrameLog`：结构化日志、脱敏、诊断包导出。
+- `ClientResources`：读取 `.minecraft/resourcepacks/CloudCore/`，支持业务分类和 `F9` 重载。
 
 ### 渲染架构
 

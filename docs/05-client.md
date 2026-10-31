@@ -167,16 +167,21 @@ public final class SurfaceRegistry {
 | 混入 | 目标 | 目的 |
 | --- | --- | --- |
 | `MinecraftMixin` | `Minecraft#setScreen` | 用 `@ModifyVariable` 替换界面参数 |
-| `GuiGraphicsMixin` | `GuiGraphics#renderTooltip(...)` | 捕获并替换物品提示渲染 |
+| `GuiGraphicsMixin` | `GuiGraphics#renderTooltip(...)` 与私有 `method_71277(...)` | 捕获并替换物品提示渲染（直接与延迟两条入口） |
 | `MouseHandlerMixin` | `MouseHandler#onScroll(long,double,double)` | Tooltip 可滚动时消费滚轮 |
 | `BossHealthOverlayMixin` | `BossHealthOverlay#render` | 接管已绑定的 Boss 血条 |
+| `GuiMixin` | `Gui#renderPlayerHealth`、`Gui#renderHotbarAndDecorations` | HUD 文档声明 `replace` 时取消原版血条/饱食度/经验/快捷栏 |
+
+只读 accessor（不改行为）：`MinecraftAccessor`、`FontManagerAccessor`、
+`AbstractContainerScreenAccessor`、`RecipeBookAccessor`、`RecipeBookComponentAccessor`。
 
 混入只负责生命周期和捕获，不负责绘制；绘制统一走 `RenderBackend`。混入都设置明确的优先级，
 并且只在对应面板启用时生效。1.21.11 的全局滚轮入口是
 `MouseHandler#onScroll(long, double, double)`；`Screen` 不保证覆盖 `mouseScrolled`。
 `GuiGraphics` 的 tooltip 入口是
-`renderTooltip(Font, List<ClientTooltipComponent>, int, int, ClientTooltipPositioner, Identifier)`。
-两者已核对（见 `10-risks-and-verification.md`），滚轮混入已在真实容器界面验证。
+`renderTooltip(Font, List<ClientTooltipComponent>, int, int, ClientTooltipPositioner, Identifier)`，
+延迟绘制走私有 `method_71277(...)`。两者已核对（见 `10-risks-and-verification.md`），
+滚轮混入已在真实容器界面验证。
 
 ## 6. 界面替换
 
@@ -258,11 +263,13 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
 要点：
 
 - `InventoryScreen` 在 1.21.11 中继承 `AbstractRecipeBookScreen<InventoryMenu>`（已用 javap 确认）。
-  v1 皮肤直接继承 `AbstractContainerScreen<InventoryMenu>`，复用 `player.inventoryMenu`
-  （容器 0），因此点击仍发送原版槽位包；配方书不注册，即 `recipe_book: hide`。
-- `recipe_book` 其余三档（`vanilla`/`skinned`/`custom`）留在 v2：需要 `AbstractRecipeBookScreen`
-  或复制其组件状态。
-- 玩家模型、状态效果图标在 v1 不绘制；`show_player_model`/`show_effects` 尚未解析。
+  皮肤继承同一父类（`AbstractRecipeBookScreen<InventoryMenu>`，构造时传入
+  `CraftingRecipeBookComponent`），复用 `player.inventoryMenu`（容器 0），因此点击仍发送原版槽位包。
+- `recipe_book` 四档：`hide`（默认，组件 `setVisible(false)` 并移除原版按钮）、
+  `vanilla`（保留原版配方书组件与按钮）、`skinned`/`custom`（当前回退 `vanilla`，留待 v2）。
+- `show_player_model`：`EntityPortrait` 用原版实体渲染绘制实时玩家预览，
+  `player_model_x`/`y`/`scale`（默认 `50/78/30`）相对面板左上角。
+- `show_effects`：复用原版 `EffectsInInventory`，在背包右侧绘制状态效果图标与剩余时间。
 - 槽位来自 `InventoryMenu`：合成输出 0、合成输入 1–4、护甲 5–8、主物品栏 9–35、快捷栏 36–44、
   副手 45。`renderBg` 按 `menu.slots` 的 `slot.x/y` 画槽框，文档元素画在槽框之上。
 - 服务端不发送打开报文；客户端本地按 `E` 打开时应用持久皮肤（`UI_OPEN` + `UI_DEFINITION` 先到）。
@@ -290,8 +297,10 @@ HudElementRegistry.addLast(
 
 ### 10.1 捕获
 
-`TooltipMixin` 在物品提示的最终渲染重载上 `@Inject(at = HEAD, cancellable = true)`，拿到
-`List<FormattedCharSequence>`（以及物品栈），交给 `TooltipSurfaceAdapter`。
+`GuiGraphicsMixin` 在物品提示的最终渲染重载上 `@Inject(at = HEAD, cancellable = true)`，拿到
+`List<ClientTooltipComponent>`（以及物品栈），交给 `TooltipSurfaceAdapter`。1.21.11 有两条入口：
+公开的 `renderTooltip(...)` 与帧末刷新走的私有 `method_71277(...)`，两者都挂钩，所以直接绘制与
+延迟绘制共用同一个适配器。
 
 - 只有启用了 Tooltip 面板、且是物品提示时才接管。
 - 其他模组通过 `ItemTooltipCallback` 追加的行仍然在列表中。
@@ -309,7 +318,7 @@ HudElementRegistry.addLast(
 - 内容超过可见高度时进入滚动模式：
   - 固定提示框位置，避免滚动时跟着鼠标跳动；
   - 右侧绘制滚动条；
-  - 滚轮按 `scroll_step` 调整偏移，可选 100 ms 平滑插值；
+  - 滚轮按固定步长 12 px 调整偏移（`scroll_step` 与 `smooth_scroll` 尚未接线）；
   - 偏移夹在 `[0, 内容高度 - 可见高度]`。
 - 悬停物品变化时重置偏移。判断依据是物品 id、数量与数据组件；具体哈希方法在实现时确认。
 - 内容未超高时，滚轮**不**被消费，保持原版行为（例如快捷栏切换）。
@@ -333,10 +342,10 @@ public abstract class MouseHandlerMixin {
 - 不改变聊天、快捷栏、其他界面的滚轮行为。
 - 1.21.11 的全局入口是 `MouseHandler#onScroll(long, double, double)`；真实容器界面已验证
   混入能收到滚轮。`Screen#mouseScrolled` 可能被子类覆盖，不作为唯一钩子。
-- 滚动条样式来自文档 `surface_options.tooltip.scrollbar`：轨道、滑块、悬停态贴图、九宫格、宽度、
-  间距、最小滑块高度、颜色、`draggable`。
-- 滚动条绘制在提示框内并裁剪到可见区域；`draggable: true` 时支持拖动滑块，和滚轮共享同一个偏移。
-- 拖动只在提示可见时生效，不改变原版其他界面的鼠标行为。
+- 滚动条样式来自文档 `surface_options.tooltip.scrollbar` 的 `width`/`track_color`/`thumb_color`；
+  贴图轨道/滑块、`nine_slice`、`min_thumb`、`thumb_hover` 与 `draggable` 拖动尚未实现。
+- 滚动条绘制在提示框内并裁剪到可见区域，只随滚轮偏移移动。
+- `tooltip_scroll` 事件尚未回传服务端；滚轮只改本地偏移。
 
 ## 11. Boss 血条
 
@@ -347,10 +356,10 @@ public abstract class MouseHandlerMixin {
 - 实现方式优先 `@WrapOperation` 包裹私有的 `drawBar` 调用；如果签名变化，退化为
   `@Inject(at = HEAD, cancellable = true)` 并自行遍历渲染。
 - 进度、颜色、样式来自 `BossEvent`；文档只负责外观。
-- NanoVG 绘制外框、背景、填充、覆盖层；`surface_options.boss_bar.bar` 控制九宫格、填充方向、
-  文字字体/颜色/阴影/对齐。`tint_from_event: true` 时用 `BossEvent` 的颜色给填充染色。
-- 填充按 `BossEvent#getProgress()` 裁剪；标题剥离哨兵后绘制。标题默认走原版 `Font`，文档指定
-  `title_renderer: nanovg` 时改走 NanoVG 字体。
+- NanoVG 绘制外框、背景、填充、覆盖层；`surface_options.boss_bar.bar` 控制九宫格、填充缩进、
+  文字颜色/阴影/对齐。`tint_from_event: true` 时用 `BossEvent` 的颜色给填充染色。
+- 填充按 `BossEvent#getProgress()` 裁剪；标题剥离哨兵后绘制，默认走原版 `Font`
+  （`title_renderer: nanovg` 尚未接线）。
 - NanoVG 层先合成，原版标题后绘制，避免文字被 FBO 覆盖。
 - 多个血条按 `surface_options.boss_bar.spacing` 堆叠，最多 `max_bars`。
 - 客户端的 `BossHealthOverlay#events` 是私有字段，不直接访问；通过渲染钩子参数获取事件。
@@ -361,17 +370,21 @@ public abstract class MouseHandlerMixin {
 
 ## 12. 布局引擎
 
-两遍：测量（文本宽度、图片尺寸、弹性子项、滚动范围）和排布（绝对位置、锚点、百分比、弹性分配、
-裁剪矩形）。
+布局是**单遍递归**：`DocumentRenderListBuilder` 在每个元素处直接算出绝对坐标并产出绘制指令，
+没有独立的测量/排布两遍，也没有按 `(revision, 画布, GUI 缩放)` 的布局缓存；界面在初始化、
+尺寸变化或文档更新时整份重建渲染列表。
 
-- 按 `(修订号, 画布宽, 画布高, GUI 缩放)` 缓存。
-- 失效：界面初始化/尺寸变化、改变几何的更新、主题变化、遍历实例数量变化。
 - NanoVG 文本的测量和绘制使用同一个 NanoVG 字体句柄；原版文本（EditBox、Tooltip 内容）使用同一个
   原版 `Font`。两套度量不能混用。
-- 布局是整数运算，动画才用浮点并在绘制时取整。
+- 坐标是整数运算，动画才用浮点并在绘制时取整。
 - 遍历实例在服务端展开，客户端只排布具体元素；生成的 id 用于命中与事件。
+- 渲染、命中与滚动偏移共用同一套几何（`ContainerCursor` + `ElementHitTester`），因此行内按钮和
+  滚动后的行都能点到。
 
 ## 13. 渲染后端
+
+> 当前默认仍是 `NativeBackend`；NanoVG 通过 `config/cloudcore-client.json` 的
+> `"renderer": "nanovg"` 或 `-Dcloudcore.nanovg=true` 启用。下面描述的是 NanoVG 启用时的目标分层。
 
 ### 13.1 结构
 
@@ -423,21 +436,22 @@ interface RenderBackend {
 
 ## 14. 输入路由
 
-顺序：
+当前实现：
 
-1. `mouseClicked`：Tooltip 滚动条 → 模态覆盖层 → 文档元素（逆绘制顺序）→ 槽位（`super`）。
-2. `mouseReleased`：结束按压/滚动条拖动，发送 `drag_end`。
-3. `mouseScrolled`：Tooltip 滚动 → 最内层滚动容器 → 继续传递。
-4. `keyPressed`：焦点输入框 → 界面快捷键（Escape、E）。
+1. `mouseClicked`：清除按钮 → 焦点输入框 → 文档元素（右键先找 `right_click`，再回退 `click`）
+   → 槽位（`super`）。
+2. `mouseReleased`：结束按压态；滑块拖动结束时补发一次最终 `change`。
+3. `mouseScrolled`：最内层滚动容器 → 继续传递给原版（Tooltip 的滚轮在 `MouseHandler` 混入里消费）。
+4. `keyPressed`：焦点输入框 → 键盘焦点循环（`Tab`/方向键）→ `Enter`/`Space` 激活。
 5. `charTyped`：焦点输入框。
-6. `mouseMoved`：悬停、提示计时、光标样式。
+6. `mouseMoved`：悬停、`hover_enter`/`hover_leave`、悬停样式。
 
 槽位必须继续走原版 `super.mouseClicked`，包括 Shift 快速移动、数字键交换、拖拽分配和副手交换。
 `SlotLayout` 设置的位置会自动影响原版命中测试。
 
-- HUD/Boss 不参与输入；Tooltip 只参与滚轮和滚动条拖动。
+- HUD/Boss 不参与输入；Tooltip 只参与滚轮（拖动未实现）。
 - 只有当前 screen 是输入所有者；容器打开时背包皮肤关闭。
-- 模态覆盖层捕获输入直到关闭；点击外部清除文本焦点。
+- `overlay` 元素的模态捕获（`modal`/`dim`）与 `drag_end` 事件尚未实现。
 - Escape 先清焦点，再关闭界面（若允许）。
 
 ### 14.1 自定义输入框外观
@@ -471,9 +485,9 @@ interface RenderBackend {
   原生回退时在同一个 `DynamicTexture` 内按帧偏移 UV。
 - 动画在界面隐藏或 `animations: false` 时暂停；`loop: false` 播完停在最后一帧。
 - URL 贴图默认客户端直连：收到 `TEXTURE_REF` 后按 SHA-256 查本地缓存，未命中再异步下载。
-- 下载策略：仅 https；解析后拒绝私网、回环、链路本地和保留地址；禁止非标准端口；不跟随重定向；
-  1 MiB、512×512、3 秒超时；不发送 cookie 或认证头。
-- 按魔数识别格式；PNG 直接使用，JPEG/GIF 用 `ImageIO` 解码；GIF 逐帧合成后打包成精灵表。
+- 下载策略：仅 https、443 端口、无用户信息；解析后拒绝私网、回环、链路本地、组播与保留地址；
+  不跟随重定向；8 MiB、10 秒超时；不发送 cookie 或认证头。
+- 静态图按 PNG 走 `NativeImage`；GIF 用 `ImageIO` 逐帧解码后合成精灵表。当前不支持 JPEG。
 - 客户端缓存：磁盘 128 MiB（内容哈希命名）、解码后内存 32 MiB；加载时校验哈希，损坏则丢弃。
 - 同一 URL 的并发请求去重；下载失败发送 `TEXTURE_REQUEST` 请求服务端代理；仍失败显示红色
   “网链请求失败”占位，并写客户端日志（脱敏 URL、错误类型、耗时、`CC-URL-*`）。
@@ -494,32 +508,29 @@ interface RenderBackend {
 
 ## 16. 配置与诊断
 
+`config/cloudcore-client.json`（首次启动自动写入）当前只有四个键；下面其余键是规划形态，
+尚未接线，写进文件会被忽略：
+
 ```json
 {
-  "enabled": true,
-  "hud": true,
-  "tooltip": true,
-  "tooltipScroll": true,
-  "playerInventory": true,
-  "bossBar": true,
-  "animations": true,
-  "titleSentinelFallback": true,
-  "debugOverlay": false,
-  "textureCacheMiB": 32,
+  "renderer": "native",
+  "debug": false,
   "remoteImages": true,
-  "imageCacheMiB": 128,
-  "renderer": "nanovg",
-  "fboScale": 2,
-  "fallbackToNative": true,
-  "logLevel": "info",
-  "logFile": "logs/cloudcore-client.log",
-  "logMaxSizeMiB": 10,
-  "logRotate": 5,
-  "logRedaction": true,
-  "serverDetail": true,
-  "diagnosticRingSize": 500
+  "imageCacheMiB": 128
 }
 ```
+
+- `renderer`：`native`（默认）或 `nanovg`；启动参数 `-Dcloudcore.nanovg=true` 优先于文件。
+- `debug`：把界面切换与滚轮观察日志提升到 INFO。
+- `remoteImages`：`false` 时不直连图床，改用服务端代理或本地磁盘缓存。
+- `imageCacheMiB`：远端贴图磁盘缓存上限（默认 128，范围 1–1024），目录 `config/cloudcore-textures/`。
+- 文件损坏或取值未知时按默认值启动并记 `CC-CFG-001/002`。
+
+规划中、未接线的键（旧版本文档里的示例）：
+`enabled`、`hud`、`tooltip`、`tooltipScroll`、`playerInventory`、`bossBar`、`animations`、
+`titleSentinelFallback`、`debugOverlay`、`textureCacheMiB`、`fboScale`、`fallbackToNative`、
+`logLevel`、`logFile`、`logMaxSizeMiB`、`logRotate`、`logRedaction`、`serverDetail`、
+`diagnosticRingSize`。日志级别用 `/cloudcore-client log <level>` 调整。
 
 ### 16.1 日志与诊断
 
