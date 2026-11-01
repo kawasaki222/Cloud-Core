@@ -108,12 +108,13 @@ Windows 用 `gradlew.bat`。如果 `JAVA_HOME` 不是 21，设置为本机 JDK 2
   M7 元素与字体、M8 占位符刷新的大部分也已落地。详见 `README.md`「当前状态」、
   `docs/10-risks-and-verification.md` 第 2.1 节与 `docs/TODO_HANDOFF.md`。
 - 已实现：`ELEMENT_UPDATE` 增量、贴图代理（`TEXTURE_REQUEST`/`TEXTURE_PUT` + 磁盘缓存）、
-  `file`/`sqlite`/`mysql` 状态持久化与跨后端导出导入、玩家背包皮肤（玩家模型/状态效果/
-  配方书 `hide`/`vanilla`）、Tooltip 附属栏、Boss 多层血条与堆叠。
-- 后续：NanoVG 默认化与设备分辨率清晰文字、配方书 `skinned`/`custom`、文本 shaping、
-  Tooltip 滚动条拖动与 `tooltip_scroll` 回传、`async-namespaces` 白名单、SQL 连接池、
-  依赖图增量编译、Linux/macOS 与 REI/EMI 互操作验证。
-- 注意：`tx:` 主题令牌与 `THEME_SET`、`NOTIFICATION`/`SERVER_CONFIG`/`METRICS`/`CLIENT_ERROR`/
-  `SCREEN_PROBE`、动作冷却、`/cloudcore stats|surfaces|list|debug`、页面级权限强制都还没有实现；
-  代码与文档不一致时以代码为准，并同步修文档。
+  `file`/`sqlite`/`mysql` 状态持久化（含连接池与跨后端导出导入）、玩家背包皮肤（玩家模型/
+  状态效果/配方书 `hide`/`vanilla`/`skinned`）、Tooltip 附属栏与滚动条拖动、Boss 多层血条与堆叠、
+  页面级权限、动作冷却、`/cloudcore stats|surfaces`、依赖图重载与内容哈希去重、
+  `image.fit`、`label.wrap`、`overlay` 模态；NanoVG 是默认渲染后端。
+- 后续：NanoVG 三平台验证、配方书 `custom`、文本 shaping、
+  Linux/macOS 与 REI/EMI 互操作验证。
+- 还没实现：`THEME_SET`（`tx:` 令牌已由 `/cloudcore validate` 校验）、`NOTIFICATION`/
+  `SERVER_CONFIG`/`METRICS`/`CLIENT_ERROR`/`SCREEN_PROBE`、配方书 `custom`、文本 shaping、
+  `/cloudcore list|debug|texture push`、动作引擎 v2。代码与文档不一致时以代码为准，并同步修文档。
 - 每次改动仍按第 0 节：构建 → 提交 → 推送；验证结论写进 `docs/10`。

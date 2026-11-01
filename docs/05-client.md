@@ -387,8 +387,8 @@ public abstract class MouseHandlerMixin {
 
 ## 13. 渲染后端
 
-> 当前默认仍是 `NativeBackend`；NanoVG 通过 `config/cloudcore-client.json` 的
-> `"renderer": "nanovg"` 或 `-Dcloudcore.nanovg=true` 启用。下面描述的是 NanoVG 启用时的目标分层。
+> 默认后端是 `NanoVgBackend`；`config/cloudcore-client.json` 的 `"renderer": "native"` 或
+> `-Dcloudcore.nanovg=false` 切回原生。NanoVG 初始化或 FBO 失败时整帧回退原生。
 
 ### 13.1 结构
 

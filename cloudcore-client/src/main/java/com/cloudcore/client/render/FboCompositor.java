@@ -85,10 +85,17 @@ public final class FboCompositor implements AutoCloseable {
             sampler = device.createSampler(AddressMode.CLAMP_TO_EDGE, AddressMode.CLAMP_TO_EDGE,
                     FilterMode.LINEAR, FilterMode.LINEAR, 1, OptionalDouble.empty());
             framebuffer = GL30.glGenFramebuffers();
-            GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
+            // Restore the caller's binding afterwards: this runs inside a frame, and leaving
+            // our FBO bound (in Blaze3D's cache or in GL) sent the rest of the frame into it.
+            int previous = com.mojang.blaze3d.opengl.GlStateManager.getFrameBuffer(
+                    GL30.GL_FRAMEBUFFER);
+            com.mojang.blaze3d.opengl.GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER,
+                    framebuffer);
             GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0,
                     GL11.GL_TEXTURE_2D, ((GlTexture) texture).glId(), 0);
             int status = GL30.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER);
+            com.mojang.blaze3d.opengl.GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER,
+                    previous);
             if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
                 LOGGER.error("[CC-RENDER-010] FBO incomplete status=0x{}",
                         Integer.toHexString(status));
@@ -113,20 +120,27 @@ public final class FboCompositor implements AutoCloseable {
         if (!available) {
             throw new IllegalStateException("FBO not initialized");
         }
-        previousFramebuffer = GL11.glGetInteger(GL30.GL_FRAMEBUFFER_BINDING);
+        // Blaze3D caches the bound framebuffer and viewport. Binding through the managed
+        // accessors keeps that cache truthful; a raw glBindFramebuffer left it believing the
+        // screen was still bound, so the next frame's GUI/world pass rendered into this FBO
+        // and the screen went black (seen on the live client).
+        previousFramebuffer = com.mojang.blaze3d.opengl.GlStateManager.getFrameBuffer(
+                GL30.GL_FRAMEBUFFER);
         previousViewport = new int[4];
         GL11.glGetIntegerv(GL11.GL_VIEWPORT, previousViewport);
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
-        GL11.glViewport(0, 0, width, height);
+        com.mojang.blaze3d.opengl.GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER,
+                framebuffer);
+        com.mojang.blaze3d.opengl.GlStateManager._viewport(0, 0, width, height);
         GL11.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
         GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
     }
 
     public void end() {
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFramebuffer);
+        com.mojang.blaze3d.opengl.GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER,
+                previousFramebuffer);
         if (previousViewport != null) {
-            GL11.glViewport(previousViewport[0], previousViewport[1],
-                    previousViewport[2], previousViewport[3]);
+            com.mojang.blaze3d.opengl.GlStateManager._viewport(previousViewport[0],
+                    previousViewport[1], previousViewport[2], previousViewport[3]);
         }
     }
 

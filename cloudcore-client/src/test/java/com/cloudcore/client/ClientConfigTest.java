@@ -21,7 +21,7 @@ class ClientConfigTest {
 
         ClientConfig config = ClientConfig.load(file);
 
-        assertEquals("native", config.renderer());
+        assertEquals("nanovg", config.renderer(), "NanoVG is the default backend");
         assertFalse(config.debug());
         assertTrue(Files.exists(file), "the defaults are written for the player to edit");
     }
@@ -57,9 +57,9 @@ class ClientConfigTest {
     }
 
     @Test
-    void unknownRendererFallsBackToNative() {
+    void unknownRendererFallsBackToTheDefault() {
         ClientConfig config = ClientConfig.parse("{\"renderer\": \"vulkan\"}");
-        assertEquals("native", config.renderer());
+        assertEquals(ClientConfig.DEFAULT_RENDERER, config.renderer());
     }
 
     @Test
@@ -69,7 +69,7 @@ class ClientConfigTest {
 
         ClientConfig config = ClientConfig.load(file);
 
-        assertEquals("native", config.renderer());
+        assertEquals(ClientConfig.DEFAULT_RENDERER, config.renderer());
         assertFalse(config.debug());
     }
 
@@ -82,6 +82,40 @@ class ClientConfigTest {
             config.apply();
             assertEquals("false", System.getProperty("cloudcore.nanovg"),
                     "an explicit launch property is not overridden");
+        } finally {
+            if (previous == null) {
+                System.clearProperty("cloudcore.nanovg");
+            } else {
+                System.setProperty("cloudcore.nanovg", previous);
+            }
+        }
+    }
+
+    @Test
+    void nativeFileTurnsNanoVgOff() {
+        ClientConfig config = new ClientConfig("native", false, true);
+        String previous = System.getProperty("cloudcore.nanovg");
+        try {
+            System.clearProperty("cloudcore.nanovg");
+            config.apply();
+            assertEquals("false", System.getProperty("cloudcore.nanovg"),
+                    "renderer: native must opt out of the default vector backend");
+        } finally {
+            if (previous == null) {
+                System.clearProperty("cloudcore.nanovg");
+            } else {
+                System.setProperty("cloudcore.nanovg", previous);
+            }
+        }
+    }
+
+    @Test
+    void theDefaultConfigEnablesNanoVg() {
+        String previous = System.getProperty("cloudcore.nanovg");
+        try {
+            System.clearProperty("cloudcore.nanovg");
+            ClientConfig.defaults().apply();
+            assertEquals("true", System.getProperty("cloudcore.nanovg"));
         } finally {
             if (previous == null) {
                 System.clearProperty("cloudcore.nanovg");

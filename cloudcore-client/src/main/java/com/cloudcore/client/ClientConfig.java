@@ -24,10 +24,11 @@ public record ClientConfig(String renderer, boolean debug, boolean remoteImages,
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
-    public static final String DEFAULT_RENDERER = "native";
+    /** NanoVG is the default; {@code "native"} is the explicit fallback. */
+    public static final String DEFAULT_RENDERER = "nanovg";
     private static final String DEFAULT_JSON = """
             {
-              "renderer": "native",
+              "renderer": "nanovg",
               "debug": false,
               "remoteImages": true,
               "imageCacheMiB": 128
@@ -37,6 +38,11 @@ public record ClientConfig(String renderer, boolean debug, boolean remoteImages,
     /** Requests the NanoVG backend; {@link #apply} only sets it when the launch property is absent. */
     public boolean wantsNanoVg() {
         return "nanovg".equalsIgnoreCase(renderer);
+    }
+
+    /** Requests the native backend, which also turns NanoVG off if the property did not. */
+    public boolean wantsNative() {
+        return "native".equalsIgnoreCase(renderer);
     }
 
     /**
@@ -102,15 +108,19 @@ public record ClientConfig(String renderer, boolean debug, boolean remoteImages,
 
     /**
      * Applies the file to the backend selector. An explicit launch property always wins so a
-     * profile that sets {@code -Dcloudcore.nanovg} is not overridden by a stale file.
+     * profile that sets {@code -Dcloudcore.nanovg} is not overridden by a stale file, and
+     * {@code renderer: native} is how a player opts out of the vector backend.
      */
     public void apply() {
-        if (!wantsNanoVg()) {
+        if (System.getProperty("cloudcore.nanovg") != null) {
             return;
         }
-        if (System.getProperty("cloudcore.nanovg") == null) {
-            System.setProperty("cloudcore.nanovg", "true");
-            LOGGER.info("Client config requests the NanoVG renderer");
+        if (wantsNative()) {
+            System.setProperty("cloudcore.nanovg", "false");
+            LOGGER.info("Client config requests the native renderer");
+            return;
         }
+        System.setProperty("cloudcore.nanovg", "true");
+        LOGGER.info("Client config uses the default NanoVG renderer");
     }
 }

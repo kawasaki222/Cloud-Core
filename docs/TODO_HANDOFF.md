@@ -34,7 +34,7 @@ M8 占位符刷新的大部分也已落地。**
 - 协议：`ELEMENT_UPDATE`（元素/属性增量、revision 顺序、完整文档回退；自定义页真机验证）。
 - 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
   `cloudcore-api-testkit`。
-- 构建：`./gradlew build` 通过，406 个测试 / 77 个测试类，0 失败。
+- 构建：`./gradlew build` 通过，408 个测试 / 77 个测试类，0 失败。
 
 ## 已有内容
 
@@ -240,7 +240,9 @@ docs/
 - [x] NanoVG 生产后端（opt-in）：填充 + `local:`/`pack:` 图片 + 原生文本/物品叠层（Windows x64 截图验证）
 - [x] NanoVG 字体：`fonts:` + `source: local` 的 TTF 由 NanoVG 绘制，未声明字体者仍走原版（Windows 截图验证）
 - [x] U30 预乘 alpha：合成改用 `GUI_TEXTURED_PREMULTIPLIED_ALPHA`
-- [ ] NanoVG 默认化：设备分辨率 FBO（清晰文字）、U31 状态隔离、Linux/macOS 验证
+- [x] NanoVG 默认化：`ClientConfig.DEFAULT_RENDERER = nanovg`，`renderer: native` 可退出；
+      设备分辨率 FBO 已启用；真机验证 HUD / 自定义页 / 容器面板
+- [ ] NanoVG 剩余：U31 状态隔离的系统性验证、Linux/macOS 运行、`NanoVgSpike` 仍用原始 GL 绑定
 - [ ] M0 渲染：预乘 alpha/Linux/macOS 运行验证
 - [x] 数据驱动饰品槽位：`slots.yml` 规则（`lore-contains`/`materials`/`permission`）、
       独立 9×N 容器页、关闭时写入 `accessories/<uuid>.yml`
@@ -251,7 +253,7 @@ docs/
 
 ## 下一步动作（按顺序）
 
-1. **NanoVG 默认化**：设备分辨率 FBO（清晰文字）、U31 状态隔离、失败整帧回退、Linux/macOS 验证。
+1. **NanoVG 收尾**：U31 状态隔离的系统性验证、Linux/macOS 运行、`NanoVgSpike` 改用受管 GL 绑定。
 2. **玩家背包 v2**：配方书 `skinned`/`custom`（当前 `hide`/`vanilla` 已实现）。
 3. **渲染与交互剩余**：文本 shaping、`label.wrap`/`max_lines`、`image.fit`、`overlay` 的 `modal`/`dim`、
    滚动容器内元素的焦点/输入框定位（当前按未滚动位置计算）。

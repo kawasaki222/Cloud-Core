@@ -1,8 +1,8 @@
 # 14 — 渲染后端与回退
 
 设计目标是 **NanoVG 离屏渲染 + 原生合成**；原生 `GuiGraphics` 后端是完整回退。
-**当前实现里默认仍走原生后端**，NanoVG 通过 `-PcloudcoreNanoVg`（运行属性 `cloudcore.nanovg`）
-启用；默认化与设备分辨率 FBO 的文字清晰度仍在 `TODO_HANDOFF.md` 的待办里。
+**当前默认走 NanoVG**；`renderer: native` / `-Dcloudcore.nanovg=false` 切回原生。
+Linux/macOS 尚未运行验证。
 本文说明后端边界、选择规则、失败回退，以及为什么最终要把 NanoVG 做成默认。
 
 ## 1. 后端结构
@@ -19,8 +19,8 @@ public interface RenderBackend {
 
 | 后端 | 用途 | 实现 |
 | --- | --- | --- |
-| `NativeBackend` | **当前默认** | `GuiGraphics` + `RenderPipelines.GUI_TEXTURED` |
-| `NanoVgBackend` | 目标默认（opt-in） | NVGContext + FontRegistry + FBO |
+| `NativeBackend` | 回退（`renderer: native`） | `GuiGraphics` + `RenderPipelines.GUI_TEXTURED` |
+| `NanoVgBackend` | **当前默认** | NVGContext + FontRegistry + FBO |
 | `SdfBackend` | 可选实验，**未实现** | 自定义 `RenderPipeline` + SDF quad |
 
 - 布局、命中测试、输入、状态更新完全独立于后端。

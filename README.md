@@ -9,7 +9,7 @@
 
 **M1 协议核心、M2 面板链路、M3 页面加载与动作引擎子集已完成并在真机联调。**
 
-- 构建：`./gradlew build` 通过（JDK 21，406 个测试 / 77 个测试类，0 失败）。
+- 构建：`./gradlew build` 通过（JDK 21，408 个测试 / 77 个测试类，0 失败）。
 - 协议：信封、DEFLATE、分片/重组、HELLO/HELLO_ACK、PING/PONG、UI_OPEN/UI_READY/UI_CLOSE/UI_CLOSED、
   `EVENT`/`EVENT_RESULT`、`ELEMENT_UPDATE`、`TEXTURE_REF`、`TEXTURE_REQUEST`/`TEXTURE_PUT`、
   `DIAGNOSTIC`；未知 `surface`/`BindMode`/`RenderMode` 前向兼容。
@@ -43,12 +43,10 @@
   Tooltip 附属栏（`attachments`）、物品图标、`name`/`lore` 独立字体；Boss 血条多层逐层绘制与堆叠间距；
   玩家背包的实时玩家模型与状态效果图标、配方书 `hide`/`vanilla`；
   F3 调试叠加层显示活动文档；
-  NanoVG 后端（`-PcloudcoreNanoVg=true`，填充/图片/自定义字体 + 原生叠层）与 FBO 合成已通过；
+  NanoVG 是**默认后端**（填充/图片/自定义字体 + 原生叠层，`renderer: native` 可回退）；
   客户端日志 `logs/cloudcore-client.log` 带 `CC-*` 码。
-- 尚未验证/未实现：Linux/macOS 运行、NanoVG 默认化（当前默认仍是原生后端）、
-  配方书 `custom`（当前回退 `vanilla`）、文本 shaping、
-  与 REI/EMI 等模组的互操作矩阵，以及本机无法验证的真机项（拖拽滚动条、`tooltip_scroll`
-  回传、模态遮罩观感、`fit`/`wrap` 的像素比对）。
+- 尚未验证/未实现：Linux/macOS 运行、配方书 `custom`（当前回退 `vanilla`）、文本 shaping、
+  与 REI/EMI 等模组的互操作矩阵，以及跨平台项（NanoVG 三平台原生库、缩放 1–4 全矩阵）。
   详见 `docs/TODO_HANDOFF.md` 与 `docs/10-risks-and-verification.md`。
 
 ## 示例页面
@@ -114,8 +112,8 @@ Mojang 映射，因此 26.1 的迁移成本更低。详见
 并可导出诊断包。绘制目标为
 **NanoVG 离屏渲染 + 原生合成**：面板、静态文本、图片、
 九宫格、圆角、渐变和特效由 NanoVG 画；物品、槽位、tooltip 内容和输入法仍由原版绘制；原生
-`GuiGraphics` 后端作为回退。**当前默认仍是原生后端**，NanoVG 需在
-`config/cloudcore-client.json` 里写 `"renderer": "nanovg"` 或加 `-Dcloudcore.nanovg=true` 启用。
+`GuiGraphics` 后端作为回退。**默认后端是 NanoVG**；`config/cloudcore-client.json` 写 `"renderer": "native"` 或
+`-Dcloudcore.nanovg=false` 可切回原生后端。
 输入框外观可由服务端换皮，输入逻辑、光标、选区与输入法保持原版；物品本体、
 数量/冷却/附魔光效和属性 tooltip 组件同样保持原版，只定制槽位外框与布局。动作引擎分两阶段：
 v1 线性动作（条件、权限、延迟、冷却），v2 服务端图执行器（分支、循环、等待、并行、持久变量）；

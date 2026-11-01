@@ -571,6 +571,14 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
     仍然输出 `Reloaded 1 affected page(s): [example]`。期间发现种子哈希在
     `preparePagesDirectory()` 之前执行，空基线让第一次 touch 也算变化，已调整顺序。
   - 未在本次验证：`fit`/`wrap` 的像素级比对（只做了肉眼确认），以及 NanoVG 后端下的同样场景。
+- **NanoVG 默认化（2026-11-01，Windows x64）**：默认后端改为 NanoVG，`renderer: native` 可通过
+  `-Dcloudcore.nanovg=false` 退出。真机联调发现**世界画面全黑**：`FboCompositor` 用原始
+  `glBindFramebuffer`/`glViewport` 绑定离屏目标，Blaze3D 的缓存仍以为屏幕绑定着，于是后续
+  GUI/世界 pass 画进了 FBO；`ensure()` 创建 FBO 后也没恢复调用方的绑定。改用
+  `GlStateManager._glBindFramebuffer`/`_viewport`/`getFrameBuffer` 并恢复绑定后，世界画面恢复。
+  验证通过：RPG HUD（贴图、进度条、快捷栏）、Boss 多层血条、自定义页（文字、repeat、滑块、
+  输入框、复选框、图标按钮）、容器面板（背景与槽位）。未验证：Tooltip 悬停在 NanoVG 下的
+  截图（测试工具的鼠标事件丢失）、U31 状态隔离的系统性检查、Linux/macOS。
 - **互操作与性能**：与 REI/EMI、其他 Tooltip/物品栏模组的共存矩阵未测；NanoVG FBO 的帧率与
   显存占用没有测量数据（只有功能正确性）。
 - **原生崩溃（未定位，帧不在本项目代码）**：开发客户端偶发
