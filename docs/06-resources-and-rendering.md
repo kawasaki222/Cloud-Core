@@ -139,8 +139,9 @@ fonts:
 - `nanovg_bitmap`：v2；位图字体页转成 NanoVG 图像字体或字形 quad。
 - `native`：原版 `Font`，用于 Tooltip 内容、EditBox、部分 Boss 标题。
 - 文本测量用 `nvgTextBounds` / `nvgTextMetrics`。`nvgTextBreakLines`（文本 shaping / 自动换行）
-  **尚未实现**（字体 shaping）；`label` 的 `wrap`/`max_lines` 已用当前后端的字体度量实现
-  贪心折行（拉丁按词、CJK 按字符）。
+  **尚未实现**（字体 shaping）。`nvgTextBreakLines` 已试过并回退：真机上它与
+  `nvgTextBounds` 的度量相差 2.6 倍（166px vs 63px），原因未明，见 `docs/10`。
+  `label` 的 `wrap`/`max_lines` 用当前后端的字体度量做贪心折行（拉丁按词、CJK 按字符）。
 - 行高 = 字体度量 + `line_gap`。
 - 中文、日文、韩文需要字体覆盖对应字形；缺字回退链要配置。
 - 原版文本和 NanoVG 文本是两套度量，不能混用。输入框文本与 Tooltip 内容由原版绘制。

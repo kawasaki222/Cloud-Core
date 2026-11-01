@@ -54,6 +54,16 @@ public final class DocumentRenderer {
         }
     }
 
+    /**
+     * Metrics of the backend this renderer will use. Screens pass it to the list builder so
+     * wrapping uses the same font that will draw the text; a global "last backend wins"
+     * registry cannot work when several screens each own a renderer.
+     */
+    public TextWrap.Measure measure() {
+        RenderBackend vector = RenderBackendSelector.select(nanoVg, nativeBackend);
+        return vector.id() == BackendId.NANOVG ? nanoVg.measure() : nativeBackend.measure();
+    }
+
     public boolean nanoVgActive() {
         return nanoVg.available();
     }

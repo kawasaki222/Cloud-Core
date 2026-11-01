@@ -38,6 +38,11 @@ public final class NanoVgBackend implements RenderBackend, RenderList.VectorText
      * matching {@link #text}. The face is the first one that resolves (document font or the
      * built-in default), which is what a label without an explicit font draws with anyway.
      */
+    /** Metrics this backend draws with; handed to the list builder for wrapping. */
+    public TextWrap.Measure measure() {
+        return nanovgMeasure;
+    }
+
     private final TextWrap.Measure nanovgMeasure = new TextWrap.Measure() {
         @Override
         public int width(String text) {
@@ -57,6 +62,20 @@ public final class NanoVgBackend implements RenderBackend, RenderList.VectorText
         @Override
         public int lineHeight() {
             return Math.max(1, Math.round(RenderCommand.Text.DEFAULT_SIZE * (9.0f / 9.0f)));
+        }
+
+        /**
+         * Breaks with the greedy rule, measured by NanoVG.
+         *
+         * <p>{@code nvgTextBreakLines} was tried here and rejected: on a live client it
+         * reported a 166 px first row for text that {@code nvgTextBounds} measured at 63 px
+         * under the same face, size and context, so lines wrapped far too wide. Until that is
+         * understood, shaping-aware breaking stays unimplemented and text wraps at word and
+         * character boundaries like the native backend (see docs/10).
+         */
+        @Override
+        public java.util.List<String> wrapLines(String paragraph, int width, int maxLines) {
+            return TextWrap.Measure.super.wrapLines(paragraph, width, maxLines);
         }
     };
     private final java.util.concurrent.atomic.AtomicBoolean textFailureLogged =
@@ -84,6 +103,9 @@ public final class NanoVgBackend implements RenderBackend, RenderList.VectorText
     public NanoVgBackend() {
         color = NVGColor.create();
         paint = NVGPaint.create();
+        // Wrapping runs while the list is built, which is before beginFrame; registering the
+        // provider here means the first page of a session already wraps with real metrics.
+        TextWrap.provide(() -> nanovgMeasure);
     }
 
     @Override
@@ -151,9 +173,9 @@ public final class NanoVgBackend implements RenderBackend, RenderList.VectorText
             NanoVG.nvgTranslate(this.context, 0.0f, context.height());
             NanoVG.nvgScale(this.context, 1.0f, -1.0f);
             syncAssets();
-            // Wrapped labels measure while the list is built, before draw(); install NanoVG's
-            // own metrics now so a TTF line breaks where it will actually end.
-            TextWrap.install(nanovgMeasure);
+            // Wrapping already used this measure (installed in the constructor); re-registering
+            // here keeps it current if another backend swapped the provider meanwhile.
+            TextWrap.provide(() -> nanovgMeasure);
         } catch (RuntimeException exception) {
             fail("beginFrame failed: " + exception.getMessage());
         }

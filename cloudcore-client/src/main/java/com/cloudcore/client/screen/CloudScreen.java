@@ -459,7 +459,7 @@ public final class CloudScreen extends Screen {
         cachedList = DocumentRenderListBuilder.buildAt(document, width, height,
                 (width - Math.round(document.width() * document.scale())) / 2,
                 (height - Math.round(document.height() * document.scale())) / 2,
-                this::scrolled, hoveredId, pressedId);
+                this::scrolled, hoveredId, pressedId, backend.measure());
         cachedWidth = width;
         cachedHeight = height;
         cachedTextureGeneration = com.cloudcore.client.render.RemoteTextureCache.generation();

@@ -20,11 +20,21 @@ public final class NativeBackend implements RenderBackend {
     private static final Logger LOGGER = LoggerFactory.getLogger("cloudcore");
     private static final boolean DEBUG = Boolean.getBoolean("cloudcore.hud.debug");
 
+    public NativeBackend() {
+        // Same reason as NanoVgBackend: wrapping happens before beginFrame.
+        TextWrap.provide(TextWrap::vanillaMeasure);
+    }
+
     private FrameContext context;
     /** Set by an {@link RenderCommand.ImageProbe}; consumed by the next matching Image. */
     private RenderCommand.Image pendingFitted;
     private final java.util.ArrayList<int[]> clips = new java.util.ArrayList<>();
     private int[] activeClip;
+
+    /** Metrics this backend draws with; handed to the list builder for wrapping. */
+    public TextWrap.Measure measure() {
+        return TextWrap.vanillaMeasure();
+    }
 
     @Override
     public BackendId id() {
@@ -40,7 +50,8 @@ public final class NativeBackend implements RenderBackend {
     public void beginFrame(FrameContext context) {
         this.context = Objects.requireNonNull(context, "context");
         // Wrapped labels measure with vanilla font metrics, which is what drawString uses.
-        TextWrap.install(TextWrap.vanillaMeasure());
+        // Wrapping happens before the frame; keep the provider current from construction on.
+        TextWrap.provide(TextWrap::vanillaMeasure);
     }
 
     @Override

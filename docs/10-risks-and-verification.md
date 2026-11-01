@@ -494,7 +494,7 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
 - **平台**：全部真机验证只在 Windows 11 x64 完成；Linux/macOS 未运行。
 - **NanoVG**：填充/图片/自定义字体/FBO 合成已在 Windows（opt-in，含配置开关）验证；
   未验证的是默认化（设备分辨率 FBO 的清晰文字）、U31 状态隔离与 Linux/macOS 的运行。
-- **文本整形（shaping）**：未实现，中文断行依赖原版字体度量。
+- **文本整形（shaping）**：未实现。`nvgTextBreakLines` 已尝试并回退，理由见本节后段。
 - **贴图代理**：`TEXTURE_REQUEST`/`TEXTURE_PUT` 与 `url.mode: proxy|auto` 已实现（静态 PNG 与
   GIF 精灵表）；代理内存缓存有 TTL，磁盘缓存按最旧淘汰（`cache-mb`），客户端 `remoteImages: false`
   时改走同一份磁盘缓存（`imageCacheMiB` 可配）。代理下载的并发/队列上限压测与远端静态图失败占位
@@ -579,6 +579,18 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
   验证通过：RPG HUD（贴图、进度条、快捷栏）、Boss 多层血条、自定义页（文字、repeat、滑块、
   输入框、复选框、图标按钮）、容器面板（背景与槽位）。未验证：Tooltip 悬停在 NanoVG 下的
   截图（测试工具的鼠标事件丢失）、U31 状态隔离的系统性检查、Linux/macOS。
+- **文本 shaping（2026-11-01，已尝试，未采用）**：在 NanoVG 后端接上 `nvgTextBreakLines`
+  后真机测试失败：同一 context、同一 fontFace、同一字号下，`nvgTextBreakLines` 报第一行宽
+  166px，而 `nvgTextBounds` 对同样九个字只测出 63px，折行因此过宽、多行标签互相重叠。
+  设置 `nvgTextLineHeight` 后再测仍有矛盾。已回退为贪心折行（拉丁按词、CJK 按字符），
+  shaping 仍记为未实现；要重做必须先弄清这两个 API 在该调用时机下度量不一致的原因。
+- **折行度量改为显式传入（同轮修复）**：`TextWrap` 原先靠 `beginFrame` 安装全局测量器，
+  而渲染列表在 `beginFrame` 之前构建，导致新页面的首帧按 6px/字估算宽度（中文行宽约偏大
+  3 倍）。现在 `DocumentRenderer#measure()` 把自己的后端度量交给 `DocumentRenderListBuilder`，
+  各界面逐层传下去；`TextWrap.provide` 只作为无后端调用方的兜底。
+- **客户端检查日志**：`-Dcloudcore.check=true`（Gradle 用 `-PcloudcoreCheck=true`）时，
+  客户端把折行断言等结果写成 `PASS`/`FAIL` 行到 `logs/cloudcore-check.log`。
+  label 折行会输出 `label.fits`，比较最宽一行与实际字体度量。这是替代截图比对的验证通道。
 - **互操作与性能**：与 REI/EMI、其他 Tooltip/物品栏模组的共存矩阵未测；NanoVG FBO 的帧率与
   显存占用没有测量数据（只有功能正确性）。
 - **原生崩溃（未定位，帧不在本项目代码）**：开发客户端偶发

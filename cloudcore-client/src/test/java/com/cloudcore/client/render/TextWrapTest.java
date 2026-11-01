@@ -25,12 +25,12 @@ class TextWrapTest {
 
     @BeforeEach
     void installMeasure() {
-        TextWrap.install(SEVEN);
+        TextWrap.provide(() -> SEVEN);
     }
 
     @AfterEach
     void clearMeasure() {
-        TextWrap.install(null);
+        TextWrap.resetProvider();
     }
 
     @Test
@@ -67,6 +67,54 @@ class TextWrapTest {
     void respectsMaxLines() {
         List<String> lines = TextWrap.wrap("alpha beta gamma delta", 85, 2);
         assertEquals(List.of("alpha beta", "gamma delta"), lines);
+    }
+
+    @Test
+    void aMeasureWithItsOwnBreakerDecidesTheLines() {
+        // NanoVG overrides wrapLines with nvgTextBreakLines; TextWrap must defer to it
+        // instead of applying the greedy rule on top.
+        TextWrap.provide(() -> new TextWrap.Measure() {
+            @Override
+            public int width(String text) {
+                return text.length() * 7;
+            }
+
+            @Override
+            public int lineHeight() {
+                return 10;
+            }
+
+            @Override
+            public java.util.List<String> wrapLines(String paragraph, int width, int maxLines) {
+                return java.util.List.of("NANO:" + paragraph);
+            }
+        });
+
+        assertEquals(java.util.List.of("NANO:alpha beta gamma", "NANO:second"),
+                TextWrap.wrap("alpha beta gamma" + (char) 10 + "second", 20, 0));
+    }
+
+    @Test
+    void maxLinesCapsWhatTheMeasureReturns() {
+        TextWrap.provide(() -> new TextWrap.Measure() {
+            @Override
+            public int width(String text) {
+                return text.length() * 7;
+            }
+
+            @Override
+            public int lineHeight() {
+                return 10;
+            }
+
+            @Override
+            public java.util.List<String> wrapLines(String paragraph, int width, int maxLines) {
+                java.util.List<String> all = java.util.List.of("a", "b", "c");
+                return maxLines > 0 ? all.subList(0, Math.min(maxLines, all.size())) : all;
+            }
+        });
+
+        assertEquals(java.util.List.of("a", "b"), TextWrap.wrap("x", 20, 2));
     }
 
     @Test

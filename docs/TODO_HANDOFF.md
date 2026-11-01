@@ -34,7 +34,7 @@ M8 占位符刷新的大部分也已落地。**
 - 协议：`ELEMENT_UPDATE`（元素/属性增量、revision 顺序、完整文档回退；自定义页真机验证）。
 - 附属 API：`SurfaceProvider`/`registerSurfaceProvider`、四类事件监听、`setState`/`getState`、
   `cloudcore-api-testkit`。
-- 构建：`./gradlew build` 通过，408 个测试 / 77 个测试类，0 失败。
+- 构建：`./gradlew build` 通过，410 个测试 / 77 个测试类，0 失败。
 
 ## 已有内容
 
@@ -208,7 +208,8 @@ docs/
       客户端 `remoteImages: false` 时改走磁盘缓存，`imageCacheMiB` 可配
 - [x] Tooltip 附属栏 `attachments`：`left`/`right`/`top`/`bottom`、`match`、背景/九宫格/边框/标题/行文本
 - [x] Tooltip `name`/`lore` 独立 `x`/`y`/`font`/`line_gap`，`icon` 物品图标（取自悬停槽位）
-- [ ] M2 渲染剩余：文本 shaping（中文断行仍依赖原版字体度量）
+- [ ] M2 渲染剩余：文本 shaping（`nvgTextBreakLines` 与 `nvgTextBounds` 度量不一致，已回退；
+      折行改用当前后端度量后中文/英文正常）
 - [x] Tooltip 滚轮：`scroll_step` 与 `smooth_scroll` 接线（`TooltipScrollTest`）
 - [x] Tooltip 滚动条：贴图轨道/滑块/悬停态 + `nine_slice` + `min_thumb` + `draggable` 拖动
       （`MouseHandler#onMove`/`onButton` 混入；真机验证：拖动后 offset 8→26，内容回到顶部）

@@ -194,7 +194,7 @@ public final class HudSurfaceAdapter implements SurfaceAdapter {
             int originX = originX(document, anchor, width);
             int originY = originY(document, anchor, height);
             layer.cachedList = DocumentRenderListBuilder.buildAt(live, width, height,
-                    originX, originY);
+                    originX, originY, id -> 0, null, null, RENDERER.measure());
             LOGGER.debug("HUD layer {} ui={} origin={},{} viewport={}x{} commands={}", layerName,
                     document.id(), originX, originY, width, height,
                     layer.cachedList.commands().size());

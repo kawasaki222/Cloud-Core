@@ -79,15 +79,43 @@ public final class DocumentRenderListBuilder {
     }
 
     /**
+     * Builds with an explicit metrics source.
+     *
+     * @param measure metrics of the backend that will draw the list; wrapping needs them
+     *                before {@code beginFrame}, so each screen passes its own renderer's
+     */
+    public static RenderList buildAt(UiDocument document, int screenWidth, int screenHeight,
+            int originX, int originY,
+            java.util.function.ToIntFunction<String> localScroll, String hoveredId,
+            String pressedId, TextWrap.Measure measure) {
+        return buildWithInteraction(document, screenWidth, screenHeight, originX, originY,
+                localScroll, new Interaction(hoveredId, pressedId), measure);
+    }
+
+    /**
      * Shared entry for the two public {@code buildAt} forms. It cannot be an overload of them:
      * every call that passes a literal {@code null} would match both and stop compiling.
      */
     static RenderList buildWithInteraction(UiDocument document, int screenWidth, int screenHeight,
             int originX, int originY,
             java.util.function.ToIntFunction<String> localScroll, Interaction interaction) {
+        return buildWithInteraction(document, screenWidth, screenHeight, originX, originY,
+                localScroll, interaction, TextWrap.currentMeasure());
+    }
+
+    /**
+     * @param measure metrics of the backend that will draw the list. Wrapping needs them, and
+     *                the list is built before {@code beginFrame}, so the caller passes its own
+     *                instead of relying on whichever backend registered last.
+     */
+    static RenderList buildWithInteraction(UiDocument document, int screenWidth, int screenHeight,
+            int originX, int originY,
+            java.util.function.ToIntFunction<String> localScroll, Interaction interaction,
+            TextWrap.Measure measure) {
         Objects.requireNonNull(document, "document");
         Objects.requireNonNull(localScroll, "localScroll");
         Objects.requireNonNull(interaction, "interaction");
+        TextWrap.Measure metrics = measure == null ? TextWrap.currentMeasure() : measure;
         if (screenWidth <= 0 || screenHeight <= 0) {
             return RenderList.EMPTY;
         }
@@ -97,7 +125,7 @@ public final class DocumentRenderListBuilder {
         Map<String, FontSpec> fonts = document.fonts();
         for (UiElement element : document.elements()) {
             append(element, originX, originY, documentWidth, documentHeight,
-                    commands, 1, fonts, localScroll, interaction);
+                    commands, 1, fonts, localScroll, interaction, metrics);
         }
         return commands.isEmpty() ? RenderList.EMPTY : new RenderList(commands);
     }
@@ -130,7 +158,8 @@ public final class DocumentRenderListBuilder {
     private static void append(UiElement element, int parentX, int parentY,
             int parentWidth, int parentHeight, List<RenderCommand> commands, int depth,
             Map<String, FontSpec> fonts,
-            java.util.function.ToIntFunction<String> localScroll, Interaction interaction) {
+            java.util.function.ToIntFunction<String> localScroll, Interaction interaction,
+            TextWrap.Measure measure) {
         if (!element.visible() || depth > MAX_DEPTH || commands.size() >= MAX_COMMANDS) {
             return;
         }
@@ -230,15 +259,17 @@ public final class DocumentRenderListBuilder {
                     if (runs != null) {
                         if (maxLines > 0) {
                             commands.add(new RenderCommand.ClipPush(x, y, Math.max(1, width),
-                                    maxLines * TextWrap.lineHeight(font, size)));
+                                    maxLines * TextWrap.lineHeight(font, size, measure)));
                         }
-                        addWrappedRuns(commands, runs, x, y, width, font, size, maxLines);
+                        addWrappedRuns(commands, runs, x, y, width, font, size, maxLines,
+                                measure);
                         if (maxLines > 0) {
                             commands.add(new RenderCommand.ClipPop());
                         }
                     } else {
                         addWrappedText(commands, text(element), x, y, width, font, size,
-                                color(attribute(element, "color"), DEFAULT_TEXT), maxLines);
+                                color(attribute(element, "color"), DEFAULT_TEXT), maxLines,
+                                measure);
                     }
                 }
             }
@@ -417,11 +448,11 @@ public final class DocumentRenderListBuilder {
         if ("row".equals(element.type()) || "column".equals(element.type())
                 || "grid".equals(element.type())) {
             layoutChildren(element, childX, childY, childWidth, childHeight, commands, depth,
-                    fonts, localScroll, interaction);
+                    fonts, localScroll, interaction, measure);
         } else {
             for (UiElement child : element.children()) {
                 append(child, childX, childY, childWidth, childHeight, commands, depth + 1,
-                        fonts, localScroll, interaction);
+                        fonts, localScroll, interaction, measure);
             }
         }
         if (clipChildren && commands.size() < MAX_COMMANDS) {
@@ -435,12 +466,13 @@ public final class DocumentRenderListBuilder {
      */
     private static void layoutChildren(UiElement element, int x, int y, int width, int height,
             List<RenderCommand> commands, int depth, Map<String, FontSpec> fonts,
-            java.util.function.ToIntFunction<String> localScroll, Interaction interaction) {
+            java.util.function.ToIntFunction<String> localScroll, Interaction interaction,
+            TextWrap.Measure measure) {
         ContainerCursor cursor = new ContainerCursor(element, x, y, width, height);
         for (UiElement child : element.children()) {
             int[] offset = cursor.next(child);
             append(child, offset[0], offset[1], width, height, commands, depth + 1, fonts,
-                    localScroll, interaction);
+                    localScroll, interaction, measure);
         }
     }
 
@@ -569,10 +601,24 @@ public final class DocumentRenderListBuilder {
 
     /** Applies {@link TextWrap} to plain text; one Text command per line. */
     private static void addWrappedText(List<RenderCommand> commands, String text, int x, int y,
-            int width, String font, float size, int argb, int maxLines) {
-        int lineHeight = TextWrap.lineHeight(font, size);
+            int width, String font, float size, int argb, int maxLines,
+            TextWrap.Measure measure) {
+        int lineHeight = TextWrap.lineHeight(font, size, measure);
         int index = 0;
-        for (String line : TextWrap.wrap(text, width, maxLines)) {
+        java.util.List<String> lines = TextWrap.wrap(text, width, maxLines, measure);
+        if (com.cloudcore.client.CloudCheckLog.enabled()) {
+            // A scripted check asserts every line fits the declared width; a line wider than
+            // that is the failure the screenshot could only show as overlapping text.
+            int widest = 0;
+            for (String line : lines) {
+                widest = Math.max(widest, measure.width(line));
+            }
+            com.cloudcore.client.CloudCheckLog.check("label.fits",
+                    widest <= width,
+                    "width=" + width + " widest=" + widest + " lines=" + lines.size()
+                            + " measure=" + measure.name());
+        }
+        for (String line : lines) {
             addText(commands, line, x, y + index * lineHeight, argb, font, size);
             index++;
         }
@@ -584,15 +630,15 @@ public final class DocumentRenderListBuilder {
      */
     private static void addWrappedRuns(List<RenderCommand> commands,
             java.util.List<RenderCommand.RichText.Run> runs, int x, int y, int width,
-            String font, float size, int maxLines) {
-        int lineHeight = TextWrap.lineHeight(font, size);
+            String font, float size, int maxLines, TextWrap.Measure measure) {
+        int lineHeight = TextWrap.lineHeight(font, size, measure);
         int line = 0;
         int cursor = x;
         for (RenderCommand.RichText.Run run : runs) {
             if (maxLines > 0 && line >= maxLines) {
                 return;
             }
-            int runWidth = TextWrap.width(run.text());
+            int runWidth = measure.width(run.text());
             if (cursor + runWidth > x + width && cursor > x) {
                 line++;
                 cursor = x;

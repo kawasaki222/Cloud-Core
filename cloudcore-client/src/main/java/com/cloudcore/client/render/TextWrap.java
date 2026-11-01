@@ -17,13 +17,20 @@ import net.minecraft.network.chat.Component;
  * <p>Render thread only: vanilla {@link Font#width} and NanoVG font handles both live there.
  */
 final class TextWrap {
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger("cloudcore");
     private static final String NEWLINE = String.valueOf((char) 10);
 
     private TextWrap() {
     }
 
-    private static final java.util.concurrent.atomic.AtomicReference<Measure> MEASURER =
-            new java.util.concurrent.atomic.AtomicReference<>();
+    /**
+     * Supplies the metrics of the backend that is about to draw. The render-list builder asks
+     * for this while building, which happens before {@code beginFrame}; a value stored in
+     * {@code beginFrame} was therefore still the placeholder on the first frame of a page and
+     * every line wrapped at 6 px per character.
+     */
+    private static final java.util.concurrent.atomic.AtomicReference<java.util.function.Supplier<Measure>>
+            PROVIDER = new java.util.concurrent.atomic.AtomicReference<>(TextWrap::headless);
 
     /**
      * How text is measured. The backends install one that matches what they draw with:
@@ -35,10 +42,57 @@ final class TextWrap {
         int width(String text);
 
         int lineHeight();
+
+        /** Short name for logs and check output; anonymous implementations say so. */
+        default String name() {
+            String simple = getClass().getSimpleName();
+            return simple == null || simple.isEmpty() ? "anonymous" : simple;
+        }
+
+        /**
+         * Breaks one paragraph into lines that fit {@code width}. The default is the greedy
+         * rule below; NanoVG overrides it with {@code nvgTextBreakLines}, so shaping-aware
+         * fonts (ligatures, complex scripts) break where the renderer would actually put them.
+         *
+         * @param maxLines stop after this many lines for this paragraph; 0 = all
+         */
+        default List<String> wrapLines(String paragraph, int width, int maxLines) {
+            List<String> lines = new ArrayList<>();
+            TextWrap.wrapParagraph(paragraph, width, maxLines, lines, this);
+            return lines;
+        }
     }
 
-    static void install(Measure measure) {
-        MEASURER.set(measure);
+    /**
+     * Registers the metrics of the backend that last began a frame. This is a fallback for
+     * callers that cannot name a backend; the render-list builder passes its measure
+     * explicitly because it runs before {@code beginFrame}, where this value is still the
+     * previous frame's (or none, which silently wraps at 6 px per character).
+     */
+    /**
+     * Registers the metrics of the backend that just began a frame. Kept as a fallback for
+     * callers without a backend reference; the render-list builder passes its measure
+     * explicitly because it runs before {@code beginFrame}.
+     */
+    /** Registers the metrics source; a backend calls this once, with its own measure. */
+    static void provide(java.util.function.Supplier<Measure> provider) {
+        PROVIDER.set(provider == null ? TextWrap::headless : provider);
+    }
+
+    /** Restores the fixed-width default; used by tests and when no backend is active. */
+    static void resetProvider() {
+        PROVIDER.set(TextWrap::headless);
+    }
+
+
+    /**
+     * Metrics of the backend that is about to draw, or the fixed-width default when none is
+     * selected yet. The builder asks for this at list-build time: {@code beginFrame} runs
+     * later, so an installed measure alone wraps the first frame of a new page with
+     * placeholder metrics (6 px per character) and every line comes out too wide.
+     */
+    static Measure activeMeasure() {
+        return measure();
     }
 
     /** Vanilla font metrics; used by the native backend. */
@@ -56,9 +110,13 @@ final class TextWrap {
         };
     }
 
+    private static Measure headless() {
+        return HEADLESS;
+    }
+
     private static Measure measure() {
-        Measure installed = MEASURER.get();
-        return installed != null ? installed : HEADLESS;
+        Measure current = PROVIDER.get().get();
+        return current != null ? current : HEADLESS;
     }
 
     /** 6 px per character, 9 px per line: enough for deterministic rule tests. */
@@ -86,7 +144,32 @@ final class TextWrap {
 
     /** Height of one wrapped line as the installed measure draws it. */
     static int lineHeight(String font, float size) {
-        return Math.max(1, measure().lineHeight());
+        return lineHeight(font, size, measure());
+    }
+
+    /** Height of one wrapped line as {@code active} draws it. */
+    static int lineHeight(String font, float size, Measure active) {
+        return Math.max(1, active.lineHeight());
+    }
+
+    /**
+     * Splits {@code text} into lines using the installed measure.
+     *
+     * <p>Only for callers that cannot supply one. The builder passes the active backend's
+     * measure explicitly ({@link #wrap(String, int, int, Measure)}): the installed value is
+     * set from {@code beginFrame}, which runs after the list is built, so relying on it made
+     * the first frame of a new page wrap with placeholder metrics.
+     */
+    static List<String> wrap(String text, int width, int maxLines) {
+        return wrap(text, width, maxLines, measure());
+    }
+
+    /**
+     * The metrics the next {@link #wrap(String, int, int, Measure)} should use when the caller
+     * has no backend at hand. Never null.
+     */
+    static Measure currentMeasure() {
+        return measure();
     }
 
     /**
@@ -94,8 +177,9 @@ final class TextWrap {
      * start a new line; a blank line in the middle is kept.
      *
      * @param maxLines stop after this many lines; 0 = all
+     * @param active   metrics of the backend that will draw the text
      */
-    static List<String> wrap(String text, int width, int maxLines) {
+    static List<String> wrap(String text, int width, int maxLines, Measure active) {
         List<String> lines = new ArrayList<>();
         if (text == null || text.isEmpty()) {
             return lines;
@@ -105,7 +189,12 @@ final class TextWrap {
             return lines;
         }
         for (String paragraph : text.split(NEWLINE, -1)) {
-            wrapParagraph(paragraph, width, maxLines, lines);
+            int remaining = maxLines > 0 ? maxLines - lines.size() : 0;
+            if (paragraph.isEmpty()) {
+                lines.add("");
+            } else {
+                lines.addAll(active.wrapLines(paragraph, width, remaining));
+            }
             if (maxLines > 0 && lines.size() >= maxLines) {
                 break;
             }
@@ -114,22 +203,22 @@ final class TextWrap {
     }
 
     private static void wrapParagraph(String paragraph, int width, int maxLines,
-            List<String> lines) {
+            List<String> lines, Measure measure) {
         if (paragraph.isEmpty()) {
             lines.add("");
             return;
         }
         int[] cps = paragraph.codePoints().toArray();
         StringBuilder current = new StringBuilder();
-        for (int[] span : fitSpans(cps, width)) {
+        for (int[] span : fitSpans(cps, width, measure)) {
             String piece = spanText(cps, span);
             int trailing = spaces(piece);
             boolean spacesOnly = trailing == piece.length();
-            int widthOf = measure().width(piece.substring(0, piece.length() - trailing));
+            int widthOf = measure.width(piece.substring(0, piece.length() - trailing));
             // `piece` already ends with its spaces, so the line keeps them until it is
             // emitted; that is what keeps the width check honest ("alpha beta " is 6+1).
             if (current.length() > 0 && !spacesOnly
-                    && measure().width(current.toString()) + widthOf > width) {
+                    && measure.width(current.toString()) + widthOf > width) {
                 lines.add(current.toString().strip());
                 current.setLength(0);
                 if (maxLines > 0 && lines.size() >= maxLines) {
@@ -147,13 +236,13 @@ final class TextWrap {
     }
 
     /** Unbreakable runs narrowed to the line width; wider words are cut between code points. */
-    private static List<int[]> fitSpans(int[] cps, int width) {
+    private static List<int[]> fitSpans(int[] cps, int width, Measure measure) {
         List<int[]> spans = new ArrayList<>();
         for (int[] span : segment(cps)) {
-            if (measure().width(spanText(cps, span)) <= width) {
+            if (measure.width(spanText(cps, span)) <= width) {
                 spans.add(span);
             } else {
-                alongCodePoints(cps, span, width, spans);
+                alongCodePoints(cps, span, width, spans, measure);
             }
         }
         return spans;
@@ -183,11 +272,12 @@ final class TextWrap {
     }
 
     /** Last resort for a run wider than the line: cut between code points. */
-    private static void alongCodePoints(int[] cps, int[] span, int width, List<int[]> out) {
+    private static void alongCodePoints(int[] cps, int[] span, int width, List<int[]> out,
+            Measure measure) {
         int from = span[0];
         int used = 0;
         for (int index = span[0]; index < span[1]; index++) {
-            int glyphWidth = measure().width(spanText(cps, new int[]{index, index + 1}));
+            int glyphWidth = measure.width(spanText(cps, new int[]{index, index + 1}));
             if (index > from && used + glyphWidth > width) {
                 out.add(new int[]{from, index});
                 from = index;

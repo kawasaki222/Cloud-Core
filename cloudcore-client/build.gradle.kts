@@ -44,6 +44,11 @@ loom {
             providers.gradleProperty("cloudcoreNanoVg").orNull?.let { value ->
                 property("cloudcore.nanovg", value)
             }
+            // Scripted checks write PASS/FAIL lines to logs/cloudcore-check.log.
+            // Use: ./gradlew :cloudcore-client:runClient -PcloudcoreCheck=true
+            if (providers.gradleProperty("cloudcoreCheck").getOrElse("false").toBoolean()) {
+                property("cloudcore.check", "true")
+            }
         }
     }
 }
