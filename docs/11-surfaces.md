@@ -64,8 +64,9 @@
 - **配方书**：`recipe_book` 四档：
   - `hide`（默认）：组件 `setVisible(false)`，并移除原版右上角按钮；`E` 打开的背包没有配方书入口；
   - `vanilla`：保留原版配方书组件、搜索/标签页/滚动和按钮，点击按钮正常展开；
-  - `skinned`（当前回退到 `vanilla`）：原版列表/搜索/标签页/滚动，后续用 NanoVG 替换外框、按钮、
-    标签、滚动条、字体；
+  - `skinned`：保留原版搜索框、标签页、配方网格、翻页按钮与放置逻辑，只把原版背景贴图换成
+    背包皮肤文档绘制的内容（`RecipeBookComponentMixin` 重定向背景 blit）。文档坐标以背包面板为
+    原点，配方书在左侧，因此用负 `x` 放置书页元素；
   - `custom`（当前回退到 `vanilla`）：后续由 Cloud 画列表和分类，点击通过原版 `PlaceRecipe` 放置；
     REI/EMI 接管时让位。
 - **玩家模型**：`surface_options.player_inventory.show_player_model: true` 时用 1.21.11 的

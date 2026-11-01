@@ -48,17 +48,26 @@ public final class CloudInventoryScreen extends AbstractRecipeBookScreen<Invento
         // Only main inventory (9..35) and hotbar (36..44) are plain InventorySlots; armour,
         // crafting, result and offhand keep their subclasses and vanilla positions.
         SlotLayout.apply(document, menu.slots, index -> index >= 9 && index <= 44);
-        if ("hide".equals(recipeBookMode())) {
-            RecipeBookAccessor accessor = (RecipeBookAccessor) (Object) this;
-            var component = accessor.cloudcore$recipeBook();
-            ((RecipeBookComponentAccessor) (Object) component).cloudcore$setVisible(false);
-            // The vanilla screen adds its recipe button unconditionally; hide it too.
-            for (var child : java.util.List.copyOf(children())) {
-                if (child instanceof net.minecraft.client.gui.components.ImageButton) {
-                    removeWidget(child);
+        RecipeBookAccessor accessor = (RecipeBookAccessor) (Object) this;
+        var component = accessor.cloudcore$recipeBook();
+        switch (recipeBookMode()) {
+            case "hide" -> {
+                ((RecipeBookComponentAccessor) (Object) component).cloudcore$setVisible(false);
+                // The vanilla screen adds its recipe button unconditionally; hide it too.
+                for (var child : java.util.List.copyOf(children())) {
+                    if (child instanceof net.minecraft.client.gui.components.ImageButton) {
+                        removeWidget(child);
+                    }
                 }
+                leftPos = component.updateScreenPosition(width, imageWidth);
             }
-            leftPos = component.updateScreenPosition(width, imageWidth);
+            case "skinned" -> {
+                // Only the background blit is replaced; search, tabs and the grid stay native.
+                com.cloudcore.client.render.RecipeBookSkin.set(document);
+            }
+            default -> {
+                // vanilla and custom (custom falls back to vanilla): nothing to do here.
+            }
         }
     }
 
@@ -129,6 +138,7 @@ public final class CloudInventoryScreen extends AbstractRecipeBookScreen<Invento
 
     @Override
     public void removed() {
+        com.cloudcore.client.render.RecipeBookSkin.clear();
         super.removed();
         // Each inventory open builds its own renderer, which owns a NanoVG context and an
         // off-screen target; releasing here keeps repeat opens from leaking both.

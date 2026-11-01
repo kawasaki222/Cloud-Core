@@ -562,6 +562,11 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
     提示框内容随之回到顶部，滑块停在中间；服务端同时收到 `EVENT ui=verify_tooltip element=tooltip`。
   - `/cloudcore stats` 复测：`sessions active=1 ... documents=4` 与 `tooltip=2`（两个 tooltip
     文档同时存在），与 `surfaces` 的逐条输出一致。
+  - 配方书 `skinned`：背包皮肤写 `surface_options.recipe_book: skinned` 并按负 `x` 放置书页元素后，
+    点开配方书看到的是 Cloud 面板（深紫底 + 紫边框），搜索框、五个标签页、配方网格和翻页按钮
+    仍是原版并能操作。
+  - 期间发现：`recipe_book` 放在嵌套的 `surface_options.player_inventory.*` 下不会被读取，
+    只有扁平键生效（文档示例写的是嵌套形式，已改）。
   - 未在本次验证：`fit`/`wrap` 的像素级比对（只做了肉眼确认），以及 NanoVG 后端下的同样场景。
 - **互操作与性能**：与 REI/EMI、其他 Tooltip/物品栏模组的共存矩阵未测；NanoVG FBO 的帧率与
   显存占用没有测量数据（只有功能正确性）。

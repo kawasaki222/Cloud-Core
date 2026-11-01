@@ -75,7 +75,7 @@ surface_options:
     priority: 0              # 同一层多份文档时的绘制优先级
     replace: [health, food, xp, hotbar]   # 取消对应的原版 HUD 绘制
   player_inventory:
-    recipe_book: hide        # hide | vanilla | skinned | custom（skinned/custom 暂回退 vanilla）
+    recipe_book: hide        # hide | vanilla | skinned | custom（custom 暂回退 vanilla）
     show_effects: true       # 复用原版效果图标
     show_player_model: true  # 实时玩家预览；可配 player_model_x/y/scale
   tooltip:

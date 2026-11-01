@@ -46,7 +46,7 @@
   NanoVG 后端（`-PcloudcoreNanoVg=true`，填充/图片/自定义字体 + 原生叠层）与 FBO 合成已通过；
   客户端日志 `logs/cloudcore-client.log` 带 `CC-*` 码。
 - 尚未验证/未实现：Linux/macOS 运行、NanoVG 默认化（当前默认仍是原生后端）、
-  配方书 `skinned`/`custom`（当前回退 `vanilla`）、文本 shaping、内容哈希去重、
+  配方书 `custom`（当前回退 `vanilla`）、文本 shaping、内容哈希去重、
   与 REI/EMI 等模组的互操作矩阵，以及本机无法验证的真机项（拖拽滚动条、`tooltip_scroll`
   回传、模态遮罩观感、`fit`/`wrap` 的像素比对）。
   详见 `docs/TODO_HANDOFF.md` 与 `docs/10-risks-and-verification.md`。

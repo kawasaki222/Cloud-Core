@@ -218,8 +218,8 @@
 }
 ```
 
-`recipe_book` 取 `hide`（默认）/`vanilla`/`skinned`/`custom`；`skinned` 与 `custom` 当前回退到
-`vanilla`。`player_model_*` 是相对面板左上角的文档像素坐标，`scale` 范围约 8..120。
+`recipe_book` 取 `hide`（默认）/`vanilla`/`skinned`/`custom`；`skinned` 只替换配方书背景，
+`custom` 当前回退到 `vanilla`。`player_model_*` 是相对面板左上角的文档像素坐标，`scale` 范围约 8..120。
 
 ### 9.3 Tooltip
 

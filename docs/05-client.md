@@ -266,7 +266,8 @@ public final class CloudInventoryScreen extends AbstractContainerScreen<Inventor
   皮肤继承同一父类（`AbstractRecipeBookScreen<InventoryMenu>`，构造时传入
   `CraftingRecipeBookComponent`），复用 `player.inventoryMenu`（容器 0），因此点击仍发送原版槽位包。
 - `recipe_book` 四档：`hide`（默认，组件 `setVisible(false)` 并移除原版按钮）、
-  `vanilla`（保留原版配方书组件与按钮）、`skinned`/`custom`（当前回退 `vanilla`，留待 v2）。
+  `vanilla`（保留原版配方书组件与按钮）、`skinned`（只替换背景贴图，搜索/标签页/网格/翻页
+  保持原版；`RecipeBookComponentMixin`）、`custom`（当前回退 `vanilla`）。
 - `show_player_model`：`EntityPortrait` 用原版实体渲染绘制实时玩家预览，
   `player_model_x`/`y`/`scale`（默认 `50/78/30`）相对面板左上角。
 - `show_effects`：复用原版 `EffectsInInventory`，在背包右侧绘制状态效果图标与剩余时间。

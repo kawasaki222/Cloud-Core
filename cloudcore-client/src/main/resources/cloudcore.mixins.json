@@ -13,6 +13,7 @@
     "MinecraftAccessor",
     "AbstractContainerScreenAccessor",
     "RecipeBookAccessor",
+    "RecipeBookComponentMixin",
     "RecipeBookComponentAccessor"
   ],
   "injectors": {
