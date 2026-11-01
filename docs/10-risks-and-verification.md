@@ -567,6 +567,9 @@ U13: 未通过 — drawBar 参数在 1.21.11 变化；改用 HEAD 接管
     仍是原版并能操作。
   - 期间发现：`recipe_book` 放在嵌套的 `surface_options.player_inventory.*` 下不会被读取，
     只有扁平键生效（文档示例写的是嵌套形式，已改）。
+  - 内容哈希去重：`touch` 一个页面文件 3 秒后服务端没有任何重载日志；真正追加一行内容后
+    仍然输出 `Reloaded 1 affected page(s): [example]`。期间发现种子哈希在
+    `preparePagesDirectory()` 之前执行，空基线让第一次 touch 也算变化，已调整顺序。
   - 未在本次验证：`fit`/`wrap` 的像素级比对（只做了肉眼确认），以及 NanoVG 后端下的同样场景。
 - **互操作与性能**：与 REI/EMI、其他 Tooltip/物品栏模组的共存矩阵未测；NanoVG FBO 的帧率与
   显存占用没有测量数据（只有功能正确性）。

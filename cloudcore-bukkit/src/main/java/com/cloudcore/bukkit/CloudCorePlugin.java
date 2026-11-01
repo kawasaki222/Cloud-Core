@@ -109,6 +109,8 @@ public final class CloudCorePlugin extends JavaPlugin
                     error));
     private final Placeholders placeholders = new Placeholders(this, placeholderResolvers);
     private com.cloudcore.server.state.PlayerStateStore stateStore;
+    /** Content hashes of page files, so a save with unchanged bytes does not reload. */
+    private final com.cloudcore.bukkit.PageHashes pageHashes = new com.cloudcore.bukkit.PageHashes();
     /** Theme token tables by theme id, used only to validate {@code tx:} references. */
     private final Map<String, com.cloudcore.api.document.ThemeTokens> themes =
             new ConcurrentHashMap<>();
@@ -151,7 +153,10 @@ public final class CloudCorePlugin extends JavaPlugin
                 getConfig().getStringList("placeholders.async-namespaces"));
         loadThemes();
         textureProxy = createTextureProxy();
+        // The directory and the demo pages must exist before hashing: seeding earlier left
+        // the baseline empty, so the first touch looked like a content change.
         preparePagesDirectory();
+        seedPageHashes();
         startPageWatcher();
         startStatePersistence();
         refreshTask = getServer().getScheduler().runTaskTimer(this, this::tickPageRefresh, 1L, 1L);
@@ -195,10 +200,18 @@ public final class CloudCorePlugin extends JavaPlugin
                 if (!isEnabled()) {
                     return;
                 }
-                // Only pages that own the changed file or include it are recompiled; an edit
+                // A save that left the bytes alone (touch, format-on-save, git checkout) must
+                // not reload anything: compare content hashes before looking at dependencies.
+                java.util.Set<String> changedBytes = pageHashes.changed(pagesRoot, changed);
+                if (changedBytes.isEmpty()) {
+                    getLogger().fine("Page watcher saw " + changed
+                            + " but the content did not change");
+                    return;
+                }
+                // Only pages that own a changed file or include one are recompiled; an edit
                 // to one fragment no longer reloads every page on the server.
                 java.util.Set<String> affected = com.cloudcore.bukkit.PageDependencies
-                        .affected(pagesRoot, listPageNames(), changed);
+                        .affected(pagesRoot, listPageNames(), changedBytes);
                 if (affected.isEmpty()) {
                     getLogger().fine("Page watcher saw " + changed
                             + " but no page depends on it");
@@ -2770,6 +2783,31 @@ public final class CloudCorePlugin extends JavaPlugin
     }
 
     /** Compiles every page under the pages root and reports the first error per page. */
+    /**
+     * Records the current content hash of every file under {@code pages/}, which is the
+     * baseline the watcher compares against.
+     */
+    private void seedPageHashes() {
+        if (pagesRoot == null) {
+            return;
+        }
+        java.util.Set<String> all = new java.util.HashSet<>();
+        try (var stream = java.nio.file.Files.walk(pagesRoot, 8)) {
+            stream.filter(java.nio.file.Files::isRegularFile).forEach(file -> {
+                String name = file.getFileName().toString().toLowerCase(java.util.Locale.ROOT);
+                if (name.endsWith(".yml") || name.endsWith(".yaml")) {
+                    all.add(pagesRoot.relativize(file).toString()
+                            .replace(java.io.File.separatorChar, '/'));
+                }
+            });
+        } catch (java.io.IOException exception) {
+            getLogger().warning("Cannot hash the pages directory: " + exception.getMessage());
+            return;
+        }
+        pageHashes.changed(pagesRoot, all);
+        pageHashes.prune(pagesRoot);
+    }
+
     /**
      * Loads {@code themes/<theme>.yml} for every theme a page declares. A page keeps its
      * {@code tx:} references, so this table only exists to catch typos at validate time.
